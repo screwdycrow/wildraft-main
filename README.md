@@ -8,6 +8,34 @@ A backend service built with Prisma, PostgreSQL, Fastify, and TypeScript.
 - **ORM**: [Prisma](https://www.prisma.io/) - Next-generation TypeScript ORM
 - **Database**: PostgreSQL
 - **Language**: TypeScript
+- **Authentication**: Email/Password + Google OAuth 2.0 + JWT
+
+## 📚 Documentation
+
+| Document | Purpose | When to Read |
+|----------|---------|--------------|
+| **[QUICKSTART.md](./QUICKSTART.md)** | 5-minute setup | Start here! |
+| **[SWAGGER.md](./SWAGGER.md)** | API docs & testing | Testing endpoints |
+| **[AUTHENTICATION.md](./AUTHENTICATION.md)** | Auth system details | Implementing auth |
+| **[LIBRARIES.md](./LIBRARIES.md)** | Library & access control | Using library features |
+| **[ENV_SETUP.md](./ENV_SETUP.md)** | Environment config | Setting up .env |
+| **[docs/SCHEMA_ORGANIZATION.md](./docs/SCHEMA_ORGANIZATION.md)** | Schema structure | Adding new routes |
+
+## ⚡ Quick Start
+
+```bash
+npm install
+npx prisma db push
+npm run dev
+```
+
+See [QUICKSTART.md](./QUICKSTART.md) for details.
+
+## 📖 API Documentation
+
+Interactive Swagger UI: **http://localhost:3000/docs**
+
+Export for Postman: `npm run docs:export`
 
 ## 📋 Prerequisites
 
@@ -25,7 +53,9 @@ npm install
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory. See `ENV_SETUP.md` for complete configuration including Google OAuth setup.
+
+**Minimum configuration:**
 
 ```bash
 # Database
@@ -35,11 +65,20 @@ DATABASE_URL="postgresql://username:password@localhost:5432/wildraft_db?schema=p
 PORT=3000
 HOST=0.0.0.0
 
-# Environment
-NODE_ENV=development
+# JWT Secrets
+JWT_SECRET=your-super-secret-jwt-key-change-this
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this
+
+# Google OAuth (required for authentication)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+
+# CORS
+CORS_ORIGIN=http://localhost:3000
 ```
 
-**Note**: Replace the `DATABASE_URL` with your actual PostgreSQL connection string.
+**Note**: Replace the values with your actual credentials. See [ENV_SETUP.md](./ENV_SETUP.md) for detailed setup instructions.
 
 ### 3. Set Up Prisma
 
@@ -71,25 +110,45 @@ The server will start on `http://localhost:3000` (or the port you specified in `
 - `npm run prisma:generate` - Generate Prisma Client
 - `npm run prisma:migrate` - Run database migrations
 - `npm run prisma:studio` - Open Prisma Studio (database GUI)
+- `npm run docs:export` - Export OpenAPI spec for Postman
 
 ## 🗂️ Project Structure
 
 ```
 wildraft-prisma-backend/
 ├── prisma/
-│   └── schema.prisma          # Prisma schema file
+│   └── schema.prisma               # Prisma schema (User, Library, LibraryAccess models)
 ├── src/
 │   ├── lib/
-│   │   └── prisma.ts          # Prisma client initialization
+│   │   ├── prisma.ts               # Prisma client initialization
+│   │   ├── jwt.ts                  # JWT token utilities
+│   │   ├── password.ts             # Password hashing utilities
+│   │   └── library-permissions.ts # Library permission helpers
+│   ├── middleware/
+│   │   ├── auth.ts                 # Authentication middleware
+│   │   └── library-access.ts      # Library access control middleware
+│   ├── schemas/
+│   │   ├── common.schemas.ts       # Reusable schema components
+│   │   ├── auth.schemas.ts         # Auth route schemas (for Swagger)
+│   │   ├── user.schemas.ts         # User profile schemas
+│   │   ├── library.schemas.ts      # Library route schemas
+│   │   └── library-access.schemas.ts # Library access schemas
 │   ├── routes/
-│   │   ├── index.ts           # Route registration
-│   │   ├── health.ts          # Health check endpoints
-│   │   └── users.ts           # User CRUD endpoints (example)
-│   └── index.ts               # Application entry point
-├── .gitignore
-├── package.json
-├── tsconfig.json
-└── README.md
+│   │   ├── index.ts                # Route registration
+│   │   ├── health.ts               # Health check endpoints
+│   │   ├── auth.ts                 # Authentication routes (OAuth, JWT)
+│   │   ├── users.ts                # User profile management
+│   │   ├── libraries.ts            # Library CRUD with permissions
+│   │   └── library-access.ts      # Library access management
+│   └── index.ts                    # Application entry point
+├── docs/
+│   └── SCHEMA_ORGANIZATION.md      # Schema organization guide
+├── AUTHENTICATION.md               # Authentication guide
+├── LIBRARIES.md                    # Library system guide
+├── SWAGGER.md                      # API documentation guide
+├── ENV_SETUP.md                    # Environment setup
+├── QUICKSTART.md                   # Quick start (5 min setup)
+└── README.md                       # This file
 ```
 
 ## 🔌 API Endpoints
@@ -99,19 +158,47 @@ wildraft-prisma-backend/
 - `GET /health` - Basic health check
 - `GET /health/db` - Database connection health check
 
-### Users (Example CRUD)
+### Authentication
 
-- `GET /api/users` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `POST /api/users` - Create a new user
-  ```json
-  {
-    "email": "user@example.com",
-    "name": "John Doe"
-  }
-  ```
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+**Email/Password:**
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login with email/password
+
+**Google OAuth:**
+- `GET /api/auth/google` - Initiate Google OAuth login
+- `GET /api/auth/google/callback` - OAuth callback endpoint
+
+**Common:**
+- `POST /api/auth/refresh` - Refresh access token
+- `GET /api/auth/me` - Get current user (protected)
+- `POST /api/auth/logout` - Logout user (protected)
+
+**📖 See [AUTHENTICATION.md](./AUTHENTICATION.md) for detailed authentication documentation**
+
+### Libraries (Role-Based Access Control)
+
+**Library Management:**
+- `GET /api/libraries` - Get all accessible libraries with roles
+- `GET /api/libraries/:id` - Get library details
+- `POST /api/libraries` - Create new library
+- `PUT /api/libraries/:id` - Update library (EDITOR+)
+- `DELETE /api/libraries/:id` - Delete library (OWNER only)
+
+**Access Management:**
+- `GET /api/libraries/:id/access` - Get access list
+- `POST /api/libraries/:id/access` - Grant access to user
+- `PUT /api/libraries/:id/access/:accessId` - Update access level
+- `DELETE /api/libraries/:id/access/:accessId` - Remove access
+- `POST /api/libraries/:id/leave` - Leave library
+
+**Access Roles:** OWNER (full control), EDITOR (edit + manage viewers), VIEWER (read-only)
+
+**📖 See [LIBRARIES.md](./LIBRARIES.md) for complete library system documentation**
+
+### User Profile
+
+- `PUT /api/users/me` - Update current user profile (name, email)
+- `PUT /api/users/me/password` - Change password
 
 ## 🗄️ Database Schema
 

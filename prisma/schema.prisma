@@ -1,4 +1,6 @@
 // This is your Prisma schema file,
+//this is a schema intented for managing dnd stat blocks and libraries campaigns, notes, characters, items, it is inteded to be as flexible as possible to fit the needs of the users, with a focus on modularity and scalability. and many aspects are
+//defined in a way that allows for easy extension and modification with use of json objects nested, and the use of enums to define the type of the object. the goal is to make it easy to add new features and to make it easy to extend the schema to fit the needs of the users. 
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -10,13 +12,109 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Example model - you can modify or remove this
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  name           String?
+  password       String?         // Optional: Only for email/password auth
+  picture        String?
+  googleId       String?         @unique
+  refreshToken   String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  libraryAccess  LibraryAccess[]
+  UserFile UserFile[]
+}
+
+
+
+model Library {
+  id          Int             @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  template LibraryTemplate @default(DND_5E)
+  access      LibraryAccess[]
+  libraryItems LibraryItem[]
+  tags        Tag[]
+}
+
+enum LibraryTemplate {
+DND_5E //Dungeons & Dragons 5th Edition
+}
+
+model LibraryAccess {
+  id        Int        @id @default(autoincrement())
+  userId    Int
+  libraryId Int
+  role      AccessRole
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, libraryId])
+  @@index([userId])
+  @@index([libraryId])
+}
+
+enum AccessRole {
+  OWNER   // Full control, can delete library, manage all access
+  EDITOR  // Can edit library and content, manage viewer access
+  VIEWER  // Read-only access
+}
+
+model LibraryItem  {
+  id Int @id @default(autoincrement())
+  libraryId Int
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  type LibraryItemType
+  name String
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  data Json
+  tags Tag[] @relation("LibraryItemTags")
+  
+  @@index([libraryId])
+  @@index([type])
+}
+
+model UserFile {
+  id Int @id @default(autoincrement())
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl String
+  fileName String
+  fileType String
+  fileSize Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+enum LibraryItemType {
+  NOTE//a note is a text note, it is a json object that contains the note data, and a type of the note.
+  //DND 5E 
+  STAT_BLOCK_DND_5E //a stat block is a dnd stat block, it is a json object that contains the stat block data, and a type of the stat block.
+  ITEM_DND_5E //an item is a dnd item, it is a json object that contains the item data, and a type of the item.
+  CHARACTER_DND_5E //a character is a dnd character, it is a json object that contains the character data, and a type of the character.
+}
+
+
+ 
+model Tag {
+  id Int @id @default(autoincrement())
+  name String
+  color String @default("#6B7280") // Default gray color
+  libraryId Int
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryItems LibraryItem[] @relation("LibraryItemTags")
   
+  @@index([libraryId])
+  @@unique([libraryId, name]) // Tags must be unique within a library
+}
+
