@@ -35,9 +35,12 @@ model Library {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   template LibraryTemplate @default(DND_5E)
+  combatEncounter CombatEncounter[]
+  portalView PortalView[]
   access      LibraryAccess[]
   libraryItems LibraryItem[]
   tags        Tag[]
+  DMScreen DMScreen[]
 }
 
 enum LibraryTemplate {
@@ -51,7 +54,6 @@ model LibraryAccess {
   role      AccessRole
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
 
@@ -77,7 +79,7 @@ model LibraryItem  {
   updatedAt DateTime @updatedAt
   data Json
   tags Tag[] @relation("LibraryItemTags")
-  
+  userFiles UserFile[] @relation("LibraryItemFiles")
   @@index([libraryId])
   @@index([type])
 }
@@ -92,10 +94,13 @@ model UserFile {
   fileSize Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  libraryItems LibraryItem[] @relation("LibraryItemFiles")
 }
+
 
 enum LibraryItemType {
   NOTE//a note is a text note, it is a json object that contains the note data, and a type of the note.
+
   //DND 5E 
   STAT_BLOCK_DND_5E //a stat block is a dnd stat block, it is a json object that contains the stat block data, and a type of the stat block.
   ITEM_DND_5E //an item is a dnd item, it is a json object that contains the item data, and a type of the item.
@@ -118,3 +123,63 @@ model Tag {
   @@unique([libraryId, name]) // Tags must be unique within a library
 }
 
+model CombatEncounter {
+  id Int @id @default(autoincrement())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  round Int @default(1)
+  portalViews PortalView[]
+  initativeCount Int @default(0)
+  combatants Json? //array of combatants, each combatant is a json object that contains the combatant data, and a type of the combatant.  
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  @@index([libraryId])
+}
+
+
+model DMScreen {
+  id String @id @default(uuid())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  content Json? //array of content, each content is a json object that contains the content data, and a type of the content.
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  @@index([libraryId])
+}
+
+model PortalView {
+  id String @id @default(uuid())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  showEncounter Boolean @default(false)
+  showDetails Boolean @default(false)
+  combatEncounter CombatEncounter? @relation(fields: [combatEncounterId], references: [id], onDelete: Cascade)
+  combatEncounterId Int?
+  showgrid Boolean @default(false)
+  gridSize Int @default(10)
+  gridColor String @default("#000000")
+  gridOpacity Float @default(0.5)
+  gridType GridType @default(GRID)
+  gridUnit GridUnit @default(FEET)
+  gridUnitSize Int @default(10)
+  gridUnitColor String @default("#000000")
+  gridUnitOpacity Float @default(0.5)
+  lockZoom Boolean @default(false)
+  library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  currentItem Int?
+  items Json? //array of items, each item is a json object that contains the item data, and a type of the item.
+  @@index([libraryId])
+}
+
+enum GridType {
+  GRID //a grid is a grid, it is a grid of squares, and each square is a square.
+}
+enum GridUnit {
+  FEET //a foot grid, it is a grid of feet, and each foot is a foot.
+  METERS //a meter grid, it is a grid of meters, and each meter is a meter.
+  INCHES //a inch grid, it is a grid of inches, and each inch is a inch.
+}

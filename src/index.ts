@@ -53,6 +53,7 @@ fastify.register(swagger, {
       { name: 'users', description: 'User management endpoints' },
       { name: 'libraries', description: 'Library management endpoints' },
       { name: 'library-access', description: 'Library access control endpoints' },
+      { name: 'files', description: 'File upload and management endpoints' },
     ],
     components: {
       securitySchemes: {

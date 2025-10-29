@@ -93,6 +93,23 @@ Authorization: Bearer <your-jwt-token>
 
 ---
 
+### Files (`/api/files`)
+- **POST** `/upload-url` - Get presigned URL for upload
+- **POST** `/confirm-upload` - Confirm file uploaded to S3
+- **POST** `/upload` - Direct upload with base64 content
+- **GET** `/` - List user's files (paginated)
+- **GET** `/:fileId` - Get file details
+- **GET** `/:fileId/download-url` - Get presigned download URL
+- **DELETE** `/:fileId` - Delete file
+
+**Upload Methods:**
+1. **Presigned URL (Recommended)**: Frontend uploads directly to S3
+2. **Direct Upload**: Upload through backend with base64 encoding
+
+[Full Documentation](FILES_API.md)
+
+---
+
 ## Quick Start Guide
 
 ### 1. Register and Login
@@ -236,6 +253,11 @@ npm run export-openapi
 - createdAt, updatedAt
 - Relations: libraryItems[]
 
+### UserFile
+- id, userId, fileUrl, fileName, fileType, fileSize
+- createdAt, updatedAt
+- Relations: user, libraryItems[]
+
 [Full Schema Documentation](SCHEMA_ORGANIZATION.md)
 
 ---
@@ -256,6 +278,12 @@ JWT_REFRESH_SECRET="your-refresh-secret"
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 GOOGLE_CALLBACK_URL="http://localhost:3000/api/auth/google/callback"
+
+# AWS S3 (for file uploads)
+AWS_REGION="us-east-1"
+AWS_ACCESS_KEY_ID="your-aws-access-key-id"
+AWS_SECRET_ACCESS_KEY="your-aws-secret-access-key"
+AWS_S3_BUCKET="your-bucket-name"
 
 # Server
 PORT=3000
@@ -308,6 +336,7 @@ wildraft-prisma-backend/
 │   │   ├── prisma.ts
 │   │   ├── jwt.ts
 │   │   ├── password.ts
+│   │   ├── s3.ts             # S3 file operations
 │   │   ├── item-schemas.ts   # Item validation
 │   │   └── library-permissions.ts
 │   ├── middleware/           # Middleware
@@ -320,14 +349,16 @@ wildraft-prisma-backend/
 │   │   ├── libraries.ts
 │   │   ├── library-access.ts
 │   │   ├── library-items.ts
-│   │   └── tags.ts
+│   │   ├── tags.ts
+│   │   └── user-files.ts
 │   └── schemas/              # Swagger schemas
 │       ├── auth.schemas.ts
 │       ├── user.schemas.ts
 │       ├── library.schemas.ts
 │       ├── library-access.schemas.ts
 │       ├── library-item.schemas.ts
-│       └── tag.schemas.ts
+│       ├── tag.schemas.ts
+│       └── user-file.schemas.ts
 ├── docs/                     # Documentation
 └── package.json
 ```
@@ -340,6 +371,7 @@ wildraft-prisma-backend/
 - **Framework**: Fastify
 - **Database**: PostgreSQL with Prisma ORM
 - **Authentication**: JWT with refresh tokens, Google OAuth
+- **File Storage**: AWS S3 with presigned URLs
 - **API Documentation**: Swagger/OpenAPI
 - **Validation**: AJV for item schemas
 - **Security**: bcrypt for password hashing
@@ -371,6 +403,13 @@ wildraft-prisma-backend/
 - Item counting
 - Unique within library
 - Automatic cleanup on deletion
+
+### ✅ File Management
+- AWS S3 integration for file storage
+- Presigned URLs for direct frontend uploads
+- File metadata tracking
+- User-owned file access control
+- Support for multiple upload methods
 
 ### ✅ Documentation
 - Comprehensive Swagger/OpenAPI docs
@@ -424,7 +463,14 @@ For issues, questions, or contributions:
 
 ## Version History
 
-### v1.0.0 (Current)
+### v1.1.0 (Current)
+- Added file upload functionality with AWS S3
+- Presigned URL support for direct frontend uploads
+- File metadata tracking and management
+- User file access control
+- Two upload methods: presigned URLs and direct upload
+
+### v1.0.0
 - Initial release
 - User authentication (email/password + Google OAuth)
 - Library management with access control
@@ -440,7 +486,8 @@ For issues, questions, or contributions:
 Consider implementing:
 - [ ] Search and filtering for items
 - [ ] Pagination for large result sets
-- [ ] File upload for images/PDFs
+- [x] File upload for images/PDFs (AWS S3)
+- [ ] Link files to library items
 - [ ] Export/import library data
 - [ ] Activity logs
 - [ ] WebSocket support for real-time updates
@@ -448,4 +495,6 @@ Consider implementing:
 - [ ] Advanced filtering and search
 - [ ] Bulk operations
 - [ ] Template libraries
+- [ ] Image processing and thumbnails
+- [ ] File type restrictions and virus scanning
 

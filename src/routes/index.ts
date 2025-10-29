@@ -6,6 +6,7 @@ import { libraryRoutes } from './libraries';
 import { libraryAccessRoutes } from './library-access';
 import { libraryItemRoutes } from './library-items';
 import { tagRoutes } from './tags';
+import { userFileRoutes } from './user-files';
 
 export const registerRoutes = (fastify: FastifyInstance) => {
   // Health check routes
@@ -28,5 +29,8 @@ export const registerRoutes = (fastify: FastifyInstance) => {
   
   // Tag routes
   fastify.register(tagRoutes, { prefix: '/api/libraries' });
+  
+  // User file routes
+  fastify.register(userFileRoutes, { prefix: '/api/files' });
 };
 

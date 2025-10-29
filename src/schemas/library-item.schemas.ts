@@ -44,6 +44,12 @@ All types support custom fields beyond the required ones.`,
         description: 'Optional item description',
         example: 'A basic goblin warrior stat block for encounters'
       },
+      userFileIds: {
+        type: 'array',
+        items: { type: 'integer' },
+        description: 'Array of file UserFile IDs to associate with the item, these files must be uploaded to the library first',
+        example: [1, 2, 3]
+      },
       data: {
         type: 'object',
         description: `Type-specific data object. Required fields vary by type:
