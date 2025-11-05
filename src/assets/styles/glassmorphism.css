@@ -1,0 +1,841 @@
+/* ===================================
+   Glassmorphism Theme Styles
+   =================================== */
+
+/* CSS Variables for dynamic theming */
+:root {
+  --glass-surface-rgb: 26, 26, 46;
+  --glass-border-rgb: 255, 255, 255;
+  
+  /* Glass effect variables */
+  --glass-opacity: 0.07;
+  --glass-border-opacity: 0.15;
+  --glass-blur: 12px;
+  --glass-border-width: 1px;
+  --glass-border-radius: 12px;
+  --glass-glow-strength: 0.15;
+  
+  /* Illumination variables */
+  --illumination-size: 300px;
+  --illumination-opacity: 0.25;
+  --illumination-blur: 120px;
+}
+
+/* Default Dark Theme */
+.v-theme--darkTheme {
+  --glass-surface-rgb: 26, 26, 46;
+  --glass-border-rgb: 255, 255, 255;
+  --glass-primary: 154, 102, 227;      /* Purple */
+  --glass-secondary: 255, 215, 0;      /* Gold */
+  --glass-accent: 156, 39, 176;        /* Purple accent */
+  --glass-background: 15, 15, 30;      /* Very dark blue-black */
+  --glass-surface: 26, 26, 46;         /* Surface color */
+  
+  /* Text colors */
+  --glass-text: 255, 255, 255;
+  --glass-text-primary: 255, 255, 255, 1;
+  --glass-text-secondary: 255, 255, 255, 0.85;
+  --glass-text-muted: 255, 255, 255, 0.7;
+}
+
+.v-theme--lightTheme {
+  --glass-surface-rgb: 255, 255, 255;
+  --glass-border-rgb: 0, 0, 0;
+  --glass-primary: 98, 0, 234;         /* Deep purple */
+  --glass-secondary: 255, 111, 0;      /* Orange */
+  --glass-accent: 0, 191, 165;         /* Teal accent */
+  --glass-background: 245, 245, 245;   /* Light gray */
+  --glass-surface: 255, 255, 255;      /* White surface */
+  
+  /* Text colors */
+  --glass-text: 0, 0, 0;
+  --glass-text-primary: 0, 0, 0, 1;
+  --glass-text-secondary: 0, 0, 0, 0.85;
+  --glass-text-muted: 0, 0, 0, 0.6;
+}
+
+.v-theme--darkForestTheme {
+  --glass-surface-rgb: 27, 47, 27;
+  --glass-border-rgb: 76, 175, 80;
+  --glass-primary: 76, 175, 80;        /* Forest green */
+  --glass-secondary: 139, 195, 74;     /* Light green */
+  --glass-accent: 0, 230, 118;         /* Bright green */
+  --glass-background: 10, 31, 10;      /* Very dark green-black */
+  --glass-surface: 27, 47, 27;         /* Dark green surface */
+  
+  /* Text colors */
+  --glass-text: 232, 245, 233;
+  --glass-text-primary: 232, 245, 233, 1;
+  --glass-text-secondary: 232, 245, 233, 0.85;
+  --glass-text-muted: 232, 245, 233, 0.7;
+}
+
+.v-theme--deepBlueTheme {
+  --glass-surface-rgb: 26, 47, 66;
+  --glass-border-rgb: 33, 150, 243;
+  --glass-primary: 33, 150, 243;       /* Ocean blue */
+  --glass-secondary: 0, 188, 212;      /* Cyan */
+  --glass-accent: 0, 229, 255;         /* Bright cyan */
+  --glass-background: 10, 25, 41;      /* Very dark blue-black */
+  --glass-surface: 26, 47, 66;         /* Dark blue surface */
+  
+  /* Text colors */
+  --glass-text: 227, 242, 253;
+  --glass-text-primary: 227, 242, 253, 1;
+  --glass-text-secondary: 227, 242, 253, 0.85;
+  --glass-text-muted: 227, 242, 253, 0.7;
+}
+
+.v-theme--crimsonTheme {
+  --glass-surface-rgb: 42, 26, 26;
+  --glass-border-rgb: 220, 20, 60;
+  --glass-primary: 220, 20, 60;        /* Crimson red */
+  --glass-secondary: 255, 215, 0;      /* Gold */
+  --glass-accent: 255, 23, 68;         /* Bright red */
+  --glass-background: 26, 10, 10;      /* Very dark red-black */
+  --glass-surface: 42, 26, 26;         /* Dark red surface */
+  
+  /* Text colors */
+  --glass-text: 255, 255, 255;
+  --glass-text-primary: 255, 255, 255, 1;
+  --glass-text-secondary: 255, 255, 255, 0.85;
+  --glass-text-muted: 255, 255, 255, 0.7;
+}
+
+.v-theme--papyrusTheme {
+  --glass-surface-rgb: 255, 249, 230;
+  --glass-border-rgb: 141, 110, 99;
+  --glass-primary: 141, 110, 99;       /* Warm brown */
+  --glass-secondary: 215, 204, 200;    /* Light tan */
+  --glass-accent: 109, 76, 65;         /* Dark brown */
+  --glass-background: 245, 243, 231;   /* Papyrus beige */
+  --glass-surface: 255, 249, 230;      /* Cream surface */
+  
+  /* Text colors */
+  --glass-text: 62, 39, 35;
+  --glass-text-primary: 62, 39, 35, 1;
+  --glass-text-secondary: 62, 39, 35, 0.85;
+  --glass-text-muted: 62, 39, 35, 0.6;
+}
+
+.v-theme--mintTheme {
+  --glass-surface-rgb: 241, 248, 246;
+  --glass-border-rgb: 0, 137, 123;
+  --glass-primary: 0, 137, 123;        /* Teal */
+  --glass-secondary: 38, 166, 154;     /* Light teal */
+  --glass-accent: 0, 105, 92;          /* Dark teal */
+  --glass-background: 224, 242, 241;   /* Mint background */
+  --glass-surface: 241, 248, 246;      /* Light mint surface */
+  
+  /* Text colors */
+  --glass-text: 0, 77, 64;
+  --glass-text-primary: 0, 77, 64, 1;
+  --glass-text-secondary: 0, 77, 64, 0.85;
+  --glass-text-muted: 0, 77, 64, 0.6;
+}
+
+.v-theme--sunsetTheme {
+  --glass-surface-rgb: 255, 248, 240;
+  --glass-border-rgb: 255, 111, 0;
+  --glass-primary: 255, 111, 0;        /* Orange */
+  --glass-secondary: 255, 152, 0;      /* Light orange */
+  --glass-accent: 244, 81, 30;         /* Red-orange */
+  --glass-background: 255, 243, 224;   /* Warm cream */
+  --glass-surface: 255, 248, 240;      /* Light peach surface */
+  
+  /* Text colors */
+  --glass-text: 230, 81, 0;
+  --glass-text-primary: 230, 81, 0, 1;
+  --glass-text-secondary: 230, 81, 0, 0.85;
+  --glass-text-muted: 230, 81, 0, 0.6;
+}
+
+.v-theme--midnightTheme {
+  --glass-surface-rgb: 26, 22, 47;
+  --glass-border-rgb: 124, 77, 255;
+  --glass-primary: 124, 77, 255;       /* Purple */
+  --glass-secondary: 83, 109, 254;     /* Indigo */
+  --glass-accent: 179, 136, 255;       /* Light purple */
+  --glass-background: 13, 10, 31;      /* Very dark purple-black */
+  --glass-surface: 26, 22, 47;         /* Dark purple surface */
+  
+  /* Text colors */
+  --glass-text: 232, 228, 243;
+  --glass-text-primary: 232, 228, 243, 1;
+  --glass-text-secondary: 232, 228, 243, 0.85;
+  --glass-text-muted: 232, 228, 243, 0.7;
+}
+
+/* ===================================
+   Modern Elevation System
+   =================================== */
+
+/* Modern, refined shadows with better definition */
+.elevation-0 {
+  box-shadow: none !important;
+}
+
+.elevation-1 {
+  box-shadow: 
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.elevation-2 {
+  box-shadow: 
+    0 3px 6px -1px rgba(0, 0, 0, 0.12),
+    0 2px 4px -1px rgba(0, 0, 0, 0.08) !important;
+}
+
+.elevation-3 {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.elevation-4 {
+  box-shadow: 
+    0 12px 20px -4px rgba(0, 0, 0, 0.14),
+    0 4px 8px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+.elevation-5 {
+  box-shadow: 
+    0 16px 24px -6px rgba(0, 0, 0, 0.16),
+    0 6px 12px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.elevation-6 {
+  box-shadow: 
+    0 18px 28px -6px rgba(0, 0, 0, 0.18),
+    0 8px 14px -4px rgba(0, 0, 0, 0.12) !important;
+}
+
+.elevation-8 {
+  box-shadow: 
+    0 24px 38px -8px rgba(0, 0, 0, 0.2),
+    0 10px 20px -5px rgba(0, 0, 0, 0.14) !important;
+}
+
+.elevation-12 {
+  box-shadow: 
+    0 32px 48px -10px rgba(0, 0, 0, 0.24),
+    0 16px 28px -8px rgba(0, 0, 0, 0.16) !important;
+}
+
+.elevation-16 {
+  box-shadow: 
+    0 40px 64px -12px rgba(0, 0, 0, 0.28),
+    0 20px 36px -10px rgba(0, 0, 0, 0.18) !important;
+}
+
+.elevation-24 {
+  box-shadow: 
+    0 48px 80px -16px rgba(0, 0, 0, 0.32),
+    0 28px 48px -12px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Theme-aware colored elevation shadows */
+.elevation-colored-1 {
+  box-shadow: 
+    0 2px 8px 0 rgba(var(--v-theme-primary), 0.2),
+    0 1px 3px 0 rgba(var(--v-theme-primary), 0.3) !important;
+}
+
+.elevation-colored-2 {
+  box-shadow: 
+    0 4px 12px -1px rgba(var(--v-theme-primary), 0.25),
+    0 2px 6px -1px rgba(var(--v-theme-primary), 0.35) !important;
+}
+
+.elevation-colored-3 {
+  box-shadow: 
+    0 8px 20px -3px rgba(var(--v-theme-primary), 0.3),
+    0 4px 10px -2px rgba(var(--v-theme-primary), 0.4) !important;
+}
+
+.elevation-colored-4 {
+  box-shadow: 
+    0 12px 28px -4px rgba(var(--v-theme-primary), 0.35),
+    0 6px 14px -3px rgba(var(--v-theme-primary), 0.45) !important;
+}
+
+.elevation-colored-5 {
+  box-shadow: 
+    0 16px 36px -6px rgba(var(--v-theme-primary), 0.4),
+    0 8px 18px -4px rgba(var(--v-theme-primary), 0.5) !important;
+}
+
+/* Soft inner shadows for inset effects */
+.elevation-inset {
+  box-shadow: 
+    inset 0 2px 8px 0 rgba(0, 0, 0, 0.15),
+    inset 0 1px 4px 0 rgba(0, 0, 0, 0.2) !important;
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Glow elevation (colored outward glow) */
+.elevation-glow {
+  box-shadow: 
+    0 0 24px 4px rgba(var(--v-theme-primary), 0.4),
+    0 0 48px 8px rgba(var(--v-theme-primary), 0.2),
+    0 4px 12px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.elevation-glow-strong {
+  box-shadow: 
+    0 0 32px 8px rgba(var(--v-theme-primary), 0.6),
+    0 0 64px 12px rgba(var(--v-theme-primary), 0.3),
+    0 8px 20px 0 rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Hover elevation transitions */
+.elevation-hover-1 {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.elevation-hover-1:hover {
+  box-shadow: 
+    0 3px 6px -1px rgba(0, 0, 0, 0.12),
+    0 2px 4px -1px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+.elevation-hover-2 {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.elevation-hover-2:hover {
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.elevation-hover-3 {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.elevation-hover-3:hover {
+  box-shadow: 
+    0 16px 24px -6px rgba(0, 0, 0, 0.16),
+    0 6px 12px -3px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-3px);
+}
+
+.elevation-hover-colored {
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.elevation-hover-colored:hover {
+  box-shadow: 
+    0 12px 28px -4px rgba(var(--v-theme-primary), 0.35),
+    0 6px 14px -3px rgba(var(--v-theme-primary), 0.45) !important;
+  transform: translateY(-2px);
+}
+
+/* Glass Card Base */
+.glass-card {
+  background: rgba(var(--glass-surface-rgb), 0.3) !important;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
+  box-shadow: 
+    0 3px 6px -1px rgba(0, 0, 0, 0.12),
+    0 2px 4px -1px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gradient overlay on cards */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary) / 0.03) 0%,
+    transparent 50%,
+    rgb(var(--v-theme-secondary) / 0.03) 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Removed default hover effect - add .elevation-hover-* classes if needed */
+
+/* Glass Card Variants */
+.glass-card-elevated {
+  background: rgba(var(--glass-surface-rgb), 0.8) !important;
+  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.15) !important;
+  box-shadow: 
+    0 12px 20px -4px rgba(0, 0, 0, 0.14),
+    0 4px 8px -2px rgba(0, 0, 0, 0.08) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card-elevated::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--v-theme-primary) / 0.05) 0%,
+    rgb(var(--v-theme-accent) / 0.03) 50%,
+    rgb(var(--v-theme-secondary) / 0.05) 100%
+  );
+  pointer-events: none;
+}
+
+.glass-card-subtle {
+  background: rgba(var(--glass-surface-rgb), 0.5) !important;
+  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.08) !important;
+  box-shadow: 
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card-subtle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--v-theme-primary) / 0.02) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Glass Header */
+.glass-header {
+  background: rgba(var(--glass-surface-rgb), 0.1) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
+  box-shadow: 
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Glass Sidebar */
+.glass-sidebar {
+  background: rgba(var(--glass-surface-rgb), 0.1) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
+  box-shadow: 
+    0 12px 20px -4px rgba(0, 0, 0, 0.14),
+    0 4px 8px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Glass Menu/Dialog */
+.glass-menu {
+  background: rgba(var(--glass-surface-rgb), 0.95) !important;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
+  box-shadow: 
+    0 24px 38px -8px rgba(0, 0, 0, 0.2),
+    0 10px 20px -5px rgba(0, 0, 0, 0.14) !important;
+}
+
+/* Glass Dialog */
+.glass-dialog {
+  background: rgba(var(--glass-surface-rgb), 0.95) !important;
+  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
+  box-shadow: 
+    0 48px 80px -16px rgba(0, 0, 0, 0.32),
+    0 28px 48px -12px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Glass Surface */
+.glass-surface {
+  background: rgba(var(--glass-surface-rgb), 0.6) !important;
+  -webkit-backdrop-filter: blur(15px);
+  backdrop-filter: blur(15px);
+}
+
+/* ===================================
+   Illumination Effects
+   =================================== */
+
+/* Container for illumination effects */
+.illumination-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* Base illumination class */
+.illumination {
+  position: absolute;
+  opacity: var(--illumination-opacity);
+  filter: blur(var(--illumination-blur));
+}
+
+/* Top illumination */
+.top-light {
+  top: -250px;
+  left: 0;
+  right: 0;
+  height: var(--illumination-size);
+  background: radial-gradient(
+    ellipse at center, 
+    rgba(var(--glass-primary), 0.3),
+    transparent 70%
+  );
+}
+
+/* Left illumination */
+.left-light {
+  left: -250px;
+  top: 0;
+  bottom: 0;
+  width: var(--illumination-size);
+  background: radial-gradient(
+    ellipse at center, 
+    rgba(var(--glass-primary), 0.3), 
+    transparent 70%
+  );
+}
+
+/* Right illumination */
+.right-light {
+  right: -250px;
+  top: 0;
+  bottom: 0;
+  width: var(--illumination-size);
+  background: radial-gradient(
+    ellipse at center, 
+    rgba(var(--glass-secondary), 0.3), 
+    transparent 70%
+  );
+}
+
+/* Bottom illumination */
+.bottom-light {
+  bottom: -250px;
+  left: 0;
+  right: 0;
+  height: var(--illumination-size);
+  background: radial-gradient(
+    ellipse at center, 
+    rgba(var(--glass-accent), 0.3),
+    transparent 70%
+  );
+}
+
+/* Corner illuminations */
+.top-left-light {
+  top: -150px;
+  left: -150px;
+  width: var(--illumination-size);
+  height: var(--illumination-size);
+  background: radial-gradient(
+    circle at center, 
+    rgba(var(--glass-primary), 0.25),
+    transparent 60%
+  );
+}
+
+.top-right-light {
+  top: -150px;
+  right: -150px;
+  width: var(--illumination-size);
+  height: var(--illumination-size);
+  background: radial-gradient(
+    circle at center, 
+    rgba(var(--glass-secondary), 0.25),
+    transparent 60%
+  );
+}
+
+.bottom-left-light {
+  bottom: -150px;
+  left: -150px;
+  width: var(--illumination-size);
+  height: var(--illumination-size);
+  background: radial-gradient(
+    circle at center, 
+    rgba(var(--glass-accent), 0.25),
+    transparent 60%
+  );
+}
+
+.bottom-right-light {
+  bottom: -150px;
+  right: -150px;
+  width: var(--illumination-size);
+  height: var(--illumination-size);
+  background: radial-gradient(
+    circle at center, 
+    rgba(var(--glass-secondary), 0.25),
+    transparent 60%
+  );
+}
+
+/* Background overlay with gradient effects */
+.layout-container,
+.gradient-background-overlay {
+  position: relative;
+}
+
+.layout-container::before,
+.gradient-background-overlay::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(to right, 
+      rgba(var(--glass-primary), 0.05) 0%, 
+      rgba(var(--glass-background), 0.9) 20%, 
+      rgba(var(--glass-background), 0.9) 80%, 
+      rgba(var(--glass-secondary), 0.05) 100%
+    ),
+    linear-gradient(to bottom, 
+      rgba(var(--glass-primary), 0.05) 0%, 
+      rgba(var(--glass-background), 0.9) 20%, 
+      rgba(var(--glass-background), 0.9) 100%
+    );
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* Gradient Backgrounds */
+.gradient-background {
+  background: radial-gradient(ellipse at center, 
+    rgb(var(--v-theme-background)) 0%, 
+    rgb(var(--v-theme-surface)) 50%, 
+    rgb(var(--v-theme-surface-variant)) 100%);
+  background-attachment: fixed;
+  background-size: cover;
+}
+
+/* Dark theme: small glows on left and right edges */
+.v-theme--darkTheme .gradient-background,
+.v-theme--darkForestTheme .gradient-background,
+.v-theme--deepBlueTheme .gradient-background,
+.v-theme--crimsonTheme .gradient-background,
+.v-theme--midnightTheme .gradient-background {
+  background: linear-gradient(to right, 
+    rgb(var(--v-theme-surface-bright)) 0%, 
+    rgb(var(--v-theme-background)) 10%, 
+    rgb(var(--v-theme-background)) 90%, 
+    rgb(var(--v-theme-surface-bright)) 100%);
+}
+
+/* Light theme: small glows on left and right edges */
+.v-theme--lightTheme .gradient-background,
+.v-theme--papyrusTheme .gradient-background,
+.v-theme--mintTheme .gradient-background,
+.v-theme--sunsetTheme .gradient-background {
+  background: linear-gradient(to right, 
+    rgb(var(--v-theme-surface-variant)) 0%, 
+    rgb(var(--v-theme-surface-bright)) 10%, 
+    rgb(var(--v-theme-surface-bright)) 90%, 
+    rgb(var(--v-theme-surface-variant)) 100%);
+}
+
+.gradient-background-animated {
+  background: radial-gradient(ellipse at center, 
+    rgb(var(--v-theme-background)) 30%, 
+    rgb(var(--v-theme-surface)) 70%, 
+    rgb(var(--v-theme-surface-bright)) 100%);
+  background-attachment: fixed;
+  background-size: cover;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dark theme animated */
+.v-theme--darkTheme .gradient-background-animated,
+.v-theme--darkForestTheme .gradient-background-animated,
+.v-theme--deepBlueTheme .gradient-background-animated,
+.v-theme--crimsonTheme .gradient-background-animated,
+.v-theme--midnightTheme .gradient-background-animated {
+  background: linear-gradient(to right, 
+    rgb(var(--v-theme-surface-bright)) 0%, 
+    rgb(var(--v-theme-background)) 10%, 
+    rgb(var(--v-theme-background)) 90%, 
+    rgb(var(--v-theme-surface-bright)) 100%);
+}
+
+/* Light theme animated */
+.v-theme--lightTheme .gradient-background-animated,
+.v-theme--papyrusTheme .gradient-background-animated,
+.v-theme--mintTheme .gradient-background-animated,
+.v-theme--sunsetTheme .gradient-background-animated {
+  background: linear-gradient(to right, 
+    rgb(var(--v-theme-surface-variant)) 0%, 
+    rgb(var(--v-theme-surface-bright)) 10%, 
+    rgb(var(--v-theme-surface-bright)) 90%, 
+    rgb(var(--v-theme-surface-variant)) 100%);
+}
+
+.gradient-background-animated::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgb(var(--v-theme-primary) / 0.1) 0%, transparent 70%);
+  animation: pulse 8s ease-in-out infinite;
+}
+
+.gradient-background-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgb(var(--v-theme-accent) / 0.08) 0%, transparent 70%);
+  animation: pulse 10s ease-in-out infinite reverse;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgb(var(--v-theme-primary) / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgb(var(--v-theme-primary) / 0.8);
+  }
+}
+
+/* Utility Classes */
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+.pulse-glow-animation {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Hover Glow Effect */
+.hover-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.hover-glow::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgb(var(--v-theme-primary) / 0.1) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+}
+
+.hover-glow:hover::before {
+  opacity: 1;
+}
+
+/* Text Shadows */
+.glow-text {
+  text-shadow: 0 0 20px rgb(var(--v-theme-primary) / 0.5);
+}
+
+.glow-text-secondary {
+  text-shadow: 0 0 15px rgb(var(--v-theme-secondary) / 0.5);
+}
+
+.glow-text-accent {
+  text-shadow: 0 0 15px rgb(var(--v-theme-accent) / 0.5);
+}
+
+/* Border Glow */
+.border-glow {
+  border: 1px solid rgb(var(--v-theme-primary) / 0.3) !important;
+  box-shadow: 0 0 10px rgb(var(--v-theme-primary) / 0.2);
+}
+
+.border-glow-hover:hover {
+  border-color: rgb(var(--v-theme-primary) / 0.5) !important;
+  box-shadow: 0 0 20px rgb(var(--v-theme-primary) / 0.3);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--v-theme-background) / 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--v-theme-primary) / 0.5);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--v-theme-primary) / 0.7);
+}
+
+/* Active States */
+.glass-list-item-active {
+  background: rgb(var(--v-theme-primary) / 0.2) !important;
+  border-left: 3px solid rgb(var(--v-theme-primary));
+}
+
+
