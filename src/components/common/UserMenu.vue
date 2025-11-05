@@ -23,6 +23,12 @@
       </v-list-item>
       <v-divider class="my-2" />
       <v-list-item
+        @click="openFiles"
+        prepend-icon="mdi-folder-multiple"
+      >
+        My Files
+      </v-list-item>
+      <v-list-item
         :to="{ name: 'Settings' }"
         prepend-icon="mdi-cog"
       >
@@ -41,11 +47,17 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useFileManager } from '@/composables/useFileManager'
 import { useToast } from 'vue-toastification'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { openFileManager } = useFileManager()
 const toast = useToast()
+
+function openFiles() {
+  openFileManager()
+}
 
 async function handleLogout() {
   await authStore.logout()

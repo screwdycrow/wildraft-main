@@ -1,9 +1,16 @@
 <template>
   <router-view />
+  
+  <!-- Global File Manager -->
+  <file-manager v-model="isFileManagerOpen" />
 </template>
 
 <script setup lang="ts">
+import FileManager from '@/components/files/FileManager.vue'
+import { useFileManager } from '@/composables/useFileManager'
+
 // Main app component - routing handled by vue-router
+const { isFileManagerOpen } = useFileManager()
 </script>
 
 <style>

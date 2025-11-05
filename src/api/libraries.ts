@@ -1,4 +1,4 @@
-import { apiClient } from './axios'
+import apiClient from './axios'
 import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess } from '@/types/library.types'
 
 export const librariesApi = {

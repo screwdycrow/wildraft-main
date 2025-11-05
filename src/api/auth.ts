@@ -1,4 +1,4 @@
-import { apiClient } from './axios'
+import apiClient from './axios'
 import type { AuthResponse, LoginCredentials, RegisterCredentials, User } from '@/types/auth.types'
 
 export const authApi = {
