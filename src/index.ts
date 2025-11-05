@@ -27,8 +27,19 @@ const fastify = Fastify({
 });
 
 // Register CORS
+// Supports multiple origins via CORS_ORIGINS (comma-separated). Falls back to common dev ports.
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    // Allow non-browser clients (curl, server-to-server) with no origin
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: Origin not allowed'), false);
+  },
   credentials: true,
 });
 

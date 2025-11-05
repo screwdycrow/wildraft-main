@@ -41,7 +41,7 @@ Only needed if you want Google login:
 
 ## AWS S3 Setup (For File Uploads)
 
-Required for file upload functionality:
+Required for file upload functionality:V
 
 1. Go to [AWS Console](https://console.aws.amazon.com/)
 2. Create an S3 bucket:
