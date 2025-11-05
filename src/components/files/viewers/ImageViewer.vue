@@ -59,6 +59,21 @@
       
       <v-divider vertical class="mx-2" />
       
+      <!-- Combat Lock Toggle -->
+      <v-tooltip :text="combatLock ? 'Combat Lock: ON (Press L to unlock)' : 'Combat Lock: OFF (Press L to lock)'" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <v-btn
+            :icon="combatLock ? 'mdi-lock' : 'mdi-lock-open'"
+            size="small"
+            :color="combatLock ? 'error' : 'success'"
+            @click="toggleCombatLock"
+            v-bind="tooltipProps"
+          />
+        </template>
+      </v-tooltip>
+      
+      <v-divider vertical class="mx-2" />
+      
       <!-- Grid Toggle -->
       <v-btn
         :icon="showGrid ? 'mdi-grid' : 'mdi-grid-off'"
@@ -162,6 +177,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useToast } from 'vue-toastification'
 
 interface Props {
   url: string
@@ -178,10 +194,12 @@ const props = withDefaults(defineProps<Props>(), {
   autoHideControls: true,
   autoHideDelay: 2000,
   showGridOverlay: false,
-  gridOverlaySize: 20, // 20vh = good default for D&D grids
+  gridOverlaySize: 50, // 50vh = good default for D&D grids
   gridOverlayColor: '#000000',
-  gridOverlayOpacity: 0.7
+  gridOverlayOpacity: 0.2 // 20% opacity
 })
+
+const toast = useToast()
 
 const imageContainer = ref<HTMLElement>()
 const imageEl = ref<HTMLImageElement>()
@@ -193,6 +211,11 @@ const dragStart = ref({ x: 0, y: 0 })
 const imageLoaded = ref(false)
 const showControls = ref(true)
 const hideControlsTimer = ref<number | null>(null)
+
+// Combat lock state
+const combatLock = ref(false)
+const lastToastTime = ref(0)
+const toastDebounceMs = 1000 // Only show toast once per second
 
 // Grid overlay state
 const showGrid = ref(props.showGridOverlay)
@@ -233,25 +256,68 @@ const gridOverlayStyle = computed(() => {
   }
 })
 
+const showCombatLockToast = () => {
+  const now = Date.now()
+  
+  // Debounce: only show toast if enough time has passed since last toast
+  if (now - lastToastTime.value < toastDebounceMs) {
+    return
+  }
+  
+  lastToastTime.value = now
+  toast.warning('Combat Lock is on. Press L to unlock', {
+    timeout: 2000
+  })
+}
+
+const toggleCombatLock = () => {
+  combatLock.value = !combatLock.value
+  if (combatLock.value) {
+    toast.success('🔒 Combat Lock activated', {
+      timeout: 2000
+    })
+  } else {
+    toast.info('🔓 Combat Lock deactivated', {
+      timeout: 2000
+    })
+  }
+}
+
 const onImageLoad = () => {
   imageLoaded.value = true
 }
 
 const zoomIn = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   scale.value = Math.min(scale.value + 0.25, 5)
 }
 
 const zoomOut = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   scale.value = Math.max(scale.value - 0.25, 0.5)
 }
 
 const resetZoom = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   scale.value = 1
   rotation.value = 0
   position.value = { x: 0, y: 0 }
 }
 
 const rotate = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   rotation.value = (rotation.value + 90) % 360
 }
 
@@ -259,13 +325,61 @@ const toggleGrid = () => {
   showGrid.value = !showGrid.value
 }
 
+const panLeft = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
+  position.value.x += 50
+}
+
+const panRight = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
+  position.value.x -= 50
+}
+
+const panUp = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
+  position.value.y += 50
+}
+
+const panDown = () => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
+  position.value.y -= 50
+}
+
+const increaseGridSize = () => {
+  gridSize.value = Math.min(gridSize.value + 5, 100)
+}
+
+const decreaseGridSize = () => {
+  gridSize.value = Math.max(gridSize.value - 5, 5)
+}
+
 const handleWheel = (e: WheelEvent) => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   const delta = e.deltaY * -0.001
   const newScale = Math.max(0.5, Math.min(5, scale.value + delta))
   scale.value = newScale
 }
 
 const handleMouseDown = (e: MouseEvent) => {
+  if (combatLock.value) {
+    showCombatLockToast()
+    return
+  }
   if (scale.value <= 1) return
   isDragging.value = true
   dragStart.value = {
@@ -309,22 +423,65 @@ const download = () => {
 
 // Keyboard shortcuts
 const handleKeyPress = (e: KeyboardEvent) => {
-  switch (e.key) {
-    case '+':
-    case '=':
+  switch (e.key.toLowerCase()) {
+    // Combat Lock toggle (always works)
+    case 'l':
+      toggleCombatLock()
+      break
+    
+    // Block escape when combat locked
+    case 'escape':
+      if (combatLock.value) {
+        showCombatLockToast()
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      break
+    
+    // Zoom controls
+    case ']':
       zoomIn()
       break
-    case '-':
+    case '[':
       zoomOut()
       break
-    case '0':
+    case 'backspace':
       resetZoom()
+      e.preventDefault() // Prevent browser back navigation
       break
+    
+    // Grid size controls
+    case '+':
+    case '=':
+      increaseGridSize()
+      break
+    case '-':
+    case '_':
+      decreaseGridSize()
+      break
+    
+    // Rotation
     case 'r':
       rotate()
       break
+    
+    // Grid toggle
     case 'g':
       toggleGrid()
+      break
+    
+    // Panning with WASD
+    case 'w':
+      panUp()
+      break
+    case 'a':
+      panLeft()
+      break
+    case 's':
+      panDown()
+      break
+    case 'd':
+      panRight()
       break
   }
 }
