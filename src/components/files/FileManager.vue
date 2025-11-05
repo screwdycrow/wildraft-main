@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     v-model="isOpen"
-    max-width="1200"
+    max-width="1400"
     scrollable
     persistent
   >
@@ -10,6 +10,18 @@
         <v-icon icon="mdi-folder-multiple" class="mr-2" />
         File Manager
         <v-spacer />
+        
+        <!-- View Toggle -->
+        <v-btn-toggle
+          v-model="viewMode"
+          mandatory
+          density="compact"
+          class="mr-2"
+        >
+          <v-btn value="grid" icon="mdi-view-grid" size="small" />
+          <v-btn value="list" icon="mdi-view-list" size="small" />
+        </v-btn-toggle>
+        
         <v-btn
           icon="mdi-close"
           variant="text"
@@ -19,50 +31,52 @@
 
       <v-divider />
 
-      <v-card-text style="height: 600px;">
-        <!-- Upload Section -->
-        <v-card class="mb-4" variant="tonal">
-          <v-card-text>
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <h3 class="text-h6 mb-1">Upload Files</h3>
-                <p class="text-caption text-medium-emphasis">
-                  Files under 1MB use direct upload, larger files use presigned URLs
-                </p>
-              </div>
-              <v-btn
-                color="primary"
-                prepend-icon="mdi-upload"
-                @click="triggerFileInput"
-                :loading="uploading"
-              >
-                Upload Files
-              </v-btn>
-            </div>
-            
-            <input
-              ref="fileInput"
-              type="file"
-              multiple
-              hidden
-              @change="handleFileSelect"
-            />
+      <v-card-text style="height: 700px;">
+        <!-- Drag & Drop Upload Zone -->
+        <div
+          ref="dropZone"
+          class="upload-zone mb-4"
+          :class="{ 'upload-zone--active': isDragging }"
+          @click="triggerFileInput"
+          @dragover.prevent="isDragging = true"
+          @dragleave.prevent="isDragging = false"
+          @drop.prevent="handleDrop"
+        >
+          <v-icon
+            :icon="isDragging ? 'mdi-cloud-upload' : 'mdi-upload'"
+            size="48"
+            :color="isDragging ? 'primary' : 'grey'"
+            class="mb-2"
+          />
+          <p class="text-h6 mb-1">
+            {{ isDragging ? 'Drop files here' : 'Drag & drop files or click to upload' }}
+          </p>
+          <p class="text-caption text-medium-emphasis">
+            Files under 1MB use direct upload, larger files use presigned URLs
+          </p>
+          
+          <input
+            ref="fileInput"
+            type="file"
+            multiple
+            hidden
+            @change="handleFileSelect"
+          />
 
-            <!-- Upload Progress -->
-            <div v-if="uploading" class="mt-4">
-              <v-progress-linear
-                :model-value="uploadProgress"
-                color="primary"
-                height="8"
-                class="mb-2"
-              />
-              <p class="text-caption">Uploading {{ currentFileName }}...</p>
-            </div>
-          </v-card-text>
-        </v-card>
+          <!-- Upload Progress -->
+          <div v-if="uploading" class="mt-4" style="max-width: 400px; width: 100%;">
+            <v-progress-linear
+              :model-value="uploadProgress"
+              color="primary"
+              height="8"
+              class="mb-2"
+            />
+            <p class="text-caption">Uploading {{ currentFileName }}...</p>
+          </div>
+        </div>
 
         <!-- Filters and Search -->
-        <div class="d-flex gap-2 mb-4">
+        <div class="d-flex ga-2 mb-4">
           <v-text-field
             v-model="search"
             prepend-inner-icon="mdi-magnify"
@@ -84,61 +98,20 @@
           />
         </div>
 
-        <!-- Files List -->
-        <v-card>
-          <v-list v-if="filteredFiles.length > 0">
-            <template v-for="(file, index) in filteredFiles" :key="file.id">
-              <v-list-item>
-                <template #prepend>
-                  <v-avatar :color="getFileColor(file.fileType)" variant="tonal">
-                    <v-icon :icon="getFileIcon(file.fileType)" />
-                  </v-avatar>
-                </template>
+        <!-- Media Grid -->
+        <media-grid
+          :files="filteredFiles"
+          :view-mode="viewMode"
+          :deletable="true"
+          :selected-files="selectedFiles"
+          @file-click="openFileViewer"
+          @delete="confirmDelete"
+        />
 
-                <v-list-item-title>{{ file.fileName }}</v-list-item-title>
-                <v-list-item-subtitle>
-                  {{ formatFileSize(file.fileSize) }} • 
-                  {{ formatDate(file.createdAt) }}
-                </v-list-item-subtitle>
-
-                <template #append>
-                  <v-btn
-                    icon="mdi-download"
-                    variant="text"
-                    size="small"
-                    @click="downloadFile(file)"
-                  />
-                  <v-btn
-                    icon="mdi-content-copy"
-                    variant="text"
-                    size="small"
-                    @click="copyFileUrl(file)"
-                  />
-                  <v-btn
-                    icon="mdi-delete"
-                    variant="text"
-                    size="small"
-                    color="error"
-                    @click="confirmDelete(file)"
-                  />
-                </template>
-              </v-list-item>
-              <v-divider v-if="index < filteredFiles.length - 1" />
-            </template>
-          </v-list>
-
-          <v-card-text v-else-if="!filesStore.loading" class="text-center py-8">
-            <v-icon icon="mdi-folder-open" size="64" color="grey" class="mb-4" />
-            <p class="text-h6 mb-2">No files found</p>
-            <p class="text-body-2 text-medium-emphasis">
-              Upload your first file to get started
-            </p>
-          </v-card-text>
-
-          <v-card-text v-if="filesStore.loading" class="text-center py-8">
-            <v-progress-circular indeterminate color="primary" />
-          </v-card-text>
-        </v-card>
+        <!-- Loading State -->
+        <div v-if="filesStore.loading" class="text-center py-8">
+          <v-progress-circular indeterminate color="primary" />
+        </div>
 
         <!-- Load More -->
         <div v-if="canLoadMore" class="text-center mt-4">
@@ -166,6 +139,14 @@
     </v-card>
   </v-dialog>
 
+  <!-- Media Viewer -->
+  <media-viewer
+    v-model="viewerOpen"
+    :file="selectedFile"
+    :files="filteredFiles"
+    :on-delete="confirmDelete"
+  />
+
   <!-- Delete Confirmation -->
   <v-dialog v-model="deleteDialog" max-width="400">
     <v-card>
@@ -188,15 +169,17 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useFilesStore } from '@/stores/files'
-import { formatFileSize, getFileIcon } from '@/api/files'
 import type { UserFile } from '@/api/files'
 import { useToast } from 'vue-toastification'
+import MediaGrid from './MediaGrid.vue'
+import MediaViewer from './MediaViewer.vue'
 
 const filesStore = useFilesStore()
 const toast = useToast()
 
 const isOpen = defineModel<boolean>('modelValue', { default: false })
 const fileInput = ref<HTMLInputElement>()
+const dropZone = ref<HTMLElement>()
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const currentFileName = ref('')
@@ -205,6 +188,11 @@ const filterType = ref<string | null>(null)
 const deleteDialog = ref(false)
 const fileToDelete = ref<UserFile | null>(null)
 const deleting = ref(false)
+const viewMode = ref<'grid' | 'list'>('grid')
+const isDragging = ref(false)
+const selectedFiles = ref<Set<number>>(new Set())
+const viewerOpen = ref(false)
+const selectedFile = ref<UserFile | null>(null)
 
 const fileTypes = [
   { title: 'Images', value: 'image' },
@@ -250,7 +238,19 @@ const triggerFileInput = () => {
 const handleFileSelect = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = Array.from(target.files || [])
+  await uploadFiles(files)
   
+  // Reset file input
+  if (target) target.value = ''
+}
+
+const handleDrop = async (event: DragEvent) => {
+  isDragging.value = false
+  const files = Array.from(event.dataTransfer?.files || [])
+  await uploadFiles(files)
+}
+
+const uploadFiles = async (files: File[]) => {
   if (files.length === 0) return
 
   uploading.value = true
@@ -273,31 +273,12 @@ const handleFileSelect = async (event: Event) => {
     uploading.value = false
     uploadProgress.value = 0
     currentFileName.value = ''
-    
-    // Reset file input
-    if (target) target.value = ''
   }
 }
 
-const downloadFile = async (file: UserFile) => {
-  try {
-    const url = await filesStore.getDownloadUrl(file.id)
-    window.open(url, '_blank')
-  } catch (error) {
-    console.error('Download failed:', error)
-    toast.error('Failed to download file')
-  }
-}
-
-const copyFileUrl = async (file: UserFile) => {
-  try {
-    const url = await filesStore.getDownloadUrl(file.id)
-    await navigator.clipboard.writeText(url)
-    toast.success('File URL copied to clipboard')
-  } catch (error) {
-    console.error('Copy failed:', error)
-    toast.error('Failed to copy URL')
-  }
+const openFileViewer = (file: UserFile) => {
+  selectedFile.value = file
+  viewerOpen.value = true
 }
 
 const confirmDelete = (file: UserFile) => {
@@ -329,30 +310,28 @@ const loadMore = () => {
 const close = () => {
   isOpen.value = false
 }
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-const getFileColor = (fileType: string) => {
-  if (fileType.startsWith('image/')) return 'primary'
-  if (fileType.startsWith('video/')) return 'secondary'
-  if (fileType.startsWith('audio/')) return 'accent'
-  if (fileType.includes('pdf')) return 'error'
-  if (fileType.includes('word') || fileType.includes('document')) return 'info'
-  return 'grey'
-}
 </script>
 
 <style scoped>
-.gap-2 {
-  gap: 0.5rem;
+.upload-zone {
+  border: 2px dashed rgba(var(--v-theme-on-surface), 0.3);
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(var(--v-theme-surface), 0.5);
+}
+
+.upload-zone:hover {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.05);
+}
+
+.upload-zone--active {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.1);
+  transform: scale(1.02);
 }
 </style>
 

@@ -138,19 +138,6 @@
           :value="'collections'"
         />
 
-        <v-divider class="my-2" />
-
-        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
-          Development
-        </v-list-subheader>
-
-        <v-list-item
-          :to="{ name: 'Playground', params: { libraryId } }"
-          prepend-icon="mdi-hammer-wrench"
-          :title="!rail ? 'UI Playground' : undefined"
-          :value="'playground'"
-        />
-
         <template v-if="canManage">
           <v-divider class="my-2" />
 
