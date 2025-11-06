@@ -70,6 +70,21 @@ Required for file upload functionality:V
    - `AWS_SECRET_ACCESS_KEY`: Your IAM user's secret access key
    - `AWS_S3_BUCKET`: Your bucket name
 
+
+dev
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza192dWtBRXpuMXlqMk95M0xlcGtVQk4iLCJhcGlfa2V5IjoiMDFLOEJSMks1WlRRRFc1VFlTVjM4V0FFRkEiLCJ0ZW5hbnRfaWQiOiIzMjBmZTA2NjgxODhhNTA3ZjIwNDIyZGE1NzAzNGIwNDk5ZmFkNGYwODY0Mzk0MWMyZDQ2NDFmNmFhOGY0MmU1IiwiaW50ZXJuYWxfc2VjcmV0IjoiYzQ5N2ZmMGItZmEyNS00NGE4LTg1N2EtMmYxNzY1ODMyYzgyIn0.kVFbPeNt685t3ojXOiJjpwoh_ygwJTbCAfXx1QWDG10"
+# Server
+PORT=3000
+HOST=0.0.0.0
+
+AWS_REGION=default
+AWS_ACCESS_KEY_ID = f66a41ec4ad9302424ba250803dfe75d
+AWS_SECRET_ACCESS_KEY = 3f70e2947bc0ae20a12a155f3b9cfa76
+AWS_S3_BUCKET = wildraft
+AWS_ENDPOINT="https://eu2.contabostorage.com"
+
+# Environment
+NODE_ENV=development    
 ### File Upload Flow
 
 The backend supports two upload methods:

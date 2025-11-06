@@ -7,16 +7,29 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Initialize S3 client
+// Initialize S3 client (configured for Contabo Object Storage)
+// Reference: https://dev.to/einlinuus/use-contabo-object-storage-with-nodejs-5b9l
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_REGION || 'default', // Contabo uses 'default' region
+  endpoint: process.env.AWS_ENDPOINT,
+  disableS3ExpressSessionAuth: true, // Required for Contabo Object Storage
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
+  forcePathStyle: true, // Required for S3-compatible services like Contabo
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET || '';
+
+// Log S3 configuration on startup (without sensitive data)
+console.log('S3 Configuration:', {
+  region: process.env.AWS_REGION || 'eu-central-1',
+  endpoint: process.env.AWS_ENDPOINT,
+  bucket: BUCKET_NAME,
+  hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
+  hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
+});
 
 /**
  * Upload a file to S3
@@ -30,15 +43,26 @@ export const uploadToS3 = async (
   filePath: string,
   contentType: string
 ): Promise<string> => {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: filePath,
-    Body: fileBuffer,
-    ContentType: contentType,
-  });
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      Body: fileBuffer,
+      ContentType: contentType,
+    });
 
-  await s3Client.send(command);
-  return filePath;
+    await s3Client.send(command);
+    return filePath;
+  } catch (error) {
+    console.error('S3 Upload Error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      bucket: BUCKET_NAME,
+      key: filePath,
+      endpoint: process.env.AWS_ENDPOINT,
+    });
+    throw error;
+  }
 };
 
 /**
@@ -64,12 +88,24 @@ export const getSignedDownloadUrl = async (
   filePath: string,
   expiresIn: number = 3600
 ): Promise<string> => {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: filePath,
-  });
+  try {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+    });
 
-  return await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    console.log('Generated download URL for:', filePath);
+    return url;
+  } catch (error) {
+    console.error('S3 Get Download URL Error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      bucket: BUCKET_NAME,
+      key: filePath,
+    });
+    throw error;
+  }
 };
 
 /**
@@ -84,13 +120,25 @@ export const getSignedUploadUrl = async (
   contentType: string,
   expiresIn: number = 3600
 ): Promise<string> => {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: filePath,
-    ContentType: contentType,
-  });
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: filePath,
+      ContentType: contentType,
+    });
 
-  return await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    console.log('Generated upload URL for:', filePath);
+    return url;
+  } catch (error) {
+    console.error('S3 Get Upload URL Error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      bucket: BUCKET_NAME,
+      key: filePath,
+    });
+    throw error;
+  }
 };
 
 /**
