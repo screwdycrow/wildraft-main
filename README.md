@@ -2,6 +2,15 @@
 
 A backend service built with Prisma, PostgreSQL, Fastify, and TypeScript.
 
+## TODO
+ brightness tools on image-viewer
+ image on top of image
+ Player Screen controls
+ Show on  Player, Show on top   
+ Show/hide Combat.
+ When current item:  image Clear On Top. Zoom, Pan, Grid
+
+
 ## 🚀 Tech Stack
 
 - **Framework**: [Fastify](https://www.fastify.io/) - Fast and low overhead web framework
