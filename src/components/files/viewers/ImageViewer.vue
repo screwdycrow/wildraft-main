@@ -166,6 +166,83 @@
       
       <v-divider vertical class="mx-2" />
       
+      <!-- Quick Load Last State -->
+      <v-tooltip text="Load Last Saved State" location="top">
+        <template #activator="{ props: tooltipProps }">
+          <v-btn
+            icon="mdi-restore"
+            size="small"
+            color="info"
+            @click="loadLastState"
+            :disabled="stateHistory.length === 0"
+            v-bind="tooltipProps"
+          />
+        </template>
+      </v-tooltip>
+      
+      <!-- State History Menu -->
+      <v-menu location="top" :close-on-content-click="false">
+        <template #activator="{ props: menuProps }">
+          <v-btn
+            icon="mdi-history"
+            size="small"
+            v-bind="menuProps"
+            :disabled="stateHistory.length === 0"
+          />
+        </template>
+        <v-card min-width="400" max-height="500">
+          <v-card-title class="d-flex align-center">
+            <span>State History</span>
+            <v-spacer />
+            <v-chip size="small">{{ stateHistory.length }} saved</v-chip>
+            <v-btn
+              icon="mdi-delete-sweep"
+              size="small"
+              color="error"
+              variant="text"
+              @click="clearStateHistory"
+              class="ml-2"
+            />
+          </v-card-title>
+          <v-divider />
+          <v-list>
+            <v-list-item
+              v-for="(state, index) in stateHistory"
+              :key="state.timestamp"
+              class="state-history-item"
+            >
+              <template #prepend>
+                <v-icon 
+                  :icon="index === 0 ? 'mdi-star' : 'mdi-bookmark'"
+                  :color="index === 0 ? 'warning' : 'grey'"
+                />
+              </template>
+              <div @click="loadStateFromHistory(state)" class="flex-grow-1" style="cursor: pointer;">
+                <v-list-item-title>
+                  {{ formatTimestamp(state.timestamp) }}
+                </v-list-item-title>
+                <v-list-item-subtitle>
+                  Zoom: {{ Math.round(state.scale * 100) }}% | 
+                  Rotation: {{ state.rotation }}° | 
+                  Grid: {{ state.showGrid ? `${state.gridSize}vh` : 'OFF' }}
+                </v-list-item-subtitle>
+              </div>
+              <template #append>
+                <v-btn
+                  icon="mdi-delete"
+                  size="x-small"
+                  color="error"
+                  variant="text"
+                  @click.stop="deleteState(index)"
+                />
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-menu>
+      
+      <v-divider vertical class="mx-2" />
+      
       <v-btn
         icon="mdi-download"
         size="small"
@@ -179,6 +256,18 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useToast } from 'vue-toastification'
 
+// State interface (exported for external use)
+export interface ViewerState {
+  timestamp: number
+  scale: number
+  position: { x: number; y: number }
+  rotation: number
+  showGrid: boolean
+  gridSize: number
+  gridColor: string
+  gridOpacity: number
+}
+
 interface Props {
   url: string
   fileName: string
@@ -188,6 +277,7 @@ interface Props {
   gridOverlaySize?: number // In vh units for viewport-relative sizing
   gridOverlayColor?: string
   gridOverlayOpacity?: number
+  initialState?: ViewerState | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -196,7 +286,8 @@ const props = withDefaults(defineProps<Props>(), {
   showGridOverlay: false,
   gridOverlaySize: 50, // 50vh = good default for D&D grids
   gridOverlayColor: '#000000',
-  gridOverlayOpacity: 0.2 // 20% opacity
+  gridOverlayOpacity: 0.2, // 20% opacity
+  initialState: null
 })
 
 const toast = useToast()
@@ -222,6 +313,10 @@ const showGrid = ref(props.showGridOverlay)
 const gridSize = ref(props.gridOverlaySize) // Now represents vh units
 const gridColor = ref(props.gridOverlayColor)
 const gridOpacity = ref(props.gridOverlayOpacity)
+
+// State history
+const stateHistory = ref<ViewerState[]>([])
+const maxHistorySize = 10 // Keep last 10 states
 
 const imageStyle = computed(() => ({
   transform: `translate(${position.value.x}px, ${position.value.y}px) scale(${scale.value}) rotate(${rotation.value}deg)`,
@@ -256,6 +351,144 @@ const gridOverlayStyle = computed(() => {
   }
 })
 
+// State management functions
+const getStorageKey = () => `viewer-state-${props.fileName}`
+
+const getViewerJsonSettings = (): ViewerState => {
+  return {
+    timestamp: Date.now(),
+    scale: scale.value,
+    position: { ...position.value },
+    rotation: rotation.value,
+    showGrid: showGrid.value,
+    gridSize: gridSize.value,
+    gridColor: gridColor.value,
+    gridOpacity: gridOpacity.value
+  }
+}
+
+const areStatesEqual = (state1: ViewerState, state2: ViewerState): boolean => {
+  // Compare all properties except timestamp
+  return (
+    state1.scale === state2.scale &&
+    state1.position.x === state2.position.x &&
+    state1.position.y === state2.position.y &&
+    state1.rotation === state2.rotation &&
+    state1.showGrid === state2.showGrid &&
+    state1.gridSize === state2.gridSize &&
+    state1.gridColor === state2.gridColor &&
+    state1.gridOpacity === state2.gridOpacity
+  )
+}
+
+const loadStateHistory = () => {
+  try {
+    const key = getStorageKey()
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      stateHistory.value = JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('Failed to load state history:', error)
+    stateHistory.value = []
+  }
+}
+
+const saveStateToHistory = () => {
+  const currentState = getViewerJsonSettings()
+  
+  // Check if current state is identical to the last saved state
+  if (stateHistory.value.length > 0) {
+    const lastState = stateHistory.value[0]
+    if (areStatesEqual(currentState, lastState)) {
+      toast.info('State unchanged, not saving duplicate', {
+        timeout: 1500
+      })
+      return
+    }
+  }
+  
+  // Add to history
+  stateHistory.value.unshift(currentState)
+  
+  // Keep only last N states
+  if (stateHistory.value.length > maxHistorySize) {
+    stateHistory.value = stateHistory.value.slice(0, maxHistorySize)
+  }
+  
+  // Save to localStorage
+  try {
+    const key = getStorageKey()
+    localStorage.setItem(key, JSON.stringify(stateHistory.value))
+    toast.success('Viewer state saved', {
+      timeout: 1500
+    })
+  } catch (error) {
+    console.error('Failed to save state:', error)
+    toast.error('Failed to save state')
+  }
+}
+
+const loadStateFromHistory = (state: ViewerState) => {
+  scale.value = state.scale
+  position.value = { ...state.position }
+  rotation.value = state.rotation
+  showGrid.value = state.showGrid
+  gridSize.value = state.gridSize
+  gridColor.value = state.gridColor
+  gridOpacity.value = state.gridOpacity
+  
+  toast.info('Viewer state restored', {
+    timeout: 1500
+  })
+}
+
+const loadLastState = () => {
+  if (stateHistory.value.length > 0) {
+    loadStateFromHistory(stateHistory.value[0])
+  } else {
+    toast.warning('No saved states found')
+  }
+}
+
+const clearStateHistory = () => {
+  stateHistory.value = []
+  try {
+    const key = getStorageKey()
+    localStorage.removeItem(key)
+    toast.success('State history cleared', {
+      timeout: 1500
+    })
+  } catch (error) {
+    console.error('Failed to clear state history:', error)
+    toast.error('Failed to clear history')
+  }
+}
+
+const deleteState = (index: number) => {
+  stateHistory.value.splice(index, 1)
+  
+  try {
+    const key = getStorageKey()
+    if (stateHistory.value.length === 0) {
+      localStorage.removeItem(key)
+    } else {
+      localStorage.setItem(key, JSON.stringify(stateHistory.value))
+    }
+    toast.success('State deleted', {
+      timeout: 1000
+    })
+  } catch (error) {
+    console.error('Failed to delete state:', error)
+    toast.error('Failed to delete state')
+  }
+}
+
+const formatTimestamp = (timestamp: number) => {
+  const date = new Date(timestamp)
+  return date.toLocaleString()
+}
+
 const showCombatLockToast = () => {
   const now = Date.now()
   
@@ -273,7 +506,9 @@ const showCombatLockToast = () => {
 const toggleCombatLock = () => {
   combatLock.value = !combatLock.value
   if (combatLock.value) {
-    toast.success('🔒 Combat Lock activated', {
+    // Save current state when locking
+    saveStateToHistory()
+    toast.success('🔒 Combat Lock activated & state saved', {
       timeout: 2000
     })
   } else {
@@ -489,6 +724,14 @@ const handleKeyPress = (e: KeyboardEvent) => {
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)
   
+  // Load state history from localStorage
+  loadStateHistory()
+  
+  // Apply initial state if provided
+  if (props.initialState) {
+    loadStateFromHistory(props.initialState)
+  }
+  
   if (props.autoHideControls) {
     hideControlsTimer.value = window.setTimeout(() => {
       showControls.value = false
@@ -561,6 +804,15 @@ onUnmounted(() => {
   bottom: 0;
   z-index: 1;
   pointer-events: none;
+}
+
+.state-history-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.state-history-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.1);
 }
 </style>
 
