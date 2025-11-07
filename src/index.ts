@@ -1,13 +1,14 @@
+// Load environment variables FIRST - before any other imports
+// This ensures env vars are available when modules like s3.ts and prisma.ts are loaded
+import dotenv from 'dotenv';
+dotenv.config();
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import dotenv from 'dotenv';
 import { prisma } from './lib/prisma';
 import { registerRoutes } from './routes';
-
-// Load environment variables
-dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Library Items are flexible content objects stored in libraries. Each item has a specific type that determines its validation rules and data structure. The system supports D&D 5E content with extensibility for custom fields.
+Library Items are flexible content objects stored in libraries. Each item has a specific type which is used primarily by the UI. The examples below show recommended fields for each type, but the `data` payload is completely free-form JSON—the backend stores whatever structure you provide.
 
 ## Item Types
 
@@ -186,7 +186,9 @@ D&D 5th Edition player characters or NPCs.
   "name": "Item Name",
   "description": "Optional description",
   "data": { /* type-specific data */ },
-  "tagIds": [1, 2, 3]
+  "tagIds": [1, 2, 3],
+  "userFileIds": [1, 2, 3],
+  "featuredImageId": 1
 }
 ```
 
@@ -203,6 +205,28 @@ D&D 5th Edition player characters or NPCs.
     "data": { /* type-specific data */ },
     "tags": [
       { "id": 1, "name": "Combat", "color": "#FF0000", "libraryId": 1 }
+    ],
+    "featuredImage": {
+      "id": 1,
+      "userId": 1,
+      "fileUrl": "users/1/uploads/image.png",
+      "fileName": "image.png",
+      "fileType": "image/png",
+      "fileSize": 12345,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z"
+    },
+    "userFiles": [
+      {
+        "id": 2,
+        "userId": 1,
+        "fileUrl": "users/1/uploads/document.pdf",
+        "fileName": "document.pdf",
+        "fileType": "application/pdf",
+        "fileSize": 54321,
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "updatedAt": "2025-01-01T00:00:00.000Z"
+      }
     ],
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z"
@@ -228,6 +252,8 @@ D&D 5th Edition player characters or NPCs.
       "description": "A basic goblin",
       "data": { /* ... */ },
       "tags": [ /* ... */ ],
+      "featuredImage": { /* UserFile object or null */ },
+      "userFiles": [ /* Array of UserFile objects */ ],
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z"
     }
@@ -252,6 +278,8 @@ D&D 5th Edition player characters or NPCs.
     "description": "A basic goblin",
     "data": { /* ... */ },
     "tags": [ /* ... */ ],
+    "featuredImage": { /* UserFile object or null */ },
+    "userFiles": [ /* Array of UserFile objects */ ],
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z"
   }
@@ -270,9 +298,13 @@ D&D 5th Edition player characters or NPCs.
   "name": "Updated Name",
   "description": "Updated description",
   "data": { /* updated type-specific data */ },
-  "tagIds": [1, 2]
+  "tagIds": [1, 2],
+  "userFileIds": [1, 2, 3],
+  "featuredImageId": 1
 }
 ```
+
+**Note:** To remove the featured image, set `featuredImageId` to `null`.
 
 **Response (200):**
 ```json
@@ -370,6 +402,15 @@ All items are validated against type-specific schemas:
 Items can be tagged for organization. Tags must exist in the library before being assigned to items. When updating an item with `tagIds`, all existing tags are replaced with the new set.
 
 See the Tags API documentation for managing tags.
+
+## Files
+
+Library items can have associated files (UserFiles) and a featured image:
+
+- **`userFileIds`**: Array of UserFile IDs to associate with the item. Files must be uploaded first using the Files API. When updating, this replaces all existing file associations.
+- **`featuredImageId`**: Optional UserFile ID to use as the featured image. Set to `null` to remove the featured image.
+
+**Important:** Files must be uploaded to the user's account before they can be associated with library items. See the Files API documentation for uploading files.
 
 ## Best Practices
 

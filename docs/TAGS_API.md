@@ -9,6 +9,7 @@ Tags are used to organize and categorize library items. Each tag belongs to a sp
 - **id** (number): Unique identifier
 - **name** (string): Tag name (must be unique within a library)
 - **color** (string): Hex color code (e.g., "#FF0000")
+- **folder** (string | null): Optional folder/category label used for grouping in the UI
 - **libraryId** (number): ID of the library this tag belongs to
 - **createdAt** (datetime): Creation timestamp
 - **updatedAt** (datetime): Last update timestamp
@@ -27,7 +28,8 @@ Create a new tag in a library.
 ```json
 {
   "name": "Combat",
-  "color": "#FF0000"
+  "color": "#FF0000",
+  "folder": "Encounters"
 }
 ```
 
@@ -39,6 +41,7 @@ Create a new tag in a library.
     "id": 1,
     "name": "Combat",
     "color": "#FF0000",
+    "folder": "Encounters",
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z"
@@ -71,6 +74,7 @@ Get all tags in a library with item counts.
       "id": 1,
       "name": "Combat",
       "color": "#FF0000",
+      "folder": "Encounters",
       "libraryId": 1,
       "itemCount": 5,
       "createdAt": "2025-01-01T00:00:00.000Z",
@@ -80,6 +84,7 @@ Get all tags in a library with item counts.
       "id": 2,
       "name": "Monster",
       "color": "#00FF00",
+      "folder": "Bestiary",
       "libraryId": 1,
       "itemCount": 3,
       "createdAt": "2025-01-02T00:00:00.000Z",
@@ -106,6 +111,7 @@ Get a specific tag with its associated items.
     "id": 1,
     "name": "Combat",
     "color": "#FF0000",
+    "folder": "Encounters",
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z",
@@ -141,7 +147,8 @@ Update a tag's name or color.
 ```json
 {
   "name": "Combat Encounter",
-  "color": "#3498DB"
+  "color": "#3498DB",
+  "folder": "Encounters"
 }
 ```
 
@@ -153,6 +160,7 @@ Update a tag's name or color.
     "id": 1,
     "name": "Combat Encounter",
     "color": "#3498DB",
+    "folder": "Encounters",
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-03T12:00:00.000Z"

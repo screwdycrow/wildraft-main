@@ -17,6 +17,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     Body: {
       name: string;
       color?: string;
+      folder?: string | null;
     };
   }>(
     '/:libraryId/tags',
@@ -27,7 +28,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
-        const { name, color } = request.body;
+        const { name, color, folder } = request.body;
 
         if (!name) {
           reply.code(400);
@@ -53,6 +54,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             libraryId,
             name,
             ...(color && { color }),
+            ...(folder !== undefined && { folder: folder?.trim() || null }),
           },
         });
 
@@ -100,6 +102,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           id: tag.id,
           name: tag.name,
           color: tag.color,
+          folder: (tag as any).folder ?? null,
           libraryId: tag.libraryId,
           itemCount: tag._count.libraryItems,
           createdAt: tag.createdAt,
@@ -170,6 +173,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     Body: {
       name?: string;
       color?: string;
+      folder?: string | null;
     };
   }>(
     '/:libraryId/tags/:tagId',
@@ -181,7 +185,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const tagId = parseInt(request.params.tagId, 10);
-        const { name, color } = request.body;
+        const { name, color, folder } = request.body;
 
         // Verify tag exists in this library
         const existingTag = await prisma.tag.findFirst({
@@ -215,6 +219,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           data: {
             ...(name && { name }),
             ...(color && { color }),
+            ...(folder !== undefined && { folder: folder?.trim() || null }),
           },
         });
 

@@ -7,29 +7,55 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Initialize S3 client (configured for Contabo Object Storage)
-// Reference: https://dev.to/einlinuus/use-contabo-object-storage-with-nodejs-5b9l
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'default', // Contabo uses 'default' region
-  endpoint: process.env.AWS_ENDPOINT,
-  disableS3ExpressSessionAuth: true, // Required for Contabo Object Storage
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-  forcePathStyle: true, // Required for S3-compatible services like Contabo
-});
+// Lazy initialization - read environment variables when first needed
+// This ensures dotenv.config() has been called before we read env vars
+let s3Client: S3Client | null = null;
+let bucketName: string | null = null;
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET || '';
+/**
+ * Get or create the S3 client (lazy initialization)
+ */
+function getS3Client(): S3Client {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      region: process.env.AWS_REGION || 'default', // Contabo uses 'default' region
+      endpoint: process.env.AWS_ENDPOINT,
+      disableS3ExpressSessionAuth: true, // Required for Contabo Object Storage
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+      },
+      forcePathStyle: true, // Required for S3-compatible services like Contabo
+    });
+  }
+  return s3Client;
+}
 
-// Log S3 configuration on startup (without sensitive data)
-console.log('S3 Configuration:', {
-  region: process.env.AWS_REGION || 'eu-central-1',
-  endpoint: process.env.AWS_ENDPOINT,
-  bucket: BUCKET_NAME,
-  hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
-  hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
-});
+/**
+ * Get the bucket name from environment variables
+ */
+function getBucketName(): string {
+  if (bucketName === null) {
+    bucketName = process.env.AWS_S3_BUCKET || '';
+    
+    // Log S3 configuration on first access (without sensitive data)
+    console.log('S3 Configuration:', {
+      region: process.env.AWS_REGION || 'eu-central-1',
+      endpoint: process.env.AWS_ENDPOINT,
+      bucket: bucketName,
+      hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
+      hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY,
+    });
+    
+    if (!bucketName) {
+      console.warn('⚠️  Warning: AWS_S3_BUCKET is not set in environment variables');
+    }
+  }
+  return bucketName;
+}
+
+// Note: BUCKET_NAME is no longer exported as a constant to ensure lazy loading
+// All functions use getBucketName() directly to read env vars when needed
 
 /**
  * Upload a file to S3
@@ -44,20 +70,21 @@ export const uploadToS3 = async (
   contentType: string
 ): Promise<string> => {
   try {
+    const bucket = getBucketName();
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucket,
       Key: filePath,
       Body: fileBuffer,
       ContentType: contentType,
     });
 
-    await s3Client.send(command);
+    await getS3Client().send(command);
     return filePath;
   } catch (error) {
     console.error('S3 Upload Error:', {
       error,
       message: error instanceof Error ? error.message : 'Unknown error',
-      bucket: BUCKET_NAME,
+      bucket: getBucketName(),
       key: filePath,
       endpoint: process.env.AWS_ENDPOINT,
     });
@@ -71,11 +98,11 @@ export const uploadToS3 = async (
  */
 export const deleteFromS3 = async (filePath: string): Promise<void> => {
   const command = new DeleteObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: getBucketName(),
     Key: filePath,
   });
 
-  await s3Client.send(command);
+  await getS3Client().send(command);
 };
 
 /**
@@ -89,19 +116,20 @@ export const getSignedDownloadUrl = async (
   expiresIn: number = 3600
 ): Promise<string> => {
   try {
+    const bucket = getBucketName();
     const command = new GetObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucket,
       Key: filePath,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(getS3Client(), command, { expiresIn });
     console.log('Generated download URL for:', filePath);
     return url;
   } catch (error) {
     console.error('S3 Get Download URL Error:', {
       error,
       message: error instanceof Error ? error.message : 'Unknown error',
-      bucket: BUCKET_NAME,
+      bucket: getBucketName(),
       key: filePath,
     });
     throw error;
@@ -121,20 +149,21 @@ export const getSignedUploadUrl = async (
   expiresIn: number = 3600
 ): Promise<string> => {
   try {
+    const bucket = getBucketName();
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucket,
       Key: filePath,
       ContentType: contentType,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(getS3Client(), command, { expiresIn });
     console.log('Generated upload URL for:', filePath);
     return url;
   } catch (error) {
     console.error('S3 Get Upload URL Error:', {
       error,
       message: error instanceof Error ? error.message : 'Unknown error',
-      bucket: BUCKET_NAME,
+      bucket: getBucketName(),
       key: filePath,
     });
     throw error;
@@ -149,11 +178,11 @@ export const getSignedUploadUrl = async (
 export const fileExistsInS3 = async (filePath: string): Promise<boolean> => {
   try {
     const command = new HeadObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: getBucketName(),
       Key: filePath,
     });
 
-    await s3Client.send(command);
+    await getS3Client().send(command);
     return true;
   } catch (error) {
     return false;
@@ -169,11 +198,11 @@ export const getFileMetadata = async (
   filePath: string
 ): Promise<{ size: number; contentType: string | undefined }> => {
   const command = new HeadObjectCommand({
-    Bucket: BUCKET_NAME,
+    Bucket: getBucketName(),
     Key: filePath,
   });
 
-  const response = await s3Client.send(command);
+  const response = await getS3Client().send(command);
   
   return {
     size: response.ContentLength || 0,
@@ -181,5 +210,6 @@ export const getFileMetadata = async (
   };
 };
 
-export { s3Client, BUCKET_NAME };
+// Export s3Client getter for backward compatibility
+export { getS3Client as s3Client };
 

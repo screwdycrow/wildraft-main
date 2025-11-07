@@ -31,16 +31,24 @@ export const createTagSchema = {
         pattern: '^#[0-9A-Fa-f]{6}$',
         description: 'Tag color in hex format (e.g., #FF0000 for red)',
         example: '#FF5733'
+      },
+      folder: {
+        type: 'string',
+        nullable: true,
+        description: 'Optional folder/category label used by the UI for grouping tags',
+        example: 'Encounters'
       }
     },
     examples: [
       {
         name: 'Combat',
-        color: '#FF0000'
+        color: '#FF0000',
+        folder: 'Encounters'
       },
       {
         name: 'Monster',
-        color: '#00FF00'
+        color: '#00FF00',
+        folder: 'Bestiary'
       },
       {
         name: 'Magic Item',
@@ -60,6 +68,7 @@ export const createTagSchema = {
             id: { type: 'number', example: 1 },
             name: { type: 'string', example: 'Combat' },
             color: { type: 'string', example: '#FF0000' },
+            folder: { type: 'string', nullable: true, example: 'Encounters' },
             libraryId: { type: 'number', example: 1 },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' }
@@ -131,6 +140,7 @@ export const getLibraryTagsSchema = {
               id: { type: 'number' },
               name: { type: 'string' },
               color: { type: 'string' },
+              folder: { type: 'string', nullable: true },
               libraryId: { type: 'number' },
               itemCount: { type: 'number', description: 'Number of items using this tag' },
               createdAt: { type: 'string', format: 'date-time' },
@@ -142,6 +152,7 @@ export const getLibraryTagsSchema = {
               id: 1,
               name: 'Combat',
               color: '#FF0000',
+              folder: 'Encounters',
               libraryId: 1,
               itemCount: 5,
               createdAt: '2025-01-01T00:00:00.000Z',
@@ -151,6 +162,7 @@ export const getLibraryTagsSchema = {
               id: 2,
               name: 'Monster',
               color: '#00FF00',
+              folder: 'Bestiary',
               libraryId: 1,
               itemCount: 3,
               createdAt: '2025-01-02T00:00:00.000Z',
@@ -213,6 +225,7 @@ export const getTagSchema = {
             id: { type: 'number' },
             name: { type: 'string' },
             color: { type: 'string' },
+            folder: { type: 'string', nullable: true },
             libraryId: { type: 'number' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
@@ -233,6 +246,7 @@ export const getTagSchema = {
             id: 1,
             name: 'Combat',
             color: '#FF0000',
+            folder: 'Encounters',
             libraryId: 1,
             createdAt: '2025-01-01T00:00:00.000Z',
             updatedAt: '2025-01-01T00:00:00.000Z',
@@ -315,6 +329,12 @@ export const updateTagSchema = {
         pattern: '^#[0-9A-Fa-f]{6}$',
         description: 'New tag color in hex format',
         example: '#FF0000'
+      },
+      folder: {
+        type: 'string',
+        nullable: true,
+        description: 'New folder/category label. Provide null or empty string to clear.',
+        example: 'Encounters'
       }
     },
     examples: [
@@ -326,7 +346,8 @@ export const updateTagSchema = {
       },
       {
         name: 'Epic Battle',
-        color: '#E74C3C'
+        color: '#E74C3C',
+        folder: 'Encounters'
       }
     ]
   },
@@ -342,6 +363,7 @@ export const updateTagSchema = {
             id: { type: 'number' },
             name: { type: 'string' },
             color: { type: 'string' },
+            folder: { type: 'string', nullable: true },
             libraryId: { type: 'number' },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' }

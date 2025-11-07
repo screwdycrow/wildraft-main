@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess } from '../middleware/library-access';
-import { validateItemData } from '../lib/item-schemas';
 import { LibraryItemType } from '@prisma/client';
 import {
   createLibraryItemSchema,
@@ -22,6 +21,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
       description?: string;
       data: any; // The flexible JSON data
       tagIds?: number[];
+      userFileIds?: number[];
+      featuredImageId?: number;
     };
   }>(
     '/:libraryId/items',
@@ -32,22 +33,12 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
-        const { type, name, description, data, tagIds } = request.body;
+        const { type, name, description, data, tagIds, userFileIds, featuredImageId } = request.body;
 
         // Validate required fields
         if (!type || !name || !data) {
           reply.code(400);
           return { error: 'Type, name, and data are required' };
-        }
-
-        // Validate data against type-specific schema
-        const validation = validateItemData(type, data);
-        if (!validation.valid) {
-          reply.code(400);
-          return {
-            error: 'Invalid data for item type',
-            details: validation.errors,
-          };
         }
 
         // Create the item
@@ -58,14 +49,22 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
             name,
             description,
             data, // Stores validated JSON with all fields (required + custom)
+            ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
             ...(tagIds && {
               tags: {
                 connect: tagIds.map(id => ({ id })),
               },
             }),
+            ...(userFileIds && {
+              userFiles: {
+                connect: userFileIds.map(id => ({ id })),
+              },
+            }),
           },
           include: {
             tags: true,
+            featuredImage: true,
+            userFiles: true,
           },
         });
 
@@ -100,6 +99,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           where: { libraryId },
           include: {
             tags: true,
+            featuredImage: true,
+            userFiles: true,
           },
           orderBy: {
             createdAt: 'desc',
@@ -137,6 +138,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           },
           include: {
             tags: true,
+            featuredImage: true,
+            userFiles: true,
           },
         });
 
@@ -165,6 +168,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
       description?: string;
       data?: any;
       tagIds?: number[];
+      userFileIds?: number[];
+      featuredImageId?: number | null;
     };
   }>(
     '/:libraryId/items/:itemId',
@@ -176,7 +181,7 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const itemId = parseInt(request.params.itemId, 10);
-        const { name, description, data, tagIds } = request.body;
+        const { name, description, data, tagIds, userFileIds, featuredImageId } = request.body;
 
         // Get existing item to validate type
         const existingItem = await prisma.libraryItem.findFirst({
@@ -188,18 +193,6 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Item not found' };
         }
 
-        // If data is being updated, validate it
-        if (data) {
-          const validation = validateItemData(existingItem.type, data);
-          if (!validation.valid) {
-            reply.code(400);
-            return {
-              error: 'Invalid data for item type',
-              details: validation.errors,
-            };
-          }
-        }
-
         // Update item
         const item = await prisma.libraryItem.update({
           where: { id: itemId },
@@ -207,15 +200,24 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
             ...(name && { name }),
             ...(description !== undefined && { description }),
             ...(data && { data }),
+            ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
             ...(tagIds && {
               tags: {
                 set: [], // Clear existing
                 connect: tagIds.map(id => ({ id })),
               },
             }),
+            ...(userFileIds && {
+              userFiles: {
+                set: [], // Clear existing
+                connect: userFileIds.map(id => ({ id })),
+              },
+            }),
           },
           include: {
             tags: true,
+            featuredImage: true,
+            userFiles: true,
           },
         });
 

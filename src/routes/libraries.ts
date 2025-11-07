@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireViewerAccess, requireEditorAccess, requireOwnerAccess } from '../middleware/library-access';
-import { AccessRole } from '@prisma/client';
+import { AccessRole, LibraryTemplate } from '@prisma/client';
 import {
   getLibrariesSchema,
   createLibrarySchema,
@@ -44,6 +44,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           name: access.library.name,
           description: access.library.description,
           role: access.role,
+          template: access.library.template,
           createdAt: access.library.createdAt,
           updatedAt: access.library.updatedAt,
         }));
@@ -102,7 +103,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
         return {
           library: {
             ...library,
-            userRole: request.libraryAccess?.role,
+            role: request.libraryAccess?.role,
           },
         };
       } catch (error) {
@@ -117,7 +118,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
   );
 
   // Create a new library
-  fastify.post<{ Body: { name: string; description?: string } }>(
+  fastify.post<{ Body: { name: string; description?: string; template?: LibraryTemplate } }>(
     '/',
     { schema: createLibrarySchema, preHandler: authenticateToken },
     async (request, reply) => {
@@ -127,7 +128,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Unauthorized' };
         }
 
-        const { name, description } = request.body;
+        const { name, description, template = LibraryTemplate.DND_5E } = request.body;
 
         if (!name || name.trim() === '') {
           reply.code(400);
@@ -139,6 +140,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           data: {
             name: name.trim(),
             description: description?.trim() || null,
+            template,
             access: {
               create: {
                 userId: request.user.userId,
@@ -163,7 +165,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           message: 'Library created successfully',
           library: {
             ...library,
-            userRole: library.access[0]?.role,
+            role: library.access[0]?.role,
           },
         };
       } catch (error) {
@@ -216,7 +218,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           message: 'Library updated successfully',
           library: {
             ...library,
-            userRole: request.libraryAccess?.role,
+            role: request.libraryAccess?.role,
           },
         };
       } catch (error) {

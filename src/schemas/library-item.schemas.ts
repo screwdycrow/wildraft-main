@@ -47,11 +47,17 @@ All types support custom fields beyond the required ones.`,
       userFileIds: {
         type: 'array',
         items: { type: 'integer' },
-        description: 'Array of file UserFile IDs to associate with the item, these files must be uploaded to the library first',
+        description: 'Array of UserFile IDs to associate with the item. These files must be uploaded first.',
         example: [1, 2, 3]
+      },
+      featuredImageId: {
+        type: 'integer',
+        description: 'Optional UserFile ID to use as the featured image for this item',
+        example: 1
       },
       data: {
         type: 'object',
+        additionalProperties: true,
         description: `Type-specific data object. Required fields vary by type:
         
 **STAT_BLOCK_DND_5E**: { cr, hp, ac, speed, ... }
@@ -208,6 +214,7 @@ Additional custom fields are always allowed.`,
             description: { type: 'string', nullable: true, example: 'A basic goblin warrior' },
             data: { 
               type: 'object',
+              additionalProperties: true,
               description: 'Type-specific data object with all fields'
             },
             tags: {
@@ -219,6 +226,38 @@ Additional custom fields are always allowed.`,
                   name: { type: 'string' },
                   color: { type: 'string' },
                   libraryId: { type: 'number' }
+                }
+              }
+            },
+            featuredImage: {
+              type: 'object',
+              nullable: true,
+              description: 'Featured image UserFile (if set)',
+              properties: {
+                id: { type: 'number' },
+                userId: { type: 'number' },
+                fileUrl: { type: 'string' },
+                fileName: { type: 'string' },
+                fileType: { type: 'string' },
+                fileSize: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' }
+              }
+            },
+            userFiles: {
+              type: 'array',
+              description: 'Associated UserFiles',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  userId: { type: 'number' },
+                  fileUrl: { type: 'string' },
+                  fileName: { type: 'string' },
+                  fileType: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' }
                 }
               }
             },
@@ -295,7 +334,10 @@ export const getLibraryItemsSchema = {
               },
               name: { type: 'string' },
               description: { type: 'string', nullable: true },
-              data: { type: 'object' },
+              data: {
+                type: 'object',
+                additionalProperties: true,
+              },
               tags: {
                 type: 'array',
                 items: {
@@ -331,6 +373,28 @@ export const getLibraryItemsSchema = {
               tags: [
                 { id: 1, name: 'Combat', color: '#FF0000', libraryId: 1 },
                 { id: 2, name: 'Monster', color: '#00FF00', libraryId: 1 }
+              ],
+              featuredImage: {
+                id: 1,
+                userId: 1,
+                fileUrl: 'users/1/uploads/goblin-image.png',
+                fileName: 'goblin-image.png',
+                fileType: 'image/png',
+                fileSize: 12345,
+                createdAt: '2025-01-01T00:00:00.000Z',
+                updatedAt: '2025-01-01T00:00:00.000Z'
+              },
+              userFiles: [
+                {
+                  id: 2,
+                  userId: 1,
+                  fileUrl: 'users/1/uploads/goblin-stat-sheet.pdf',
+                  fileName: 'goblin-stat-sheet.pdf',
+                  fileType: 'application/pdf',
+                  fileSize: 54321,
+                  createdAt: '2025-01-01T00:00:00.000Z',
+                  updatedAt: '2025-01-01T00:00:00.000Z'
+                }
               ],
               createdAt: '2025-01-01T00:00:00.000Z',
               updatedAt: '2025-01-01T00:00:00.000Z'
@@ -430,6 +494,38 @@ export const getLibraryItemSchema = {
                 }
               }
             },
+            featuredImage: {
+              type: 'object',
+              nullable: true,
+              description: 'Featured image UserFile (if set)',
+              properties: {
+                id: { type: 'number' },
+                userId: { type: 'number' },
+                fileUrl: { type: 'string' },
+                fileName: { type: 'string' },
+                fileType: { type: 'string' },
+                fileSize: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' }
+              }
+            },
+            userFiles: {
+              type: 'array',
+              description: 'Associated UserFiles',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  userId: { type: 'number' },
+                  fileUrl: { type: 'string' },
+                  fileName: { type: 'string' },
+                  fileType: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' }
+                }
+              }
+            },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' }
           },
@@ -466,6 +562,28 @@ export const getLibraryItemSchema = {
             tags: [
               { id: 6, name: 'PC', color: '#FFFF00', libraryId: 1 },
               { id: 7, name: 'Wizard', color: '#FF00FF', libraryId: 1 }
+            ],
+            featuredImage: {
+              id: 3,
+              userId: 1,
+              fileUrl: 'users/1/uploads/character-portrait.jpg',
+              fileName: 'character-portrait.jpg',
+              fileType: 'image/jpeg',
+              fileSize: 23456,
+              createdAt: '2025-01-03T00:00:00.000Z',
+              updatedAt: '2025-01-03T00:00:00.000Z'
+            },
+            userFiles: [
+              {
+                id: 4,
+                userId: 1,
+                fileUrl: 'users/1/uploads/character-sheet.pdf',
+                fileName: 'character-sheet.pdf',
+                fileType: 'application/pdf',
+                fileSize: 67890,
+                createdAt: '2025-01-03T00:00:00.000Z',
+                updatedAt: '2025-01-03T00:00:00.000Z'
+              }
             ],
             createdAt: '2025-01-03T00:00:00.000Z',
             updatedAt: '2025-01-03T00:00:00.000Z'
@@ -551,6 +669,18 @@ If updating the data field, it must still conform to the item's type schema. Req
         items: { type: 'integer' },
         description: 'Array of tag IDs. Replaces all existing tags.',
         example: [1, 2, 4]
+      },
+      userFileIds: {
+        type: 'array',
+        items: { type: 'integer' },
+        description: 'Array of UserFile IDs to associate with the item. Replaces all existing file associations.',
+        example: [1, 2, 3]
+      },
+      featuredImageId: {
+        type: 'integer',
+        nullable: true,
+        description: 'UserFile ID to use as the featured image. Set to null to remove featured image.',
+        example: 1
       }
     },
     examples: [
@@ -598,7 +728,10 @@ If updating the data field, it must still conform to the item's type schema. Req
             },
             name: { type: 'string' },
             description: { type: 'string', nullable: true },
-            data: { type: 'object' },
+            data: {
+              type: 'object',
+              additionalProperties: true,
+            },
             tags: {
               type: 'array',
               items: {
@@ -608,6 +741,38 @@ If updating the data field, it must still conform to the item's type schema. Req
                   name: { type: 'string' },
                   color: { type: 'string' },
                   libraryId: { type: 'number' }
+                }
+              }
+            },
+            featuredImage: {
+              type: 'object',
+              nullable: true,
+              description: 'Featured image UserFile (if set)',
+              properties: {
+                id: { type: 'number' },
+                userId: { type: 'number' },
+                fileUrl: { type: 'string' },
+                fileName: { type: 'string' },
+                fileType: { type: 'string' },
+                fileSize: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' }
+              }
+            },
+            userFiles: {
+              type: 'array',
+              description: 'Associated UserFiles',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  userId: { type: 'number' },
+                  fileUrl: { type: 'string' },
+                  fileName: { type: 'string' },
+                  fileType: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' }
                 }
               }
             },

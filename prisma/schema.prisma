@@ -75,13 +75,17 @@ model LibraryItem  {
   type LibraryItemType
   name String
   description String?
+  color String @default("#6B7280")
+  featuredImageId Int?
+  featuredImage UserFile? @relation("FeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   data Json
-  tags Tag[] @relation("LibraryItemTags")
+  tags Tag[] @relation("LibraryItemTags")  
   userFiles UserFile[] @relation("LibraryItemFiles")
   @@index([libraryId])
   @@index([type])
+  @@index([featuredImageId])
 }
 
 model UserFile {
@@ -95,6 +99,7 @@ model UserFile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   libraryItems LibraryItem[] @relation("LibraryItemFiles")
+  featuredInItems LibraryItem[] @relation("FeaturedImage")
 }
 
 
@@ -113,6 +118,7 @@ model Tag {
   id Int @id @default(autoincrement())
   name String
   color String @default("#6B7280") // Default gray color
+  folder String?
   libraryId Int
   library Library @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
