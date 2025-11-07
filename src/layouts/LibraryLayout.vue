@@ -81,44 +81,39 @@
         </v-list-subheader>
 
         <v-list-item
-          prepend-icon="mdi-sword-cross"
-          :title="!rail ? 'Stat Blocks' : undefined"
-          :value="'stat-blocks'"
-        >
-          <template v-if="!rail" #append>
-            <v-chip size="x-small" color="primary">0</v-chip>
-          </template>
-        </v-list-item>
+          :to="{ name: 'LibraryItems', params: { id: libraryId } }"
+          prepend-icon="mdi-bookshelf"
+          :title="!rail ? 'All Content' : undefined"
+          :value="'library-items'"
+        />
 
         <v-list-item
-          prepend-icon="mdi-account-multiple"
-          :title="!rail ? 'Characters' : undefined"
-          :value="'characters'"
-        >
-          <template v-if="!rail" #append>
-            <v-chip size="x-small" color="secondary">0</v-chip>
-          </template>
-        </v-list-item>
-
-        <v-list-item
-          prepend-icon="mdi-treasure-chest"
-          :title="!rail ? 'Items' : undefined"
-          :value="'items'"
-        >
-          <template v-if="!rail" #append>
-            <v-chip size="x-small" color="accent">0</v-chip>
-          </template>
-        </v-list-item>
-
-        <v-list-item
+          :to="{ name: 'LibraryNotes', params: { id: libraryId } }"
           prepend-icon="mdi-note-text"
           :title="!rail ? 'Notes' : undefined"
-          :value="'notes'"
-        >
-          <template v-if="!rail" #append>
-            <v-chip size="x-small" color="info">0</v-chip>
-          </template>
-        </v-list-item>
+          :value="'library-notes'"
+        />
+
+        <v-list-item
+          :to="{ name: 'LibraryCharacters', params: { id: libraryId } }"
+          prepend-icon="mdi-account-circle"
+          :title="!rail ? 'Characters' : undefined"
+          :value="'library-characters'"
+        />
+
+        <v-list-item
+          :to="{ name: 'LibraryMagicItems', params: { id: libraryId } }"
+          prepend-icon="mdi-treasure-chest"
+          :title="!rail ? 'Magic Items' : undefined"
+          :value="'library-magic-items'"
+        />
+
+        <v-list-item
+          :to="{ name: 'LibraryStatBlocks', params: { id: libraryId } }"
+          prepend-icon="mdi-sword-cross"
+          :title="!rail ? 'Stat Blocks' : undefined"
+          :value="'library-stat-blocks'"
+        />
 
         <v-divider class="my-2" />
 

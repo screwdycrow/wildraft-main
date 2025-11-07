@@ -65,6 +65,31 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/LibrarySettingsView.vue'),
       },
       {
+        path: ':id/items',
+        name: 'LibraryItems',
+        component: () => import('@/views/LibraryItemsView.vue'),
+      },
+      {
+        path: ':id/notes',
+        name: 'LibraryNotes',
+        component: () => import('@/views/LibraryNotesView.vue'),
+      },
+      {
+        path: ':id/characters',
+        name: 'LibraryCharacters',
+        component: () => import('@/views/LibraryCharactersView.vue'),
+      },
+      {
+        path: ':id/magic-items',
+        name: 'LibraryMagicItems',
+        component: () => import('@/views/LibraryMagicItemsView.vue'),
+      },
+      {
+        path: ':id/stat-blocks',
+        name: 'LibraryStatBlocks',
+        component: () => import('@/views/LibraryStatBlocksView.vue'),
+      },
+      {
         path: ':id/tags',
         name: 'LibraryTags',
         component: () => import('@/views/LibraryTagsView.vue'),

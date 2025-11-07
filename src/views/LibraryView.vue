@@ -17,44 +17,7 @@
       </template>
     </page-top-bar>
 
-    <!-- Library Stats -->
-    <v-row class="mb-6">
-      <v-col cols="12">
-        <v-card class="glass-card pa-6" elevation="0">
-          <div class="d-flex align-items-start justify-space-between">
-            <div class="flex-grow-1">
 
-          <!-- Library Stats -->
-          <v-divider class="my-4" />
-          <v-row>
-            <v-col cols="6" sm="3">
-              <div class="text-center">
-                <h3 class="text-h4 font-weight-bold text-primary">0</h3>
-                <p class="text-caption text-grey-lighten-1">Stat Blocks</p>
-              </div>
-            </v-col>
-            <v-col cols="6" sm="3">
-              <div class="text-center">
-                <h3 class="text-h4 font-weight-bold text-secondary">0</h3>
-                <p class="text-caption text-grey-lighten-1">Characters</p>
-              </div>
-            </v-col>
-            <v-col cols="6" sm="3">
-              <div class="text-center">
-                <h3 class="text-h4 font-weight-bold text-accent">0</h3>
-                <p class="text-caption text-grey-lighten-1">Items</p>
-              </div>
-            </v-col>
-            <v-col cols="6" sm="3">
-              <div class="text-center">
-                <h3 class="text-h4 font-weight-bold text-info">0</h3>
-                <p class="text-caption text-grey-lighten-1">Notes</p>
-              </div>
-            </v-col>
-          </v-row>
-        </v-card>
-      </v-col>
-    </v-row>
 
     <!-- Quick Actions -->
     <v-row class="mb-6">

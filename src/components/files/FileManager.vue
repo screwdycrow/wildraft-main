@@ -8,8 +8,18 @@
     <v-card class="glass-card">
       <v-card-title class="d-flex align-center">
         <v-icon icon="mdi-folder-multiple" class="mr-2" />
-        File Manager
+        {{ selectMode ? 'Select Files' : 'File Manager' }}
         <v-spacer />
+        
+        <!-- Selection Info -->
+        <v-chip
+          v-if="selectMode && selectedFiles.size > 0"
+          color="primary"
+          size="small"
+          class="mr-2"
+        >
+          {{ selectedFiles.size }} selected
+        </v-chip>
         
         <!-- View Toggle -->
         <v-btn-toggle
@@ -60,7 +70,7 @@
             type="file"
             multiple
             hidden
-            @change="handleFileSelect"
+            @change="handleFileInputChange"
           />
 
           <!-- Upload Progress -->
@@ -102,9 +112,11 @@
         <media-grid
           :files="filteredFiles"
           :view-mode="viewMode"
-          :deletable="true"
+          :deletable="!selectMode"
+          :selectable="selectMode"
           :selected-files="selectedFiles"
-          @file-click="openFileViewer"
+          @file-click="selectMode ? toggleFileSelection : openFileViewer"
+          @toggle-select="toggleFileSelection"
           @delete="confirmDelete"
         />
 
@@ -133,7 +145,17 @@
           variant="text"
           @click="close"
         >
-          Close
+          {{ selectMode ? 'Cancel' : 'Close' }}
+        </v-btn>
+        <v-btn
+          v-if="selectMode"
+          color="primary"
+          variant="flat"
+          :disabled="selectedFiles.size === 0"
+          @click="confirmSelection"
+        >
+          <v-icon icon="mdi-check" class="mr-2" />
+          Select {{ selectedFiles.size > 0 ? `(${selectedFiles.size})` : '' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -173,6 +195,22 @@ import type { UserFile } from '@/api/files'
 import { useToast } from 'vue-toastification'
 import MediaGrid from './MediaGrid.vue'
 import MediaViewer from './MediaViewer.vue'
+
+interface Props {
+  selectMode?: boolean
+  returnType?: 'id' | 'path'
+  multiple?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  selectMode: false,
+  returnType: 'id',
+  multiple: false,
+})
+
+const emit = defineEmits<{
+  select: [value: number | string | number[] | string[]]
+}>()
 
 const filesStore = useFilesStore()
 const toast = useToast()
@@ -235,7 +273,7 @@ const triggerFileInput = () => {
   fileInput.value?.click()
 }
 
-const handleFileSelect = async (event: Event) => {
+const handleFileInputChange = async (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = Array.from(target.files || [])
   await uploadFiles(files)
@@ -307,7 +345,46 @@ const loadMore = () => {
   filesStore.loadMore()
 }
 
+// Select mode handlers
+const toggleFileSelection = (file: UserFile) => {
+  if (!props.selectMode) return
+  
+  if (props.multiple) {
+    // Toggle selection for multiple mode
+    if (selectedFiles.value.has(file.id)) {
+      selectedFiles.value.delete(file.id)
+    } else {
+      selectedFiles.value.add(file.id)
+    }
+  } else {
+    // Single selection mode
+    selectedFiles.value.clear()
+    selectedFiles.value.add(file.id)
+  }
+}
+
+const confirmSelection = () => {
+  if (selectedFiles.value.size === 0) return
+  
+  const selectedFileIds = Array.from(selectedFiles.value)
+  const selectedFileObjects = filesStore.files.filter(f => selectedFileIds.includes(f.id))
+  
+  if (props.returnType === 'path') {
+    // Return file paths
+    const paths = selectedFileObjects.map(f => f.fileUrl)
+    emit('select', props.multiple ? paths : paths[0])
+  } else {
+    // Return file IDs (default)
+    emit('select', props.multiple ? selectedFileIds : selectedFileIds[0])
+  }
+  
+  // Clear selection and close
+  selectedFiles.value.clear()
+  isOpen.value = false
+}
+
 const close = () => {
+  selectedFiles.value.clear()
   isOpen.value = false
 }
 </script>
