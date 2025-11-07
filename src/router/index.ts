@@ -60,6 +60,16 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/LibraryView.vue'),
       },
       {
+        path: ':id/settings',
+        name: 'LibrarySettings',
+        component: () => import('@/views/LibrarySettingsView.vue'),
+      },
+      {
+        path: ':id/tags',
+        name: 'LibraryTags',
+        component: () => import('@/views/LibraryTagsView.vue'),
+      },
+      {
         path: ':libraryId/item/:itemId',
         name: 'ItemDetail',
         component: () => import('@/views/ItemDetailView.vue'),

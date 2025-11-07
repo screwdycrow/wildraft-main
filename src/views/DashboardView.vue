@@ -25,58 +25,7 @@
       </v-col>
     </v-row>
 
-    <!-- Stats Overview -->
-    <v-row class="mb-6">
-      <v-col cols="12" md="3">
-        <v-card class="glass-card pa-4" elevation="0">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-book-multiple" size="40" color="primary" />
-            <div class="ml-4">
-              <h3 class="text-h4 font-weight-bold">{{ libraryStore.libraries.length }}</h3>
-              <p class="text-body-2 text-grey-lighten-1">Total Libraries</p>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="3">
-        <v-card class="glass-card pa-4" elevation="0">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-crown" size="40" color="secondary" />
-            <div class="ml-4">
-              <h3 class="text-h4 font-weight-bold">{{ libraryStore.ownedLibraries.length }}</h3>
-              <p class="text-body-2 text-grey-lighten-1">Owned</p>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="3">
-        <v-card class="glass-card pa-4" elevation="0">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-share-variant" size="40" color="info" />
-            <div class="ml-4">
-              <h3 class="text-h4 font-weight-bold">{{ libraryStore.sharedLibraries.length }}</h3>
-              <p class="text-body-2 text-grey-lighten-1">Shared</p>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="3">
-        <v-card class="glass-card pa-4" elevation="0">
-          <div class="d-flex align-center">
-            <v-icon icon="mdi-clock-outline" size="40" color="accent" />
-            <div class="ml-4">
-              <h3 class="text-h4 font-weight-bold">
-                {{ recentlyUpdatedCount }}
-              </h3>
-              <p class="text-body-2 text-grey-lighten-1">Recently Updated</p>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+   
 
     <!-- Loading State -->
     <v-row v-if="libraryStore.isLoading && libraryStore.libraries.length === 0">
@@ -283,19 +232,27 @@ function handleShare(library: Library) {
   showShareDialog.value = true
 }
 
-async function handleCreateOrUpdate(data: { name: string; description?: string }) {
+async function handleCreateOrUpdate(data: { name: string; description?: string }, callback?: (success: boolean) => void) {
   try {
     if (editingLibrary.value) {
       await libraryStore.updateLibrary(editingLibrary.value.id, data)
       toast.success('Library updated successfully!')
     } else {
-      await libraryStore.createLibrary(data)
+      const newLibrary = await libraryStore.createLibrary(data)
+      // Verify the library has the correct role
+      if (newLibrary && newLibrary.role !== 'OWNER') {
+        console.warn('New library does not have OWNER role:', newLibrary)
+        // Refresh libraries to get correct role from server
+        await libraryStore.fetchLibraries()
+      }
       toast.success('Library created successfully!')
     }
     showCreateDialog.value = false
     editingLibrary.value = null
+    callback?.(true)
   } catch (error) {
     toast.error(editingLibrary.value ? 'Failed to update library' : 'Failed to create library')
+    callback?.(false)
   }
 }
 

@@ -1,4 +1,11 @@
-export type ItemType = 'STAT_BLOCK_DND_5E' | 'NOTE' | 'ITEM_DND_5E' | 'CHARACTER_DND_5E'
+// Template-specific item types
+export type ItemType = 
+  | 'STAT_BLOCK_DND_5E' 
+  | 'ITEM_DND_5E' 
+  | 'CHARACTER_DND_5E'
+  | 'NOTE' // Universal - not template specific
+
+//DICTIONARY OF ITEM TYPES WITH LABELS AND DESCRIPTIONS
 
 export interface Tag {
   id: number

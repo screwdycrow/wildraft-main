@@ -1,30 +1,28 @@
 <template>
   <div v-if="libraryStore.currentLibrary">
     <!-- Library Header -->
+    <page-top-bar
+      :title="libraryStore.currentLibrary.name"
+      icon="mdi-book-open-variant"
+      :description="libraryStore.currentLibrary.description || 'Library overview'"
+      :breadcrumbs="breadcrumbs"
+    >
+      <template #actions>
+        <v-btn
+          v-if="canEdit"
+          icon="mdi-pencil"
+          variant="text"
+          @click="handleEdit"
+        />
+      </template>
+    </page-top-bar>
+
+    <!-- Library Stats -->
     <v-row class="mb-6">
       <v-col cols="12">
         <v-card class="glass-card pa-6" elevation="0">
           <div class="d-flex align-items-start justify-space-between">
             <div class="flex-grow-1">
-              <div class="d-flex align-items-center mb-3">
-                <v-icon icon="mdi-book-open-variant" size="48" color="primary" class="mr-4" />
-                <div>
-                  <h1 class="text-h3 font-weight-bold text-white mb-1">
-                    {{ libraryStore.currentLibrary.name }}
-                  </h1>
-                  <p class="text-subtitle-1 text-grey-lighten-1">
-                    {{ libraryStore.currentLibrary.description || 'No description' }}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <v-btn
-              v-if="canEdit"
-              icon="mdi-pencil"
-              variant="text"
-              @click="handleEdit"
-            />
-          </div>
 
           <!-- Library Stats -->
           <v-divider class="my-4" />
@@ -168,14 +166,31 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useToast } from 'vue-toastification'
+import PageTopBar from '@/components/common/PageTopBar.vue'
 import CreateLibraryDialog from '@/components/library/CreateLibraryDialog.vue'
+import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 
+const route = useRoute()
 const libraryStore = useLibraryStore()
 const toast = useToast()
 
 const showEditDialog = ref(false)
+
+const libraryId = computed(() => {
+  const id = route.params.id
+  return id ? Number(id) : null
+})
+
+const breadcrumbs = computed<Breadcrumb[]>(() => {
+  if (!libraryStore.currentLibrary) return []
+  return [
+    { text: 'Libraries', to: { name: 'Dashboard' } },
+    { text: libraryStore.currentLibrary.name }
+  ]
+})
 
 const canEdit = computed(() => 
   ['OWNER', 'EDITOR'].includes(libraryStore.currentLibrary?.role || '')
@@ -185,15 +200,17 @@ function handleEdit() {
   showEditDialog.value = true
 }
 
-async function handleUpdate(data: { name: string; description?: string }) {
+async function handleUpdate(data: { name: string; description?: string }, callback?: (success: boolean) => void) {
   if (!libraryStore.currentLibrary) return
 
   try {
     await libraryStore.updateLibrary(libraryStore.currentLibrary.id, data)
     toast.success('Library updated successfully!')
     showEditDialog.value = false
+    callback?.(true)
   } catch (error) {
     toast.error('Failed to update library')
+    callback?.(false)
   }
 }
 

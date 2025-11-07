@@ -7,14 +7,25 @@
   >
     <div class="library-card-content">
       <!-- Role Badge -->
+      <div class="role-badge-container">
       <v-chip
         :color="roleColor"
         size="small"
         class="role-badge"
-      >
-        <v-icon :icon="roleIcon" size="small" class="mr-1" />
-        {{ library.role }}
-      </v-chip>
+        >
+          <v-icon :icon="roleIcon" size="small" class="mr-1" />
+          {{ library.role }}
+        </v-chip>
+        <v-chip
+          color="primary"
+          size="small"
+          variant="outlined"
+          class="role-badge"
+        >
+          {{ library.template }}
+        </v-chip>
+      </div>
+      
 
       <!-- Library Icon -->
       <div class="library-icon mb-4">

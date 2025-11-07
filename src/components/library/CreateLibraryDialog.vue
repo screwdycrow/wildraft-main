@@ -78,7 +78,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  submit: [data: { name: string; description?: string }]
+  submit: [data: { name: string; description?: string }, callback?: (success: boolean) => void]
 }>()
 
 const formRef = ref<VForm>()
@@ -116,27 +116,32 @@ watch(() => props.library, (newLibrary) => {
   }
 }, { immediate: true })
 
-// Watch dialog close to reset form
+// Watch dialog close to reset form and loading state
 watch(dialogModel, (isOpen) => {
-  if (!isOpen && !props.library) {
+  if (!isOpen) {
     resetForm()
+    isLoading.value = false
   }
 })
 
 async function handleSubmit() {
+  if (isLoading.value) return // Prevent double-clicks
+  
   const { valid } = await formRef.value!.validate()
   if (!valid) return
 
   isLoading.value = true
 
-  try {
-    emit('submit', {
-      name: formData.value.name.trim(),
-      description: formData.value.description.trim() || undefined,
-    })
-  } finally {
+  // Emit submit event with callback - parent will call callback when done
+  emit('submit', {
+    name: formData.value.name.trim(),
+    description: formData.value.description.trim() || undefined,
+  }, (success: boolean) => {
     isLoading.value = false
-  }
+    if (success) {
+      dialogModel.value = false
+    }
+  })
 }
 
 function handleCancel() {

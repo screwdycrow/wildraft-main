@@ -7,9 +7,19 @@ export interface Library {
   updatedAt: string
 }
 
+//DICTIONARY OF LIBRARY TEMPLATES WITH LABELS AND DESCRIPTIONS
+export const LibraryTemplates = [
+  {
+    label: 'Dungeons & Dragons 5E',
+    description: 'A library template for Dungeons & Dragons 5E. It includes stat blocks, characters, items, and notes.',
+    id:'DND_5E',
+  },
+]
+
 export interface CreateLibraryPayload {
   name: string
   description?: string
+  template?: string
 }
 
 export interface UpdateLibraryPayload {

@@ -127,6 +127,7 @@
         </v-list-subheader>
 
         <v-list-item
+          :to="{ name: 'LibraryTags', params: { id: libraryId } }"
           prepend-icon="mdi-tag-multiple"
           :title="!rail ? 'Tags' : undefined"
           :value="'tags'"
@@ -138,26 +139,25 @@
           :value="'collections'"
         />
 
-        <template v-if="canManage">
-          <v-divider class="my-2" />
+        <v-divider class="my-2" />
 
-          <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
-            Management
-          </v-list-subheader>
+        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
+          Management
+        </v-list-subheader>
 
-          <v-list-item
-            prepend-icon="mdi-account-group"
-            :title="!rail ? 'Sharing' : undefined"
-            :value="'sharing'"
-          />
+        <v-list-item
+          v-if="canManage"
+          prepend-icon="mdi-account-group"
+          :title="!rail ? 'Sharing' : undefined"
+          :value="'sharing'"
+        />
 
-          <v-list-item
-            v-if="isOwner"
-            prepend-icon="mdi-cog"
-            :title="!rail ? 'Library Settings' : undefined"
-            :value="'settings'"
-          />
-        </template>
+        <v-list-item
+          :to="{ name: 'LibrarySettings', params: { id: libraryId } }"
+          prepend-icon="mdi-cog"
+          :title="!rail ? 'Library Settings' : undefined"
+          :value="'settings'"
+        />
       </v-list>
 
 

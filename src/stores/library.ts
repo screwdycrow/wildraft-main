@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { librariesApi } from '@/api/libraries'
-import type { Library, CreateLibraryPayload, UpdateLibraryPayload } from '@/types/library.types'
+import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess, LibraryTemplates } from '@/types/library.types'
 
 export const useLibraryStore = defineStore('library', () => {
   // State
   const libraries = ref<Library[]>([])
+  
   const currentLibrary = ref<Library | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -126,6 +127,60 @@ export const useLibraryStore = defineStore('library', () => {
     error.value = null
   }
 
+  // Library access management
+  async function fetchLibraryAccess(libraryId: number): Promise<LibraryAccess[]> {
+    try {
+      const response = await librariesApi.getAccess(libraryId)
+      return response.access
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to fetch library access'
+      throw err
+    }
+  }
+
+  async function grantLibraryAccess(libraryId: number, userId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<LibraryAccess> {
+    try {
+      const response = await librariesApi.grantAccess(libraryId, userId, role)
+      return response.access
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to grant access'
+      throw err
+    }
+  }
+
+  async function updateLibraryAccess(libraryId: number, accessId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<LibraryAccess> {
+    try {
+      const response = await librariesApi.updateAccess(libraryId, accessId, role)
+      return response.access
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to update access'
+      throw err
+    }
+  }
+
+  async function revokeLibraryAccess(libraryId: number, accessId: number): Promise<void> {
+    try {
+      await librariesApi.revokeAccess(libraryId, accessId)
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to revoke access'
+      throw err
+    }
+  }
+
+  async function removeOwnAccess(libraryId: number, accessId: number): Promise<void> {
+    try {
+      await librariesApi.revokeAccess(libraryId, accessId)
+      // Remove from libraries list
+      libraries.value = libraries.value.filter(lib => lib.id !== libraryId)
+      if (currentLibrary.value?.id === libraryId) {
+        currentLibrary.value = null
+      }
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to remove access'
+      throw err
+    }
+  }
+
   return {
     libraries,
     currentLibrary,
@@ -141,6 +196,11 @@ export const useLibraryStore = defineStore('library', () => {
     deleteLibrary,
     setCurrentLibrary,
     clearError,
+    fetchLibraryAccess,
+    grantLibraryAccess,
+    updateLibraryAccess,
+    revokeLibraryAccess,
+    removeOwnAccess,
   }
 })
 
