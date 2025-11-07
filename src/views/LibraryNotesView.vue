@@ -109,11 +109,9 @@
         md="4"
         lg="3"
       >
-        <component
-          :is="getItemCard(item.type)"
+        <item-card-wrapper
           :item="item"
-          :show-actions="canEdit"
-          @click="viewItem(item)"
+          @view="viewItem(item)"
           @edit="editItem(item)"
           @delete="confirmDelete(item)"
         />
@@ -121,15 +119,14 @@
     </v-row>
 
     <!-- Create/Edit Dialog -->
-    <v-dialog v-model="showFormDialog" max-width="1200" scrollable persistent>
-      <component
-        :is="getCurrentForm"
-        :item="editingItem"
-        :library-id="libraryId!"
-        @submit="handleCreateOrUpdate"
-        @cancel="closeFormDialog"
-      />
-    </v-dialog>
+    <item-dialog
+      v-model="showFormDialog"
+      :library-id="libraryId!"
+      :item="editingItem"
+      :item-type="ITEM_TYPE"
+      @created="handleItemCreated"
+      @updated="handleItemUpdated"
+    />
 
     <!-- Delete Confirmation -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
@@ -175,18 +172,17 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useItemsStore } from '@/stores/items'
 import { useToast } from 'vue-toastification'
-import { useItemComponents } from '@/composables/useItemComponents'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
+import { ItemCardWrapper, ItemDialog } from '@/components/items'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload } from '@/types/item.types'
+import type { LibraryItem } from '@/types/item.types'
 
 const route = useRoute()
 const router = useRouter()
 const libraryStore = useLibraryStore()
 const itemsStore = useItemsStore()
 const toast = useToast()
-const { getItemComponent } = useItemComponents()
 
 const ITEM_TYPE = 'NOTE' as const
 
@@ -273,15 +269,6 @@ const filteredItems = computed(() => {
   })
 })
 
-// Dynamic component getters
-const getItemCard = (itemType: string) => {
-  return getItemComponent(itemType, 'card')
-}
-
-const getCurrentForm = computed(() => {
-  return getItemComponent(ITEM_TYPE, 'form')
-})
-
 // Load items
 onMounted(async () => {
   if (libraryId.value) {
@@ -330,30 +317,14 @@ function confirmDelete(item: LibraryItem) {
   showDeleteDialog.value = true
 }
 
-async function handleCreateOrUpdate(
-  data: CreateLibraryItemPayload | UpdateLibraryItemPayload,
-  callback?: (success: boolean) => void
-) {
-  if (!libraryId.value) return
-
-  try {
-    if (editingItem.value) {
-      await itemsStore.updateItem(libraryId.value, editingItem.value.id, data as UpdateLibraryItemPayload)
-      toast.success('Note updated successfully!')
-    } else {
-      await itemsStore.createItem(libraryId.value, data as CreateLibraryItemPayload)
-      toast.success('Note created successfully!')
-    }
-    closeFormDialog()
-    callback?.(true)
-  } catch (error) {
-    toast.error(editingItem.value ? 'Failed to update note' : 'Failed to create note')
-    callback?.(false)
-  }
+function handleItemCreated(item: LibraryItem) {
+  // Item already added to store by ItemDialog
+  console.log('Note created:', item.name)
 }
 
-function closeFormDialog() {
-  showFormDialog.value = false
+function handleItemUpdated(item: LibraryItem) {
+  // Item already updated in store by ItemDialog
+  console.log('Note updated:', item.name)
   editingItem.value = null
 }
 

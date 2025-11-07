@@ -1,9 +1,12 @@
 <template>
   <v-form ref="formRef" @submit.prevent="handleSubmit">
     <v-card class="glass-card mb-4 form-container" elevation="0">
-      <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center  form-actions-sticky px-6">
         <v-icon icon="mdi-sword-cross" color="#E74C3C" size="32" class="mr-3" />
         {{ isEditMode ? 'Edit Stat Block' : 'Create Stat Block' }}
+        <v-spacer />
+        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('cancel')" />
+        <v-btn icon="mdi-check" size="small" variant="text" @click="handleSubmit" :loading="isLoading" />
       </v-card-title>
 
       <v-row no-gutters class="form-row-content">
@@ -34,6 +37,19 @@
               <span class="text-caption">Files</span>
             </v-tab>
           </v-tabs>
+          
+          <v-divider class="my-4" />
+          
+          <!-- Tags Selector at bottom -->
+          <div class="px-4">
+            <tag-selector
+              v-model="formData.tagIds"
+              :library-id="libraryId"
+              hint=""
+              show-add-button
+              @add-tag="showTagDialog = true"
+            />
+          </div>
         </v-col>
 
         <!-- Content Area -->
@@ -231,17 +247,6 @@
                   </v-col>
                 </v-row>
 
-                <v-divider class="my-6" />
-
-                <!-- Tags -->
-                <h3 class="text-h6 mb-4">Tags</h3>
-                <tag-selector
-                  v-model="formData.tagIds"
-                  :library-id="libraryId"
-                  hint="Select tags to categorize this stat block"
-                  show-add-button
-                  @add-tag="showTagDialog = true"
-                />
               </v-window-item>
 
               <!-- Traits Tab -->
@@ -263,7 +268,7 @@
                   Passive abilities like Keen Senses, Pack Tactics, or special resistances.
                 </p>
 
-                <v-expansion-panels v-if="formData.data.traits.length > 0">
+                <v-expansion-panels v-if="formData.data.traits && formData.data.traits.length > 0">
                   <v-expansion-panel
                     v-for="(trait, index) in formData.data.traits"
                     :key="'trait-' + index"
@@ -325,7 +330,7 @@
                 </p>
 
                 <!-- Actions by Type -->
-                <div v-if="formData.data.actions.length > 0">
+                <div v-if="formData.data.actions && formData.data.actions.length > 0">
                   <!-- Regular Actions -->
                   <div v-if="actionsByType.action.length > 0" class="mb-4">
                     <h4 class="text-subtitle-1 font-weight-bold mb-2">
@@ -605,6 +610,13 @@
                   Upload creature artwork, token images, or related reference materials.
                 </p>
                 <file-attachment-selector v-model="formData.fileIds" />
+                
+                <v-divider class="my-6" />
+                
+                <featured-image-selector
+                  v-model="formData.featuredImageId"
+                  :file-ids="formData.fileIds"
+                />
               </v-window-item>
             </v-window>
           </v-card-text>
@@ -613,30 +625,11 @@
 
       <v-divider />
 
-      <v-card-actions class="form-actions-sticky px-6 py-4">
-        <v-spacer />
-        <v-btn
-          variant="text"
-          @click="$emit('cancel')"
-          :disabled="isLoading"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          type="submit"
-          :loading="isLoading"
-        >
-          <v-icon icon="mdi-check" class="mr-2" />
-          {{ isEditMode ? 'Save Changes' : 'Create Stat Block' }}
-        </v-btn>
-      </v-card-actions>
     </v-card>
 
     <!-- Tag Creation Dialog -->
     <tag-creation-dialog
-      v-model="showTagDialog"
+      v-model="showTagDialog" 
       :library-id="libraryId"
       @created="handleTagCreated"
     />
@@ -650,6 +643,7 @@ import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, S
 import TagSelector from '@/components/tags/TagSelector.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import FileAttachmentSelector from '@/components/items/common/FileAttachmentSelector.vue'
+import FeaturedImageSelector from '@/components/items/common/FeaturedImageSelector.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 import ActionFormFields from './ActionFormFields.vue'
 import SpellFormFields from './SpellFormFields.vue'
@@ -691,6 +685,7 @@ const formData = ref<{
   data: StatBlockData
   tagIds: number[]
   fileIds: number[]
+  featuredImageId: number | null
 }>({
   name: '',
   description: '',
@@ -717,6 +712,7 @@ const formData = ref<{
   },
   tagIds: [],
   fileIds: [],
+  featuredImageId: null,
 })
 
 const isEditMode = computed(() => !!props.item)
@@ -751,6 +747,7 @@ watch(() => props.item, (newItem) => {
     formData.value.data = { ...newItem.data } as StatBlockData
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     formData.value.fileIds = newItem.userFiles?.map(f => f.id) || []
+    formData.value.featuredImageId = newItem.featuredImageId || null
     
     // Ensure arrays exist
     if (!formData.value.data.actions) formData.value.data.actions = []
@@ -855,6 +852,7 @@ async function handleSubmit() {
     data: cleanData,
     tagIds: formData.value.tagIds,
     fileIds: formData.value.fileIds,
+    featuredImageId: formData.value.featuredImageId || undefined,
     ...(isEditMode.value ? {} : { type: 'STAT_BLOCK_DND_5E' as const }),
   }
 
@@ -889,13 +887,10 @@ async function handleSubmit() {
 .form-container {
   display: flex;
   flex-direction: column;
-  min-height: 60vh;
-  max-height: 90vh;
 }
 
 .form-row-content {
   flex: 1;
-  overflow: hidden;
 }
 
 .form-content-scrollable {
@@ -912,6 +907,5 @@ async function handleSubmit() {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
-  padding-bottom: 24px !important;
 }
 </style>

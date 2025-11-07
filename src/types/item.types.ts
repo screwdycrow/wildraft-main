@@ -37,6 +37,7 @@ export interface LibraryItem {
   data: Record<string, any>
   tags?: Tag[]
   userFiles?: UserFile[]
+  featuredImageId?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -48,6 +49,7 @@ export interface CreateLibraryItemPayload {
   data: Record<string, any>
   tagIds?: number[]
   fileIds?: number[]
+  featuredImageId?: number
 }
 
 export interface UpdateLibraryItemPayload {
@@ -56,6 +58,7 @@ export interface UpdateLibraryItemPayload {
   data?: Record<string, any>
   tagIds?: number[]
   fileIds?: number[]
+  featuredImageId?: number
 }
 
 export interface LibraryItemsListResponse {

@@ -1,9 +1,12 @@
 <template>
-  <v-form ref="formRef" @submit.prevent="handleSubmit">
+  <v-form ref="formRef" @submit.prevent="handleSubmit" >
     <v-card class="glass-card mb-4 form-container" elevation="0">
-      <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+      <v-card-title class="text-h5 font-weight-bold d-flex align-center  form-actions-sticky px-6">
         <v-icon icon="mdi-account-circle" color="#3498DB" size="32" class="mr-3" />
         {{ isEditMode ? 'Edit Character' : 'Create Character' }}
+        <v-spacer />
+        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('cancel')" />
+        <v-btn icon="mdi-check" size="small" variant="text" @click="handleSubmit" :loading="isLoading" />
       </v-card-title>
 
       <v-row no-gutters class="form-row-content">
@@ -39,10 +42,20 @@
             <v-tab value="files" prepend-icon="mdi-paperclip">
               <span class="text-caption">Files</span>
             </v-tab>
-            <v-tab value="tags" prepend-icon="mdi-tag">
-              <span class="text-caption">Tags</span>
-            </v-tab>
           </v-tabs>
+          
+          <v-divider class="my-4" />
+          
+          <!-- Tags Selector at bottom -->
+          <div class="px-4">
+            <tag-selector
+              v-model="formData.tagIds"
+              :library-id="libraryId"
+              hint=""
+              show-add-button
+              @add-tag="showTagDialog = true"
+            />
+          </div>
         </v-col>
 
         <!-- Content Area -->
@@ -863,20 +876,12 @@
                   Upload character portraits, reference images, or related files.
                 </p>
                 <file-attachment-selector v-model="formData.fileIds" />
-              </v-window-item>
-
-              <!-- Tags Tab -->
-              <v-window-item value="tags">
-                <h3 class="text-h6 mb-3">Categorize with Tags</h3>
-                <p class="text-caption text-grey-lighten-1 mb-4">
-                  Add tags to organize and filter your characters.
-                </p>
-                <tag-selector
-                  v-model="formData.tagIds"
-                  :library-id="libraryId"
-                  hint="Select tags to categorize this character"
-                  show-add-button
-                  @add-tag="showTagDialog = true"
+                
+                <v-divider class="my-6" />
+                
+                <featured-image-selector
+                  v-model="formData.featuredImageId"
+                  :file-ids="formData.fileIds"
                 />
               </v-window-item>
             </v-window>
@@ -885,22 +890,7 @@
       </v-row>
 
       <v-divider />
-
-      <v-card-actions class="form-actions-sticky px-6 py-4">
-        <v-spacer />
-        <v-btn variant="text" @click="$emit('cancel')" :disabled="isLoading">
-          Cancel
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          type="submit"
-          :loading="isLoading"
-        >
-          <v-icon icon="mdi-check" class="mr-2" />
-          {{ isEditMode ? 'Save Changes' : 'Create Character' }}
-        </v-btn>
-      </v-card-actions>
+      
     </v-card>
 
     <!-- Tag Creation Dialog -->
@@ -919,6 +909,7 @@ import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, C
 import TagSelector from '@/components/tags/TagSelector.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import FileAttachmentSelector from '@/components/items/common/FileAttachmentSelector.vue'
+import FeaturedImageSelector from '@/components/items/common/FeaturedImageSelector.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 import ActionFormFields from '../stat-blocks/ActionFormFields.vue'
 import SpellFormFields from '../stat-blocks/SpellFormFields.vue'
@@ -976,6 +967,7 @@ const formData = ref<{
   data: CharacterData
   tagIds: number[]
   fileIds: number[]
+  featuredImageId: number | null
 }>({
   name: '',
   description: '',
@@ -1012,6 +1004,7 @@ const formData = ref<{
   },
   tagIds: [],
   fileIds: [],
+  featuredImageId: null,
 })
 
 const isEditMode = computed(() => !!props.item)
@@ -1061,6 +1054,7 @@ watch(() => props.item, (newItem) => {
     formData.value.data = { ...newItem.data } as CharacterData
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     formData.value.fileIds = newItem.userFiles?.map(f => f.id) || []
+    formData.value.featuredImageId = newItem.featuredImageId || null
     
     // Ensure arrays exist
     if (!formData.value.data.actions) formData.value.data.actions = []
@@ -1194,6 +1188,7 @@ async function handleSubmit() {
     data: cleanData,
     tagIds: formData.value.tagIds,
     fileIds: formData.value.fileIds,
+    featuredImageId: formData.value.featuredImageId || undefined,
     ...(isEditMode.value ? {} : { type: 'CHARACTER_DND_5E' as const }),
   }
 
@@ -1225,13 +1220,11 @@ async function handleSubmit() {
 .form-container {
   display: flex;
   flex-direction: column;
-  min-height: 60vh;
-  max-height: 90vh;
 }
 
 .form-row-content {
   flex: 1;
-  overflow: hidden;
+ 
 }
 
 .form-content-scrollable {
@@ -1248,6 +1241,5 @@ async function handleSubmit() {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
-  padding-bottom: 24px !important;
 }
 </style>

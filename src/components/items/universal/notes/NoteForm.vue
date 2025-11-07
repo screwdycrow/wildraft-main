@@ -1,18 +1,50 @@
 <template>
   <v-form ref="formRef" @submit.prevent="handleSubmit">
     <v-card class="glass-card mb-4 form-container" elevation="0">
-      <v-card-title class="text-h5 font-weight-bold d-flex align-center">
+      <v-card-title class="text-h5 font-weight-bold d-flex align-center  form-actions-sticky px-6">
         <v-icon icon="mdi-note-text" color="#95A5A6" size="32" class="mr-3" />
         {{ isEditMode ? 'Edit Note' : 'Create Note' }}
+        <v-spacer />
+        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('cancel')" />
+        <v-btn icon="mdi-check" size="small" variant="text" @click="handleSubmit" :loading="isLoading" />
       </v-card-title>
 
-      <v-tabs v-model="activeTab" class="px-6">
-        <v-tab value="content">Content</v-tab>
-        <v-tab value="description">Description</v-tab>
-        <v-tab value="files">Files</v-tab>
-        <v-tab value="tags">Tags</v-tab>
-      </v-tabs>
+      <v-row no-gutters class="form-row-content">
+        <!-- Vertical Tabs -->
+        <v-col cols="2" class="border-e">
+          <v-tabs
+            v-model="activeTab"
+            direction="vertical"
+            color="primary"
+            class="note-tabs"
+          >
+            <v-tab value="content" prepend-icon="mdi-text-box">
+              <span class="text-caption">Content</span>
+            </v-tab>
+            <v-tab value="description" prepend-icon="mdi-card-text">
+              <span class="text-caption">Description</span>
+            </v-tab>
+            <v-tab value="files" prepend-icon="mdi-paperclip">
+              <span class="text-caption">Files</span>
+            </v-tab>
+          </v-tabs>
+          
+          <v-divider class="my-4" />
+          
+          <!-- Tags Selector at bottom -->
+          <div class="px-4">
+            <tag-selector
+              v-model="formData.tagIds"
+              :library-id="libraryId"
+              hint=""
+              show-add-button
+              @add-tag="showTagDialog = true"
+            />
+          </div>
+        </v-col>
 
+        <!-- Content Area -->
+        <v-col cols="8"> 
       <v-card-text class="form-content-scrollable">
         <v-window v-model="activeTab">
           <!-- Content Tab -->
@@ -39,9 +71,6 @@
               class="mb-4"
             />
             
-            <p class="text-caption text-grey-lighten-1 mb-4">
-              Write the main content of your note using the rich text editor.
-            </p>
             <tip-tap-editor
               v-model="formData.data.content"
               placeholder="Start writing your note..."
@@ -69,44 +98,18 @@
               Upload related files, images, or documents to attach to this note.
             </p>
             <file-attachment-selector v-model="formData.fileIds" />
-          </v-window-item>
-
-          <!-- Tags Tab -->
-          <v-window-item value="tags">
-            <h3 class="text-h6 mb-3">Categorize with Tags</h3>
-            <p class="text-caption text-grey-lighten-1 mb-4">
-              Add tags to organize and filter your notes.
-            </p>
-            <tag-selector
-              v-model="formData.tagIds"
-              :library-id="libraryId"
-              hint="Select tags to categorize this note"
-              show-add-button
-              @add-tag="showTagDialog = true"
+            
+            <v-divider class="my-6" />
+            
+            <featured-image-selector
+              v-model="formData.featuredImageId"
+              :file-ids="formData.fileIds"
             />
           </v-window-item>
         </v-window>
       </v-card-text>
-
-      <v-card-actions class="form-actions-sticky px-6 pb-6">
-        <v-spacer />
-        <v-btn
-          variant="text"
-          @click="$emit('cancel')"
-          :disabled="isLoading"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          color="primary"
-          variant="flat"
-          type="submit"
-          :loading="isLoading"
-        >
-          <v-icon icon="mdi-check" class="mr-2" />
-          {{ isEditMode ? 'Save Changes' : 'Create Note' }}
-        </v-btn>
-      </v-card-actions>
+      </v-col>
+      </v-row>
     </v-card>
 
     <!-- Tag Creation Dialog -->
@@ -125,6 +128,7 @@ import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, N
 import TagSelector from '@/components/tags/TagSelector.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import FileAttachmentSelector from '@/components/items/common/FileAttachmentSelector.vue'
+import FeaturedImageSelector from '@/components/items/common/FeaturedImageSelector.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 
 interface Props {
@@ -150,6 +154,7 @@ const formData = ref<{
   data: NoteData
   tagIds: number[]
   fileIds: number[]
+  featuredImageId: number | null
 }>({
   name: '',
   description: '',
@@ -159,6 +164,7 @@ const formData = ref<{
   },
   tagIds: [],
   fileIds: [],
+  featuredImageId: null,
 })
 
 const isEditMode = computed(() => !!props.item)
@@ -177,6 +183,7 @@ watch(() => props.item, (newItem) => {
     formData.value.data = { ...newItem.data } as NoteData
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     formData.value.fileIds = newItem.userFiles?.map(f => f.id) || []
+    formData.value.featuredImageId = newItem.featuredImageId || null
   }
 }, { immediate: true })
 
@@ -209,6 +216,7 @@ async function handleSubmit() {
     data: cleanData,
     tagIds: formData.value.tagIds,
     fileIds: formData.value.fileIds,
+    featuredImageId: formData.value.featuredImageId || undefined,
     ...(isEditMode.value ? {} : { type: 'NOTE' as const }),
   }
 
@@ -224,15 +232,35 @@ async function handleSubmit() {
 </script>
 
 <style scoped>
+.note-tabs :deep(.v-tab) {
+  justify-content: flex-start;
+  min-height: 48px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.note-tabs :deep(.v-tab--selected) {
+  background: rgba(255, 183, 77, 0.15);
+  border-right: 3px solid #FFB74D;
+}
+
+.border-e {
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .form-container {
-  display: flex;
-  flex-direction: column;
   min-height: 60vh;
   max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row-content {
+  flex: 1;
 }
 
 .form-content-scrollable {
-  flex: 1;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: 24px;
@@ -245,7 +273,6 @@ async function handleSubmit() {
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
-  padding-bottom: 24px !important;
 }
 </style>
 

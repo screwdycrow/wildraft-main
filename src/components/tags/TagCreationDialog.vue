@@ -18,13 +18,15 @@
             class="mb-4"
           />
 
-          <v-text-field
+          <v-combobox
             v-model="tagFolder"
+            :items="folderOptions"
             label="Folder (optional)"
             variant="outlined"
             placeholder="e.g., NPCs, Locations, Items"
-            hint="Organize tags into folders"
+            hint="Select existing folder or type a new one"
             persistent-hint
+            clearable
             class="mb-4"
           />
 
@@ -68,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useTagsStore } from '@/stores/tags'
 import type { VForm } from 'vuetify/components'
 import { useToast } from 'vue-toastification'
@@ -107,6 +109,19 @@ const colorOptions = [
   '#27AE60', // Dark Green
   '#2980B9', // Dark Blue
 ]
+
+const folderOptions = computed(() => tagsStore.uniqueFolders)
+
+// Load tags when dialog opens if not already loaded
+watch(isOpen, async (newVal) => {
+  if (newVal && tagsStore.tags.length === 0) {
+    try {
+      await tagsStore.fetchTags(props.libraryId)
+    } catch (error) {
+      console.error('Failed to load tags for folder suggestions:', error)
+    }
+  }
+})
 
 async function handleSubmit() {
   if (isLoading.value) return

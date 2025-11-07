@@ -35,8 +35,8 @@
         <v-list-item-title>
           {{ item.title }}
         </v-list-item-title>
-        <v-list-item-subtitle v-if="item.raw.folder">
-          {{ item.raw.folder }}
+        <v-list-item-subtitle v-if="(item.raw as any)?.folder">
+          {{ (item.raw as any).folder }}
         </v-list-item-subtitle>
       </v-list-item>
     </template>
@@ -91,7 +91,7 @@ const tagItems = computed(() => {
 })
 
 function getTagColor(tagId: number) {
-  const tag = tagsStore.getTagById.value(tagId)
+  const tag = tagsStore.getTagById(tagId)
   return tag?.color || '#95A5A6'
 }
 

@@ -92,22 +92,7 @@
       </div>
     </v-card-text>
 
-    <v-card-actions v-if="showActions">
-      <v-spacer />
-      <v-btn
-        icon="mdi-pencil"
-        size="small"
-        variant="text"
-        @click.stop="$emit('edit', item)"
-      />
-      <v-btn
-        icon="mdi-delete"
-        size="small"
-        variant="text"
-        color="error"
-        @click.stop="$emit('delete', item)"
-      />
-    </v-card-actions>
+
   </v-card>
 </template>
 
