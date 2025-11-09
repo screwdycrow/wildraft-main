@@ -26,3 +26,4 @@ export const tagsApi = {
     await apiClient.delete(`/libraries/${libraryId}/tags/${tagId}`)
   },
 }
+
