@@ -37,7 +37,7 @@ export interface LibraryItem {
   data: Record<string, any>
   tags?: Tag[]
   userFiles?: UserFile[]
-  featuredImageId?: number | null
+  featuredImage?: UserFile | null
   createdAt: string
   updatedAt: string
 }
@@ -48,7 +48,7 @@ export interface CreateLibraryItemPayload {
   description?: string
   data: Record<string, any>
   tagIds?: number[]
-  fileIds?: number[]
+  userFileIds?: number[]
   featuredImageId?: number
 }
 
@@ -57,7 +57,7 @@ export interface UpdateLibraryItemPayload {
   description?: string
   data?: Record<string, any>
   tagIds?: number[]
-  fileIds?: number[]
+  userFileIds?: number[]
   featuredImageId?: number
 }
 
@@ -74,15 +74,24 @@ export type {
   SpellSlot,
   Proficiency,
   Skill,
-  CharacterItem,
+  InventoryItem,
   StatBlockData,
   CharacterData,
   ItemData,
 } from './item.DND_5E.types'
 
 // Universal data types (not template-specific)
+
+export interface NoteChapter{
+  id?: string
+  order: number
+  title: string
+  content: string
+}
+
 export interface NoteData {
   content: string
+  chapters?: NoteChapter[]
   isPinned?: boolean
   [key: string]: any
 }

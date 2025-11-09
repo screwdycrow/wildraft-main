@@ -91,54 +91,13 @@
     </v-row>
 
     <!-- Traits -->
-    <v-card v-if="statBlockData.traits && statBlockData.traits.length > 0" class="glass-card mb-4" elevation="0">
-      <v-card-title class="text-h5">
-        <v-icon icon="mdi-star" class="mr-2" color="warning" />
-        Traits
-      </v-card-title>
-      <v-card-text>
-        <div v-for="(trait, index) in statBlockData.traits" :key="index" class="mb-3">
-          <h3 class="text-h6 font-weight-bold mb-1">{{ trait.name }}</h3>
-          <p class="text-body-1">{{ trait.description }}</p>
-        </div>
-      </v-card-text>
-    </v-card>
+    <trait-list-display :traits="statBlockData.traits" />
 
     <!-- Actions -->
-    <v-card v-if="statBlockData.actions && statBlockData.actions.length > 0" class="glass-card mb-4" elevation="0">
-      <v-card-title class="text-h5">
-        <v-icon icon="mdi-sword" class="mr-2" color="error" />
-        Actions
-      </v-card-title>
-      <v-card-text>
-        <div v-for="(action, index) in statBlockData.actions" :key="index" class="mb-3">
-          <h3 class="text-h6 font-weight-bold mb-1">
-            {{ action.name }}
-            <v-chip v-if="action.roll" size="small" class="ml-2" color="primary">
-              {{ action.roll }}
-            </v-chip>
-            <v-chip v-if="action.range" size="small" class="ml-2" variant="tonal">
-              {{ action.range }}
-            </v-chip>
-          </h3>
-          <p class="text-body-1">{{ action.description }}</p>
-        </div>
-      </v-card-text>
-    </v-card>
+    <action-list-display :actions="statBlockData.actions" />
 
-    <!-- Legendary Actions -->
-    <v-card v-if="statBlockData.legendaryActions && statBlockData.legendaryActions.length > 0" class="glass-card mb-4" elevation="0">
-      <v-card-title class="text-h5">
-        <v-icon icon="mdi-crown" class="mr-2" color="warning" />
-        Legendary Actions
-      </v-card-title>
-      <v-card-text>
-        <div v-for="(action, index) in statBlockData.legendaryActions" :key="index" class="mb-3">
-          <h3 class="text-h6 font-weight-bold mb-1">{{ action.name }}</h3>
-          <p class="text-body-1">{{ action.description }}</p>
-        </div>
-      </v-card-text>
-    </v-card>
+    <!-- Spells -->
+    <spell-list-display :spells="statBlockData.spells" />
 
     <!-- Tags -->
     <v-card v-if="item.tags && item.tags.length > 0" class="glass-card mb-4" elevation="0">
@@ -159,40 +118,24 @@
       </v-card-text>
     </v-card>
 
-    <!-- File Attachments -->
-    <file-attachment-manager
-      :attached-files="item.userFiles"
-      :library-id="item.libraryId"
-      :item-id="item.id"
-      :can-edit="canEdit"
+    <!-- Attached Files -->
+    <attached-files-grid
+      :file-ids="fileIds"
+      :featured-image-id="item.featuredImage?.id"
+      :columns="4"
+      :read-only="true"
     />
-
-    <!-- Metadata -->
-    <v-card class="glass-card" elevation="0">
-      <v-card-title class="text-h6">
-        <v-icon icon="mdi-information" class="mr-2" />
-        Metadata
-      </v-card-title>
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" sm="6">
-            <div class="text-caption text-grey">Created</div>
-            <div>{{ formatDate(item.createdAt) }}</div>
-          </v-col>
-          <v-col cols="12" sm="6">
-            <div class="text-caption text-grey">Last Updated</div>
-            <div>{{ formatDate(item.updatedAt) }}</div>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { LibraryItem, StatBlockData } from '@/types/item.types'
-import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
+import { useFilesStore } from '@/stores/files'
+import TraitListDisplay from '../common/TraitListDisplay.vue'
+import ActionListDisplay from '../common/ActionListDisplay.vue'
+import SpellListDisplay from '../common/SpellListDisplay.vue'
+import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 
 interface Props {
   item: LibraryItem
@@ -203,7 +146,19 @@ const props = withDefaults(defineProps<Props>(), {
   canEdit: true,
 })
 
+const filesStore = useFilesStore()
+
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
+
+// Add files to store and get IDs
+const fileIds = computed(() => {
+  if (props.item.userFiles && props.item.userFiles.length > 0) {
+    // Add files to the store so AttachedFilesGrid can access them
+    filesStore.addFiles(props.item.userFiles)
+    return props.item.userFiles.map(f => f.id)
+  }
+  return []
+})
 
 const abilityScores = computed(() => {
   const data = statBlockData.value
@@ -225,16 +180,6 @@ const getModifier = (score: number | undefined): string => {
   if (!score) return '+0'
   const mod = Math.floor((score - 10) / 2)
   return mod >= 0 ? `+${mod}` : `${mod}`
-}
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 </script>
 

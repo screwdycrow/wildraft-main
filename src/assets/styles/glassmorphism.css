@@ -716,6 +716,12 @@
   animation: pulse 8s ease-in-out infinite;
 }
 
+.form-main-content {
+  background-color: rgba(var(--v-theme-background),0.9) !important;
+
+}
+
+
 .gradient-background-animated::after {
   content: '';
   position: absolute;

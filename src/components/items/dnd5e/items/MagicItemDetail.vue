@@ -142,3 +142,4 @@ const getRarityColor = (rarity: string) => {
 }
 </style>
 
+

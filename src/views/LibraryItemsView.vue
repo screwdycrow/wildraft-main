@@ -6,7 +6,31 @@
       description="Browse and manage all content in this library"
       :breadcrumbs="breadcrumbs"
     >
-      <template #actions>
+      <template #search>
+        <v-text-field
+          v-model="searchQuery"
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search all content..."
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+        />
+      </template>
+
+      <template #filters>
+        <!-- Tag Filter -->
+        <tag-selector
+          v-model="filterTags"
+          :library-id="libraryId!"
+          label="Tags"
+          hint=""
+          :show-add-button="false"
+          density="compact"
+          hide-details
+          style="min-width: 180px;"
+        />
+
         <!-- Type Filter -->
         <v-select
           v-model="filterType"
@@ -16,9 +40,53 @@
           density="compact"
           hide-details
           clearable
-          style="min-width: 200px;"
+          style="min-width: 180px;"
         />
-        
+
+        <!-- Magic Item Filters (only show when filtering by magic items or when there are magic items) -->
+        <template v-if="!filterType || filterType === 'MAGIC_ITEM_DND_5E'">
+          <!-- Rarity Filter -->
+          <v-select
+            v-if="availableRarities.length > 0"
+            v-model="filterRarity"
+            :items="availableRarities"
+            label="Rarity"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            style="min-width: 140px;"
+          />
+
+          <!-- Item Type Filter -->
+          <v-select
+            v-if="availableItemTypes.length > 0"
+            v-model="filterItemType"
+            :items="availableItemTypes"
+            label="Item Type"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            style="min-width: 150px;"
+          />
+
+          <!-- Attunement Filter -->
+          <v-select
+            v-if="allMagicItems.length > 0"
+            v-model="filterAttunement"
+            :items="attunementOptions"
+            label="Attunement"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            style="min-width: 140px;"
+          />
+        </template>
+      </template>
+
+      <template #actions>
         <!-- Create Button -->
         <v-menu v-if="canEdit">
           <template #activator="{ props }">
@@ -47,101 +115,23 @@
       </template>
     </page-top-bar>
 
-    <!-- Search and Filters -->
-    <v-card class="glass-card mb-4" elevation="0">
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="searchQuery"
-              prepend-inner-icon="mdi-magnify"
-              label="Search all content"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <tag-selector
-              v-model="filterTags"
-              :library-id="libraryId!"
-              hint=""
-              :show-add-button="false"
-            />
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
-    <!-- Loading State -->
-    <v-row v-if="itemsStore.isLoading && itemsStore.items.length === 0">
-      <v-col cols="12" class="text-center py-12">
-        <v-progress-circular indeterminate color="primary" size="64" />
-        <p class="text-h6 text-grey-lighten-1 mt-4">Loading content...</p>
-      </v-col>
-    </v-row>
-
-    <!-- Empty State -->
-    <v-row v-else-if="!itemsStore.isLoading && filteredItems.length === 0">
-      <v-col cols="12">
-        <v-card class="glass-card pa-12 text-center" elevation="0">
-          <v-icon icon="mdi-bookshelf" size="120" color="primary" class="mb-6 empty-icon float-animation" />
-          <h2 class="text-h4 font-weight-bold text-white mb-4">
-            {{ searchQuery || filterTags.length > 0 || filterType ? 'No content found' : 'No Content Yet' }}
-          </h2>
-          <p class="text-body-1 text-grey-lighten-1 mb-6" style="max-width: 600px; margin: 0 auto;">
-            {{ searchQuery || filterTags.length > 0 || filterType
-              ? 'Try adjusting your filters or search terms.'
-              : 'Create your first content to get started with your library.' 
-            }}
-          </p>
-          <v-menu v-if="canEdit && !searchQuery && filterTags.length === 0 && !filterType">
-            <template #activator="{ props }">
-              <v-btn
-                v-bind="props"
-                color="primary"
-                size="x-large"
-                prepend-icon="mdi-plus"
-              >
-                Create Your First Content
-              </v-btn>
-            </template>
-            <v-list class="glass-menu">
-              <v-list-item
-                v-for="type in creatableTypes"
-                :key="type.value"
-                @click="openCreateDialog(type.value)"
-              >
-                <template #prepend>
-                  <v-icon :icon="type.icon" :color="type.color" />
-                </template>
-                <v-list-item-title>{{ type.title }}</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </v-card>
-      </v-col>
-    </v-row>
-
     <!-- Items Grid -->
-    <v-row v-else>
-      <v-col
-        v-for="item in filteredItems"
-        :key="item.id"
-        cols="12"
-        sm="6"
-        md="4"
-        lg="3"
-      >
-        <item-card-wrapper
-          :item="item"
-          @view="viewItem(item)"
-          @edit="editItem(item)"
-          @delete="confirmDelete(item)"
-        />
-      </v-col>
-    </v-row>
+    <item-grid-list
+      :items="filteredItems"
+      :is-loading="itemsStore.isLoading && itemsStore.items.length === 0"
+      :can-create="canEdit"
+      item-type-name="item"
+      item-type-name-plural="items"
+      empty-icon="mdi-bookshelf"
+      empty-icon-color="primary"
+      empty-title="No Content Yet"
+      empty-message="Create your first content to get started with your library."
+      create-button-text="Create Your First Content"
+      @create="openCreateDialogDefault"
+      @view="viewItem"
+      @edit="editItem"
+      @delete="deleteItemConfirmed"
+    />
 
     <!-- Create/Edit Dialog -->
     <item-dialog
@@ -153,41 +143,6 @@
       @updated="handleItemUpdated"
     />
 
-    <!-- Delete Confirmation -->
-    <v-dialog v-model="showDeleteDialog" max-width="500">
-      <v-card class="glass-card" elevation="0">
-        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
-          <v-icon icon="mdi-alert" color="error" size="32" class="mr-3" />
-          Delete Item?
-        </v-card-title>
-        <v-card-text class="px-6 pb-2">
-          <p class="text-body-1 mb-4">
-            Are you sure you want to delete <strong>{{ deletingItem?.name }}</strong>?
-          </p>
-          <v-alert type="warning" variant="tonal" density="compact" icon="mdi-alert">
-            This will permanently remove this item and all its data. This action cannot be undone.
-          </v-alert>
-        </v-card-text>
-        <v-card-actions class="px-6 pb-6">
-          <v-spacer />
-          <v-btn
-            variant="text"
-            @click="showDeleteDialog = false"
-            :disabled="isDeleting"
-          >
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            variant="flat"
-            @click="deleteItemConfirmed"
-            :loading="isDeleting"
-          >
-            Delete Item
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -200,7 +155,7 @@ import { useToast } from 'vue-toastification'
 import { useItemComponents } from '@/composables/useItemComponents'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
-import { ItemCardWrapper, ItemDialog } from '@/components/items'
+import { ItemGridList, ItemDialog } from '@/components/items'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 import type { LibraryItem, ItemType } from '@/types/item.types'
 
@@ -214,11 +169,11 @@ const { getItemTypeInfo, getItemTypesForTemplate, getUniversalItemTypes } = useI
 const searchQuery = ref('')
 const filterType = ref<string | null>(null)
 const filterTags = ref<number[]>([])
+const filterRarity = ref<string | null>(null)
+const filterItemType = ref<string | null>(null)
+const filterAttunement = ref<string | null>(null)
 const showFormDialog = ref(false)
-const showDeleteDialog = ref(false)
 const editingItem = ref<LibraryItem | null>(null)
-const deletingItem = ref<LibraryItem | null>(null)
-const isDeleting = ref(false)
 const creatingType = ref<ItemType | null>(null)
 
 const libraryId = computed(() => {
@@ -266,6 +221,41 @@ const creatableTypes = computed(() => {
   }))
 })
 
+// Get all magic items
+const allMagicItems = computed(() => 
+  itemsStore.items.filter(item => item.type === 'MAGIC_ITEM_DND_5E')
+)
+
+// Get available rarities from existing magic items
+const availableRarities = computed(() => {
+  const rarities = new Set<string>()
+  allMagicItems.value.forEach(item => {
+    const rarity = item.data?.rarity
+    if (rarity && typeof rarity === 'string') {
+      rarities.add(rarity)
+    }
+  })
+  return Array.from(rarities).sort()
+})
+
+// Get available item types from existing magic items
+const availableItemTypes = computed(() => {
+  const itemTypes = new Set<string>()
+  allMagicItems.value.forEach(item => {
+    const itemType = item.data?.itemType
+    if (itemType && typeof itemType === 'string') {
+      itemTypes.add(itemType)
+    }
+  })
+  return Array.from(itemTypes).sort()
+})
+
+// Attunement filter options
+const attunementOptions = [
+  { title: 'Requires Attunement', value: 'yes' },
+  { title: 'No Attunement', value: 'no' },
+]
+
 // Filtered items
 const filteredItems = computed(() => {
   let items = [...itemsStore.items]
@@ -273,6 +263,22 @@ const filteredItems = computed(() => {
   // Filter by type
   if (filterType.value) {
     items = items.filter(item => item.type === filterType.value)
+  }
+  
+  // Filter by rarity (for magic items)
+  if (filterRarity.value) {
+    items = items.filter(item => item.data?.rarity === filterRarity.value)
+  }
+  
+  // Filter by item type (for magic items)
+  if (filterItemType.value) {
+    items = items.filter(item => item.data?.itemType === filterItemType.value)
+  }
+  
+  // Filter by attunement (for magic items)
+  if (filterAttunement.value) {
+    const requiresAttunement = filterAttunement.value === 'yes'
+    items = items.filter(item => item.data?.attunement === requiresAttunement)
   }
   
   // Filter by search
@@ -323,6 +329,13 @@ function openCreateDialog(type: ItemType) {
   showFormDialog.value = true
 }
 
+function openCreateDialogDefault() {
+  // For the empty state button, open the first available type
+  if (availableTypes.value.length > 0) {
+    openCreateDialog(availableTypes.value[0].value as ItemType)
+  }
+}
+
 function viewItem(item: LibraryItem) {
   router.push({
     name: 'ItemDetail',
@@ -339,11 +352,6 @@ function editItem(item: LibraryItem) {
   showFormDialog.value = true
 }
 
-function confirmDelete(item: LibraryItem) {
-  deletingItem.value = item
-  showDeleteDialog.value = true
-}
-
 function handleItemCreated(item: LibraryItem) {
   // Item already added to store by ItemDialog
   console.log('Item created:', item.name)
@@ -357,39 +365,19 @@ function handleItemUpdated(item: LibraryItem) {
   creatingType.value = null
 }
 
-async function deleteItemConfirmed() {
-  if (!deletingItem.value || !libraryId.value) return
+async function deleteItemConfirmed(item: LibraryItem) {
+  if (!libraryId.value) return
 
-  isDeleting.value = true
   try {
-    await itemsStore.deleteItem(libraryId.value, deletingItem.value.id)
+    await itemsStore.deleteItem(libraryId.value, item.id)
     toast.success('Item deleted successfully')
-    showDeleteDialog.value = false
-    deletingItem.value = null
   } catch (error) {
     toast.error('Failed to delete item')
-  } finally {
-    isDeleting.value = false
   }
 }
 </script>
 
 <style scoped>
-.empty-icon {
-  opacity: 0.5;
-}
-
-.float-animation {
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
+/* Styles moved to ItemGridList component */
 </style>
 

@@ -1,49 +1,65 @@
 <template>
-  <v-menu :location="location">
+  <v-menu location="bottom">
     <template #activator="{ props }">
       <v-btn
-      fab
-      icon
-      v-bind="props"
-      color="primary"
-    
+        fab
+        icon
+        v-bind="props"
+        color="primary"
       >
-        <v-icon  icon="mdi-plus" />
+        <v-icon icon="mdi-plus" />
       </v-btn>
-    
     </template>
     <v-list class="glass-menu">
       <v-list-item
         prepend-icon="mdi-sword-cross"
         title="Stat Block"
-        @click="$emit('add-stat-block')"
+        @click="handleCreate('STAT_BLOCK_DND_5E')"
       />
       <v-list-item
         prepend-icon="mdi-account"
         title="Character"
-        @click="$emit('add-character')"
+        @click="handleCreate('CHARACTER_DND_5E')"
       />
       <v-list-item
         prepend-icon="mdi-treasure-chest"
-        title="Item"
-        @click="$emit('add-item')"
+        title="Magic Item"
+        @click="handleCreate('ITEM_DND_5E')"
       />
       <v-list-item
         prepend-icon="mdi-note-plus"
         title="Note"
-        @click="$emit('add-note')"
+        @click="handleCreate('NOTE')"
       />
     </v-list>
   </v-menu>
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits<{
-  'add-stat-block': []
-  'add-character': []
-  'add-item': []
-  'add-note': []
-}>()
+import { useRoute } from 'vue-router'
+import { useItemDialogs } from '@/composables/useItemDialogs'
+import type { ItemType } from '@/types/item.types'
+
+const route = useRoute()
+const { openCreateDialog } = useItemDialogs()
+
+function handleCreate(itemType: ItemType) {
+  const libraryId = parseInt(route.params.id as string || route.params.libraryId as string)
+  
+  if (!isNaN(libraryId)) {
+    openCreateDialog(itemType, libraryId)
+  } else {
+    console.error('Cannot create item: library ID not found in route')
+  }
+}
 </script>
+
+<style scoped>
+.glass-menu {
+  background: rgba(26, 26, 46, 0.95) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+</style>
 
 

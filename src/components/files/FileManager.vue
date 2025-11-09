@@ -115,9 +115,11 @@
           :deletable="!selectMode"
           :selectable="selectMode"
           :selected-files="selectedFiles"
-          @file-click="selectMode ? toggleFileSelection : openFileViewer"
+          :show-view-action="!selectMode"
+          @file-click="handleFileClick"
           @toggle-select="toggleFileSelection"
           @delete="confirmDelete"
+          @view="openFileViewer"
         />
 
         <!-- Loading State -->
@@ -343,6 +345,15 @@ const deleteFileConfirmed = async () => {
 
 const loadMore = () => {
   filesStore.loadMore()
+}
+
+// File click handler
+const handleFileClick = (file: UserFile) => {
+  if (props.selectMode) {
+    toggleFileSelection(file)
+  } else {
+    openFileViewer(file)
+  }
 }
 
 // Select mode handlers

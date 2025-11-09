@@ -103,9 +103,7 @@
       </v-btn-toggle>
     </div>
 
-    <v-card class="glass-card" elevation="0" variant="outlined">
       <editor-content :editor="editor" class="editor-content" />
-    </v-card>
 
     <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2">
       {{ error }}

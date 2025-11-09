@@ -1,134 +1,173 @@
 <template>
-  <v-form ref="formRef" @submit.prevent="handleSubmit">
-    <v-card class="glass-card mb-4 form-container" elevation="0">
-      <v-card-title class="text-h5 font-weight-bold d-flex align-center  form-actions-sticky px-6">
-        <v-icon icon="mdi-note-text" color="#95A5A6" size="32" class="mr-3" />
-        {{ isEditMode ? 'Edit Note' : 'Create Note' }}
-        <v-spacer />
-        <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('cancel')" />
-        <v-btn icon="mdi-check" size="small" variant="text" @click="handleSubmit" :loading="isLoading" />
-      </v-card-title>
-
-      <v-row no-gutters class="form-row-content">
-        <!-- Vertical Tabs -->
-        <v-col cols="2" class="border-e">
-          <v-tabs
-            v-model="activeTab"
-            direction="vertical"
-            color="primary"
-            class="note-tabs"
+  <item-form-layout
+    :title="isEditMode ? 'Edit Note' : 'Create Note'"
+    icon="mdi-note-text"
+    icon-color="#95A5A6"
+    :is-loading="isLoading"
+    :save-button-text="isEditMode ? 'Save Changes' : 'Create Note'"
+    :library-id="libraryId"
+    :file-ids="formData.userFileIds"
+    @update:file-ids="formData.userFileIds = $event"
+    :featured-image-id="formData.featuredImageId"
+    @update:featured-image-id="formData.featuredImageId = $event"
+    :tag-ids="formData.tagIds"
+    @update:tag-ids="formData.tagIds = $event"
+    @submit="handleSubmit"
+    @cancel="$emit('cancel')"
+    @add-tag="showTagDialog = true"
+    ref="layoutRef"
+  >
+    <template #tabs>
+      <div class="note-tabs-container">
+        <div class="chapters-scroll">
+          <v-list density="compact" nav class="chapter-list">
+            <v-list-item
+              rounded="lg"
+              class="chapter-item"
+              :class="{ 'chapter-active': activeTab === 'main' }"
+              @click="activeTab = 'main'"
+            >
+              <v-list-item-title>
+                {{ formData.name.trim() || 'Main' }}
+              </v-list-item-title>
+            </v-list-item>
+            <template v-for="(chapter, index) in formData.data.chapters" :key="chapter.id">
+              <v-list-item
+                rounded="lg"
+                class="chapter-item"
+                :class="{
+                  'chapter-active': activeTab === chapter.id,
+                  'chapter-drag-over': dragOverIndex === index
+                }"
+                draggable="true"
+                @dragstart="onDragStart(index)"
+                @dragover.prevent="onDragOver(index)"
+                @dragleave="onDragLeave(index)"
+                @drop="onDrop(index)"
+                @dragend="onDragEnd"
+                @click="activeTab = chapter.id"
+              >
+           
+                <v-list-item-title>
+                  <v-icon icon="mdi-drag" size="16" class="drag-handle mr-2" />
+                  {{ chapter.title || `Chapter ${index + 1}` }}
+                </v-list-item-title>
+                <template #append>
+                  <v-btn
+                    icon="mdi-close"
+                    size="x-small"
+                    variant="text"
+                    class="remove-chapter-btn"
+                    @click.stop="removeChapter(index)"
+                  />
+                </template>
+              </v-list-item>
+            </template>
+          </v-list>
+          <div
+            v-if="formData.data.chapters.length > 0"
+            class="chapter-drop-zone"
+            :class="{ 'chapter-drop-zone--active': dropZoneActive }"
+            @dragover.prevent="onDragOverEnd"
+            @dragleave="onDragLeaveEnd"
+            @drop="onDropEnd"
           >
-            <v-tab value="content" prepend-icon="mdi-text-box">
-              <span class="text-caption">Content</span>
-            </v-tab>
-            <v-tab value="description" prepend-icon="mdi-card-text">
-              <span class="text-caption">Description</span>
-            </v-tab>
-            <v-tab value="files" prepend-icon="mdi-paperclip">
-              <span class="text-caption">Files</span>
-            </v-tab>
-          </v-tabs>
-          
-          <v-divider class="my-4" />
-          
-          <!-- Tags Selector at bottom -->
-          <div class="px-4">
-            <tag-selector
-              v-model="formData.tagIds"
-              :library-id="libraryId"
-              hint=""
-              show-add-button
-              @add-tag="showTagDialog = true"
-            />
+            Drop here to move to end
           </div>
-        </v-col>
+        </div>
+        <div class="add-chapter-wrapper">
+          <v-btn
+            size="small"
+            variant="text"
+            prepend-icon="mdi-plus"
+            class="add-chapter-btn"
+            @click="addChapter"
+          >
+            Add chapter
+          </v-btn>
+        </div>
+      </div>
+    </template>
 
-        <!-- Content Area -->
-        <v-col cols="8"> 
-      <v-card-text class="form-content-scrollable">
-        <v-window v-model="activeTab">
-          <!-- Content Tab -->
-          <v-window-item value="content">
-            <div class="d-flex justify-space-between align-center mb-3">
-              <h3 class="text-h6">Note Content</h3>
-              <v-switch
-                v-model="formData.data.isPinned"
-                label="Pin this note"
-                color="warning"
-                hide-details
-                inset
-                density="compact"
-              />
-            </div>
-            
-            <v-text-field
-              v-model="formData.name"
-              label="Title"
-              :rules="[(v) => !!v || 'Title is required']"
-              variant="outlined"
-              required
-              density="comfortable"
-              class="mb-4"
-            />
-            
-            <tip-tap-editor
-              v-model="formData.data.content"
-              placeholder="Start writing your note..."
-              min-height="400px"
-            />
-          </v-window-item>
+    <template #content>
+      <v-window v-model="activeTab" class="note-window">
+        <!-- Main Tab -->
+        <v-window-item value="main">
+  
 
-          <!-- Description Tab -->
-          <v-window-item value="description">
-            <h3 class="text-h6 mb-3">Short Description</h3>
-            <p class="text-caption text-grey-lighten-1 mb-4">
-              Add a brief summary or description of this note for preview purposes.
-            </p>
-            <tip-tap-editor
-              v-model="formData.description"
-              placeholder="Write a brief summary of this note..."
-              min-height="300px"
-            />
-          </v-window-item>
+          <v-text-field
+            v-model="formData.name"
+            label="Title"
+            :rules="[(v) => !!v || 'Title is required']"
+            variant="outlined"
+            required
+            class=""
+          />
 
-          <!-- Files Tab -->
-          <v-window-item value="files">
-            <h3 class="text-h6 mb-3">Attached Files</h3>
-            <p class="text-caption text-grey-lighten-1 mb-4">
-              Upload related files, images, or documents to attach to this note.
-            </p>
-            <file-attachment-selector v-model="formData.fileIds" />
-            
-            <v-divider class="my-6" />
-            
-            <featured-image-selector
-              v-model="formData.featuredImageId"
-              :file-ids="formData.fileIds"
-            />
-          </v-window-item>
-        </v-window>
-      </v-card-text>
-      </v-col>
-      </v-row>
-    </v-card>
+          <tip-tap-editor
+            v-model="formData.data.content"
+            placeholder="Start writing your note..."
+            min-height="400px"
+          />
+        </v-window-item>
 
-    <!-- Tag Creation Dialog -->
-    <tag-creation-dialog
-      v-model="showTagDialog"
-      :library-id="libraryId"
-      @created="handleTagCreated"
-    />
-  </v-form>
+        <!-- Chapter Tabs -->
+        <v-window-item
+          v-for="(chapter, index) in formData.data.chapters"
+          :key="chapter.id"
+          :value="chapter.id"
+        >
+  
+          <v-text-field
+            v-model="formData.data.chapters[index].title"
+            variant="outlined"
+            density="comfortable"
+            class=""
+            placeholder="Chapter title"
+          />
+
+          <tip-tap-editor
+            v-model="formData.data.chapters[index].content"
+            placeholder="Start writing this chapter..."
+            min-height="400px"
+          />
+        </v-window-item>
+      </v-window>
+    </template>
+
+    <template #sidebar>
+      <div class="sidebar-section">
+        <h3 class="text-subtitle-1 font-weight-bold mb-2 d-flex align-center">
+          <v-icon icon="mdi-text-short" size="small" class="mr-2" />
+          Short Description
+        </h3>
+        <p class="text-caption text-grey-lighten-1 mb-3">
+          Add a snippet shown on cards and previews.
+        </p>
+        <v-textarea
+          v-model="formData.description"
+          placeholder="Write a brief summary..."
+          variant="underlined"
+          rows="4"
+        />
+      </div>
+    </template>
+  </item-form-layout>
+
+  <!-- Tag Creation Dialog -->
+  <tag-creation-dialog
+    v-model="showTagDialog"
+    :library-id="libraryId"
+    @created="handleTagCreated"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { VForm } from 'vuetify/components'
 import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, NoteData } from '@/types/item.types'
-import TagSelector from '@/components/tags/TagSelector.vue'
+import { useFilesStore } from '@/stores/files'
+import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
-import FileAttachmentSelector from '@/components/items/common/FileAttachmentSelector.vue'
-import FeaturedImageSelector from '@/components/items/common/FeaturedImageSelector.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 
 interface Props {
@@ -143,17 +182,19 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const formRef = ref<VForm>()
+const filesStore = useFilesStore()
+
+const layoutRef = ref<InstanceType<typeof ItemFormLayout>>()
 const isLoading = ref(false)
-const activeTab = ref('content')
 const showTagDialog = ref(false)
+const activeTab = ref<'main' | string>('main')
 
 const formData = ref<{
   name: string
   description: string
   data: NoteData
   tagIds: number[]
-  fileIds: number[]
+  userFileIds: number[]
   featuredImageId: number | null
 }>({
   name: '',
@@ -161,53 +202,228 @@ const formData = ref<{
   data: {
     content: '',
     isPinned: false,
+    chapters: [],
   },
   tagIds: [],
-  fileIds: [],
+  userFileIds: [],
   featuredImageId: null,
 })
 
 const isEditMode = computed(() => !!props.item)
 
+const draggingIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+const dropZoneActive = ref(false)
+
+const activeChapterIndex = computed(() => {
+  if (activeTab.value === 'main') return -1
+  const chapters = formData.value.data.chapters || []
+  return chapters.findIndex((chapter) => chapter.id === activeTab.value)
+})
+
+function generateChapterId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `chapter-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+watch(
+  () => formData.value.data.chapters?.length ?? 0,
+  (length) => {
+    if (length === 0) {
+      activeTab.value = 'main'
+    } else if (activeChapterIndex.value === -1 && activeTab.value !== 'main') {
+      activeTab.value = 'main'
+    }
+  }
+)
+
+function addChapter() {
+  if (!formData.value.data.chapters) {
+    formData.value.data.chapters = []
+  }
+  const nextOrder = formData.value.data.chapters.length + 1
+  const newChapter = {
+    id: generateChapterId(),
+    order: nextOrder,
+    title: `Chapter ${nextOrder}`,
+    content: '',
+  }
+
+  formData.value.data.chapters.push(newChapter)
+  activeTab.value = newChapter.id!
+}
+
 function handleTagCreated(tagId: number) {
-  // Add the newly created tag to the selection
   if (!formData.value.tagIds.includes(tagId)) {
     formData.value.tagIds.push(tagId)
   }
 }
 
-watch(() => props.item, (newItem) => {
-  if (newItem) {
-    formData.value.name = newItem.name
-    formData.value.description = newItem.description || ''
-    formData.value.data = { ...newItem.data } as NoteData
-    formData.value.tagIds = newItem.tags?.map(t => t.id) || []
-    formData.value.fileIds = newItem.userFiles?.map(f => f.id) || []
-    formData.value.featuredImageId = newItem.featuredImageId || null
+function normalizeChapterOrders() {
+  if (!formData.value.data.chapters) return
+  formData.value.data.chapters.forEach((chapter, index) => {
+    chapter.order = index + 1
+  })
+}
+
+function removeChapter(index: number) {
+  const chapters = formData.value.data.chapters || []
+  if (index < 0 || index >= chapters.length) return
+
+  const removedChapter = chapters[index]
+  chapters.splice(index, 1)
+  normalizeChapterOrders()
+
+  if (activeTab.value === removedChapter.id) {
+    activeTab.value = 'main'
   }
-}, { immediate: true })
+}
+
+function moveChapter(from: number, to: number) {
+  const chapters = formData.value.data.chapters || []
+  if (
+    from === to ||
+    from < 0 ||
+    to < 0 ||
+    from >= chapters.length ||
+    to > chapters.length
+  ) {
+    return
+  }
+
+  const [moved] = chapters.splice(from, 1)
+  const targetIndex = Math.min(to, chapters.length)
+  chapters.splice(targetIndex, 0, moved)
+  normalizeChapterOrders()
+}
+
+function onDragStart(index: number) {
+  draggingIndex.value = index
+  dragOverIndex.value = index
+}
+
+function onDragOver(index: number) {
+  if (draggingIndex.value === null || draggingIndex.value === index) return
+  dragOverIndex.value = index
+}
+
+function onDragLeave(index: number) {
+  if (dragOverIndex.value === index) {
+    dragOverIndex.value = null
+  }
+}
+
+function onDrop(index: number) {
+  if (draggingIndex.value === null) return
+  moveChapter(draggingIndex.value, index)
+  onDragEnd()
+}
+
+function onDragOverEnd() {
+  if (draggingIndex.value !== null) {
+    dropZoneActive.value = true
+  }
+}
+
+function onDragLeaveEnd() {
+  dropZoneActive.value = false
+}
+
+function onDropEnd() {
+  if (draggingIndex.value === null) return
+  const chapters = formData.value.data.chapters || []
+  moveChapter(draggingIndex.value, chapters.length)
+  onDragEnd()
+}
+
+function onDragEnd() {
+  draggingIndex.value = null
+  dragOverIndex.value = null
+  dropZoneActive.value = false
+}
+
+watch(
+  () => props.item,
+  (newItem) => {
+    if (newItem) {
+      formData.value.name = newItem.name
+      formData.value.description = newItem.description || ''
+      const incomingData = (newItem.data || {}) as NoteData
+      const incomingChapters = (incomingData.chapters || [])
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((chapter, index) => ({
+          id: chapter.id || generateChapterId(),
+          order: index + 1,
+          title: chapter.title || `Chapter ${index + 1}`,
+          content: chapter.content || '',
+        }))
+
+      formData.value.data = {
+        ...incomingData,
+        content: incomingData.content || '',
+        isPinned: incomingData.isPinned ?? false,
+        chapters: incomingChapters,
+      }
+      formData.value.tagIds = newItem.tags?.map((t) => t.id) || []
+
+      if (newItem.userFiles && newItem.userFiles.length > 0) {
+        filesStore.addFiles(newItem.userFiles)
+        formData.value.userFileIds = newItem.userFiles.map((f) => f.id)
+      } else {
+        formData.value.userFileIds = []
+      }
+
+      if (newItem.featuredImage) {
+        filesStore.addFiles(newItem.featuredImage)
+        formData.value.featuredImageId = newItem.featuredImage.id
+      } else {
+        formData.value.featuredImageId = null
+      }
+
+      activeTab.value = 'main'
+    } else {
+      formData.value.name = ''
+      formData.value.description = ''
+      formData.value.data = {
+        content: '',
+        isPinned: false,
+        chapters: [],
+      }
+      formData.value.tagIds = []
+      formData.value.userFileIds = []
+      formData.value.featuredImageId = null
+      activeTab.value = 'main'
+    }
+
+    draggingIndex.value = null
+    dragOverIndex.value = null
+    dropZoneActive.value = false
+  },
+  { immediate: true }
+)
 
 async function handleSubmit() {
   if (isLoading.value) return
 
-  const { valid } = await formRef.value!.validate()
+  const { valid } = await layoutRef.value!.formRef!.validate()
   if (!valid) return
 
   isLoading.value = true
 
-  // Validate that content exists
-  if (!formData.value.data.content || formData.value.data.content.trim() === '' || formData.value.data.content === '<p></p>') {
-    isLoading.value = false
-    return
-  }
+  normalizeChapterOrders()
 
-  // Clean up data object - remove undefined values
-  const cleanData: Record<string, any> = {
-    content: formData.value.data.content,
-  }
-  
-  if (formData.value.data.isPinned) {
-    cleanData.isPinned = true
+  const cleanChapters = formData.value.data.chapters?.map((chapter) => ({
+    order: chapter.order,
+    title: chapter.title,
+    content: chapter.content,
+  }))
+
+  const cleanData: NoteData = {
+    ...formData.value.data,
+    chapters: cleanChapters && cleanChapters.length > 0 ? cleanChapters : undefined,
   }
 
   const payload = {
@@ -215,64 +431,137 @@ async function handleSubmit() {
     description: formData.value.description || undefined,
     data: cleanData,
     tagIds: formData.value.tagIds,
-    fileIds: formData.value.fileIds,
+    userFileIds: formData.value.userFileIds,
     featuredImageId: formData.value.featuredImageId || undefined,
     ...(isEditMode.value ? {} : { type: 'NOTE' as const }),
   }
 
   console.log('Note Form Payload:', JSON.stringify(payload, null, 2))
 
-  emit('submit', payload, (success: boolean) => {
+  emit('submit', payload, (_success: boolean) => {
     isLoading.value = false
-    if (success) {
-      // Form will be closed by parent
-    }
   })
 }
 </script>
 
 <style scoped>
-.note-tabs :deep(.v-tab) {
-  justify-content: flex-start;
-  min-height: 48px;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
-.note-tabs :deep(.v-tab--selected) {
-  background: rgba(255, 183, 77, 0.15);
-  border-right: 3px solid #FFB74D;
-}
-
-.border-e {
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.form-container {
-  min-height: 60vh;
-  max-height: 90vh;
+.note-tabs-container {
   display: flex;
   flex-direction: column;
-}
-
-.form-row-content {
-  flex: 1;
-}
-
-.form-content-scrollable {
+  padding: 16px;
+  gap: 12px;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-bottom: 24px;
+  background-color: transparent;
 }
 
-.form-actions-sticky {
-  position: sticky;
-  bottom: 0;
+.chapters-scroll {
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.chapter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: transparent;
+}
+
+.chapter-item {
+  transition: background 0.2s ease, border-color 0.2s ease;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.chapter-item :deep(.v-list-item__prepend) {
+  margin-right: 6px;
+}
+
+.chapter-item :deep(.v-list-item--density-compact) {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.chapter-item :deep(.v-list-item-title) {
+  font-size: 0.85rem;
+}
+
+.chapter-active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.chapter-drag-over {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.drag-handle {
+  opacity: 0.35;
+  cursor: grab;
+}
+
+.chapter-item:hover .drag-handle {
+  opacity: 0.7;
+}
+
+.remove-chapter-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chapter-item:hover .remove-chapter-btn {
+  opacity: 0.8;
+}
+
+.chapter-drop-zone {
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.chapter-drop-zone--active,
+.chapter-drop-zone:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
+}
+
+.add-chapter-wrapper {
+  padding-top: 8px;
+}
+
+.add-chapter-btn {
+  text-transform: none;
+  opacity: 0.7;
+  letter-spacing: 0;
+}
+
+.add-chapter-btn:hover {
+  opacity: 1;
+}
+
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.note-window {
+  min-height: 540px;
+}
+
+@media (max-width: 1280px) {
+  .chapters-scroll {
+    max-height: calc(60vh - 120px);
+  }
 }
 </style>
 

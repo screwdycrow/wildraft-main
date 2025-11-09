@@ -32,7 +32,7 @@
     </v-navigation-drawer>
 
     <v-main class="gradient-background">
-      <v-container fluid class="pa-6">
+      <v-container fluid class="pa-8">
         <router-view />
       </v-container>
     </v-main>

@@ -16,6 +16,8 @@ const darkTheme = {
     'on-surface': '#FFFFFF', // Text on surface
     'glass-surface': '#2d284d', // Main glass color
     'glass-border': '#FFFFFF', // Glass border color
+    'card-background': '#262430', // Item card background (darker)
+     // Text color
   },
 }
 
@@ -32,6 +34,7 @@ const lightTheme = {
     'on-surface': '#000000', // Text on surface
     'glass-surface': '#FFFFFF', // Main glass color for light theme
     'glass-border': '#000000', // Glass border color for light theme
+    'card-background': '#F5F5F5', // Item card background (slightly darker)
   },
 }
 
@@ -49,6 +52,7 @@ const darkForestTheme = {
     'on-surface': '#E8F5E9', // Light green text
     'glass-surface': '#1B2F1B', // Main glass color
     'glass-border': '#4CAF50', // Green border
+    'card-background': '#142316', // Item card background (darker)
   },
 }
 
@@ -66,6 +70,7 @@ const deepBlueTheme = {
     'on-surface': '#E3F2FD', // Light blue text
     'glass-surface': '#1A2F42', // Main glass color
     'glass-border': '#2196F3', // Blue border
+    'card-background': '#142535', // Item card background (darker)
   },
 }
 
@@ -83,6 +88,7 @@ const crimsonTheme = {
     'on-surface': '#FFFFFF', // Text on surface
     'glass-surface': '#2A1A1A', // Main glass color
     'glass-border': '#DC143C', // Red border
+    'card-background': '#201313', // Item card background (darker)
   },
 }
 
@@ -100,6 +106,7 @@ const papyrusTheme = {
     'on-surface': '#3E2723', // Dark brown text
     'glass-surface': '#FFF9E6', // Main glass color
     'glass-border': '#8D6E63', // Brown border
+    'card-background': '#F0E9D6', // Item card background (slightly darker)
   },
 }
 
@@ -117,6 +124,7 @@ const mintTheme = {
     'on-surface': '#004D40', // Dark teal text
     'glass-surface': '#F1F8F6', // Main glass color
     'glass-border': '#00897B', // Teal border
+    'card-background': '#E0EDE9', // Item card background (slightly darker)
   },
 }
 
@@ -134,6 +142,7 @@ const sunsetTheme = {
     'on-surface': '#E65100', // Dark orange text
     'glass-surface': '#FFF8F0', // Main glass color
     'glass-border': '#FF6F00', // Orange border
+    'card-background': '#F5EBD9', // Item card background (slightly darker)
   },
 }
 
@@ -151,6 +160,7 @@ const midnightTheme = {
     'on-surface': '#E8E4F3', // Light purple text
     'glass-surface': '#1A162F', // Main glass color
     'glass-border': '#7C4DFF', // Purple border
+    'card-background': '#131025', // Item card background (darker)
   },
 }
 

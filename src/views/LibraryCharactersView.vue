@@ -6,8 +6,32 @@
       description="Browse and manage all characters in this library"
       :breadcrumbs="breadcrumbs"
     >
-      <template #actions>
-        <!-- Level Filter -->
+      <template #search>
+        <v-text-field
+          v-model="searchQuery"
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search characters..."
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+        />
+      </template>
+
+      <template #filters>
+        <!-- Tag Filter -->
+        <tag-selector
+          v-model="filterTags"
+          :library-id="libraryId!"
+          label="Tags"
+          hint=""
+          :show-add-button="false"
+          density="compact"
+          hide-details
+          style="min-width: 180px;"
+        />
+
+        <!-- Level Filter (Quick Filter) -->
         <v-select
           v-model="filterLevel"
           :items="levelOptions"
@@ -16,20 +40,26 @@
           density="compact"
           hide-details
           clearable
-          style="min-width: 150px;"
+          style="min-width: 120px;"
         />
-        
-        <!-- Class Filter -->
-        <v-select
-          v-model="filterClass"
-          :items="availableClasses"
-          label="Class"
+      </template>
+
+      <template #actions>
+        <!-- More Filters Button -->
+        <v-btn
           variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          style="min-width: 200px;"
-        />
+          prepend-icon="mdi-filter-variant"
+          @click="showFilterDialog = true"
+        >
+          More Filters
+          <v-badge
+            v-if="activeFilterCount > 0"
+            :content="activeFilterCount"
+            color="primary"
+            inline
+            class="ml-2"
+          />
+        </v-btn>
         
         <!-- Create Button -->
         <v-btn
@@ -43,57 +73,11 @@
       </template>
     </page-top-bar>
 
-    <!-- Search and Filters -->
-    <v-card class="glass-card mb-4" elevation="0">
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="6">
-            <v-text-field
-              v-model="searchQuery"
-              prepend-inner-icon="mdi-magnify"
-              label="Search characters"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <tag-selector
-              v-model="filterTags"
-              :library-id="libraryId!"
-              hint=""
-              :show-add-button="false"
-            />
-          </v-col>
-        </v-row>
-        <v-row v-if="availableRaces.length > 0">
-          <v-col cols="12">
-            <v-chip-group
-              v-model="selectedRace"
-              filter
-              selected-class="text-primary"
-            >
-              <v-chip
-                v-for="race in availableRaces"
-                :key="race"
-                :value="race"
-                variant="outlined"
-              >
-                {{ race }}
-              </v-chip>
-            </v-chip-group>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
     <!-- Items Grid -->
     <item-grid-list
       :items="filteredItems"
       :is-loading="itemsStore.isLoading && itemsStore.items.length === 0"
       :can-create="canEdit"
-      :has-filters="!!hasFilters"
       item-type-name="character"
       item-type-name-plural="characters"
       empty-icon="mdi-account-circle"
@@ -116,6 +100,15 @@
       @created="handleItemCreated"
       @updated="handleItemUpdated"
     />
+
+    <!-- Advanced Filters Modal -->
+    <item-filters-modal
+      v-model="showFilterDialog"
+      :item-type="ITEM_TYPE"
+      :items="allCharacters"
+      :filters="{ class: filterClass, race: filterRace }"
+      @update:filters="updateAdvancedFilters"
+    />
   </div>
 </template>
 
@@ -128,6 +121,7 @@ import { useToast } from 'vue-toastification'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import { ItemGridList, ItemDialog } from '@/components/items'
+import ItemFiltersModal from '@/components/items/ItemFiltersModal.vue'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 import type { LibraryItem } from '@/types/item.types'
 
@@ -143,8 +137,9 @@ const searchQuery = ref('')
 const filterTags = ref<number[]>([])
 const filterLevel = ref<number | null>(null)
 const filterClass = ref<string | null>(null)
-const selectedRace = ref<string | null>(null)
+const filterRace = ref<string | null>(null)
 const showFormDialog = ref(false)
+const showFilterDialog = ref(false)
 const editingItem = ref<LibraryItem | null>(null)
 
 const libraryId = computed(() => {
@@ -173,42 +168,18 @@ const levelOptions = computed(() => {
   }))
 })
 
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (filterClass.value) count++
+  if (filterRace.value) count++
+  return count
+})
+
 // Get all characters
 const allCharacters = computed(() => 
   itemsStore.items.filter(item => item.type === ITEM_TYPE)
 )
 
-// Get available classes from existing characters
-const availableClasses = computed(() => {
-  const classes = new Set<string>()
-  allCharacters.value.forEach(char => {
-    const charClass = char.data?.class
-    if (charClass && typeof charClass === 'string') {
-      classes.add(charClass)
-    }
-  })
-  return Array.from(classes).sort().map(c => ({ title: c, value: c }))
-})
-
-// Get available races from existing characters
-const availableRaces = computed(() => {
-  const races = new Set<string>()
-  allCharacters.value.forEach(char => {
-    const race = char.data?.race
-    if (race && typeof race === 'string') {
-      races.add(race)
-    }
-  })
-  return Array.from(races).sort()
-})
-
-const hasFilters = computed(() => 
-  searchQuery.value || 
-  filterTags.value.length > 0 || 
-  filterLevel.value !== null || 
-  filterClass.value !== null || 
-  selectedRace.value !== null
-)
 
 // Filtered items
 const filteredItems = computed(() => {
@@ -225,8 +196,8 @@ const filteredItems = computed(() => {
   }
   
   // Filter by race
-  if (selectedRace.value) {
-    items = items.filter(item => item.data?.race === selectedRace.value)
+  if (filterRace.value) {
+    items = items.filter(item => item.data?.race === filterRace.value)
   }
   
   // Filter by search
@@ -284,7 +255,7 @@ function openCreateDialog() {
 
 function viewItem(item: LibraryItem) {
   router.push({
-    name: 'CharacterView',
+    name: 'ItemDetail',
     params: {
       libraryId: libraryId.value,
       itemId: item.id,
@@ -317,6 +288,11 @@ async function handleDeleteConfirmed(item: LibraryItem) {
   } catch (error) {
     toast.error('Failed to delete character')
   }
+}
+
+function updateAdvancedFilters(filters: Record<string, any>) {
+  filterClass.value = filters.class || null
+  filterRace.value = filters.race || null
 }
 </script>
 

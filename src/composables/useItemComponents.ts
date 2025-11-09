@@ -4,6 +4,19 @@ import type { ItemType } from '@/types/item.types'
 // Component type definitions
 export type ComponentType = 'card' | 'detail' | 'form' | 'quickView'
 
+// Filter type definitions
+export type FilterType = 'select' | 'multiselect' | 'range' | 'boolean' | 'search'
+
+export interface FilterDefinition {
+  key: string
+  label: string
+  type: FilterType
+  dataPath: string // Path in item.data to get values (e.g., 'level', 'cr', 'rarity')
+  options?: { label: string; value: any }[] // Static options (optional)
+  min?: number
+  max?: number
+}
+
 // Component registry mapping
 const componentRegistry: Partial<Record<ItemType, Record<ComponentType, () => Promise<any>>>> = {
   // ===== DND 5E Template-Specific Components =====
@@ -81,6 +94,121 @@ const itemTypeMetadata: Record<ItemType, ItemTypeInfo> = {
   },
 }
 
+// Filter definitions per item type
+const itemTypeFilters: Partial<Record<ItemType, FilterDefinition[]>> = {
+  // DND 5E Stat Blocks
+  STAT_BLOCK_DND_5E: [
+    {
+      key: 'cr',
+      label: 'Challenge Rating',
+      type: 'select',
+      dataPath: 'cr',
+    },
+    {
+      key: 'size',
+      label: 'Size',
+      type: 'select',
+      dataPath: 'size',
+      options: [
+        { label: 'Tiny', value: 'Tiny' },
+        { label: 'Small', value: 'Small' },
+        { label: 'Medium', value: 'Medium' },
+        { label: 'Large', value: 'Large' },
+        { label: 'Huge', value: 'Huge' },
+        { label: 'Gargantuan', value: 'Gargantuan' },
+      ],
+    },
+    {
+      key: 'type',
+      label: 'Creature Type',
+      type: 'select',
+      dataPath: 'type',
+    },
+    {
+      key: 'alignment',
+      label: 'Alignment',
+      type: 'select',
+      dataPath: 'alignment',
+    },
+  ],
+
+  // DND 5E Characters
+  CHARACTER_DND_5E: [
+    {
+      key: 'level',
+      label: 'Level',
+      type: 'range',
+      dataPath: 'level',
+      min: 1,
+      max: 20,
+    },
+    {
+      key: 'class',
+      label: 'Class',
+      type: 'select',
+      dataPath: 'class',
+    },
+    {
+      key: 'race',
+      label: 'Race',
+      type: 'select',
+      dataPath: 'race',
+    },
+    {
+      key: 'subclass',
+      label: 'Subclass',
+      type: 'select',
+      dataPath: 'subclass',
+    },
+  ],
+
+  // DND 5E Magic Items
+  ITEM_DND_5E: [
+    {
+      key: 'rarity',
+      label: 'Rarity',
+      type: 'select',
+      dataPath: 'rarity',
+      options: [
+        { label: 'Common', value: 'common' },
+        { label: 'Uncommon', value: 'uncommon' },
+        { label: 'Rare', value: 'rare' },
+        { label: 'Very Rare', value: 'very rare' },
+        { label: 'Legendary', value: 'legendary' },
+        { label: 'Artifact', value: 'artifact' },
+      ],
+    },
+    {
+      key: 'itemType',
+      label: 'Item Type',
+      type: 'select',
+      dataPath: 'itemType',
+    },
+    {
+      key: 'attunement',
+      label: 'Requires Attunement',
+      type: 'boolean',
+      dataPath: 'attunement',
+    },
+  ],
+
+  // Universal Notes
+  NOTE: [
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'select',
+      dataPath: 'category',
+    },
+    {
+      key: 'isPinned',
+      label: 'Pinned Only',
+      type: 'boolean',
+      dataPath: 'isPinned',
+    },
+  ],
+}
+
 export function useItemComponents() {
   /**
    * Get the appropriate component for an item type
@@ -146,6 +274,13 @@ export function useItemComponents() {
     return !itemTypeMetadata[itemType]?.template
   }
 
+  /**
+   * Get filter definitions for an item type
+   */
+  function getFilterDefinitions(itemType: ItemType): FilterDefinition[] {
+    return itemTypeFilters[itemType] || []
+  }
+
   return {
     getItemComponent,
     hasItemComponent,
@@ -153,6 +288,7 @@ export function useItemComponents() {
     getItemTypesForTemplate,
     getUniversalItemTypes,
     isUniversalType,
+    getFilterDefinitions,
   }
 }
 

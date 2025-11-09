@@ -1,7 +1,7 @@
 <template>
   <v-app>
     <v-app-bar elevation="0" class="glass-header" height="70">
-      <v-app-bar-nav-icon @click="rail = !rail" />
+      <v-app-bar-nav-icon @click="mobile ? drawer = !drawer : toggleRail()" />
       
       <v-toolbar-title class="d-flex align-center">
         <div>
@@ -26,20 +26,15 @@
 
       <v-btn icon="mdi-bell-outline" variant="text" />
       
-      <quick-actions
-       
-        @add-stat-block="handleAddStatBlock"
-        @add-character="handleAddCharacter"
-        @add-item="handleAddItem"
-        @add-note="handleAddNote"
-      />
+      <quick-actions />
       
       <user-menu />
     </v-app-bar>
 
     <v-navigation-drawer
       v-model="drawer"
-      :rail="rail"
+      :rail="effectiveRail"
+      :temporary="mobile"
       width="250"
       class="glass-sidebar"
     >
@@ -50,12 +45,12 @@
           variant="text"
           elevation="0"
           color="primary"
-          :block="!rail"
-          :icon="rail"
-          :prepend-icon="!rail ? 'mdi-arrow-left' : undefined"
+          :block="!effectiveRail"
+          :icon="effectiveRail"
+          :prepend-icon="!effectiveRail ? 'mdi-arrow-left' : undefined"
         >
-        <v-icon icon="mdi-arrow-left" v-if="rail" />
-          <template v-if="!rail">Back to Dashboard</template>
+        <v-icon icon="mdi-arrow-left" v-if="effectiveRail" />
+          <template v-if="!effectiveRail">Back to Dashboard</template>
         </v-btn>
       </div>
 
@@ -63,94 +58,94 @@
 
       <!-- Library Navigation -->
       <v-list density="comfortable">
-        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
+        <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
           Library
         </v-list-subheader>
 
         <v-list-item
           :to="{ name: 'Library', params: { id: libraryId } }"
           prepend-icon="mdi-view-dashboard-outline"
-          :title="!rail ? 'Overview' : undefined"
+          :title="!effectiveRail ? 'Overview' : undefined"
           exact  
         />
 
         <v-divider class="my-2" />
 
-        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
+        <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
           Content
         </v-list-subheader>
 
         <v-list-item
           :to="{ name: 'LibraryItems', params: { id: libraryId } }"
           prepend-icon="mdi-bookshelf"
-          :title="!rail ? 'All Content' : undefined"
+          :title="!effectiveRail ? 'All Content' : undefined"
           :value="'library-items'"
         />
 
         <v-list-item
           :to="{ name: 'LibraryNotes', params: { id: libraryId } }"
           prepend-icon="mdi-note-text"
-          :title="!rail ? 'Notes' : undefined"
+          :title="!effectiveRail ? 'Notes' : undefined"
           :value="'library-notes'"
         />
 
         <v-list-item
           :to="{ name: 'LibraryCharacters', params: { id: libraryId } }"
           prepend-icon="mdi-account-circle"
-          :title="!rail ? 'Characters' : undefined"
+          :title="!effectiveRail ? 'Characters' : undefined"
           :value="'library-characters'"
         />
 
         <v-list-item
           :to="{ name: 'LibraryMagicItems', params: { id: libraryId } }"
           prepend-icon="mdi-treasure-chest"
-          :title="!rail ? 'Magic Items' : undefined"
+          :title="!effectiveRail ? 'Magic Items' : undefined"
           :value="'library-magic-items'"
         />
 
         <v-list-item
           :to="{ name: 'LibraryStatBlocks', params: { id: libraryId } }"
           prepend-icon="mdi-sword-cross"
-          :title="!rail ? 'Stat Blocks' : undefined"
+          :title="!effectiveRail ? 'Stat Blocks' : undefined"
           :value="'library-stat-blocks'"
         />
 
         <v-divider class="my-2" />
 
-        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
+        <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
           Organization
         </v-list-subheader>
 
         <v-list-item
           :to="{ name: 'LibraryTags', params: { id: libraryId } }"
           prepend-icon="mdi-tag-multiple"
-          :title="!rail ? 'Tags' : undefined"
+          :title="!effectiveRail ? 'Tags' : undefined"
           :value="'tags'"
         />
 
         <v-list-item
           prepend-icon="mdi-folder"
-          :title="!rail ? 'Collections' : undefined"
+          :title="!effectiveRail ? 'Collections' : undefined"
           :value="'collections'"
         />
 
         <v-divider class="my-2" />
 
-        <v-list-subheader v-if="!rail" class="text-overline font-weight-bold">
+        <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
           Management
         </v-list-subheader>
 
         <v-list-item
           v-if="canManage"
           prepend-icon="mdi-account-group"
-          :title="!rail ? 'Sharing' : undefined"
+          :title="!effectiveRail ? 'Sharing' : undefined"
           :value="'sharing'"
         />
 
         <v-list-item
           :to="{ name: 'LibrarySettings', params: { id: libraryId } }"
           prepend-icon="mdi-cog"
-          :title="!rail ? 'Library Settings' : undefined"
+          :title="!effectiveRail ? 'Library Settings' : undefined"
           :value="'settings'"
         />
       </v-list>
@@ -159,20 +154,27 @@
     </v-navigation-drawer>
 
     <v-main class="gradient-background">
-      <v-container fluid class="pa-6">
+      <v-container fluid class="pa-lg-8 pa-md-6 pa-sm-1" >
         <router-view />
       </v-container>
     </v-main>
+
+    <!-- Global Item Dialog -->
+    <global-item-dialog />
   </v-app>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import { useLibraryStore } from '@/stores/library'
 import { useToast } from 'vue-toastification'
 import UserMenu from '@/components/common/UserMenu.vue'
 import QuickActions from '@/components/common/QuickActions.vue'
+import GlobalItemDialog from '@/components/items/GlobalItemDialog.vue'
+
+const { mobile } = useDisplay()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -188,7 +190,6 @@ const libraryId = computed(() => {
 
 const currentLibrary = computed(() => libraryStore.currentLibrary)
 
-const isOwner = computed(() => currentLibrary.value?.role === 'OWNER')
 const canManage = computed(() => ['OWNER', 'EDITOR'].includes(currentLibrary.value?.role || ''))
 
 const roleColor = computed(() => {
@@ -199,6 +200,26 @@ const roleColor = computed(() => {
     default: return 'grey'
   }
 })
+
+// Computed rail state - disable on mobile
+const effectiveRail = computed(() => mobile.value ? false : rail.value)
+
+// Toggle rail (only works on desktop)
+function toggleRail() {
+  if (!mobile.value) {
+    rail.value = !rail.value
+  }
+}
+
+// On mobile, drawer should be temporary and closed by default
+watch(mobile, (isMobile) => {
+  if (isMobile) {
+    rail.value = false
+    drawer.value = false
+  } else {
+    drawer.value = true
+  }
+}, { immediate: true })
 
 // Fetch library when ID changes
 watch(libraryId, async (newId) => {
@@ -223,21 +244,6 @@ onMounted(async () => {
   }
 })
 
-function handleAddStatBlock() {
-  toast.info('Stat block creation coming soon!')
-}
-
-function handleAddCharacter() {
-  toast.info('Character creation coming soon!')
-}
-
-function handleAddItem() {
-  toast.info('Item creation coming soon!')
-}
-
-function handleAddNote() {
-  toast.info('Note creation coming soon!')
-}
 </script>
 
 <style scoped>

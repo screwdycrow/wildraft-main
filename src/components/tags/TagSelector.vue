@@ -3,9 +3,11 @@
     v-model="selectedTagIds"
     :items="tagItems"
     :loading="tagsStore.isLoading"
-    label="Tags"
+    :label="label"
     prepend-inner-icon="mdi-tag-multiple"
     variant="outlined"
+    :density="density"
+    :hide-details="hideDetails"
     multiple
     chips
     closable-chips
@@ -67,12 +69,19 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useTagsStore } from '@/stores/tags'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: number[]
   libraryId: number
+  label?: string
   hint?: string
   showAddButton?: boolean
-}>()
+  density?: 'default' | 'comfortable' | 'compact'
+  hideDetails?: boolean
+}>(), {
+  label: 'Tags',
+  density: 'default',
+  hideDetails: false,
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: number[]]

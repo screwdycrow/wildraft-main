@@ -51,6 +51,22 @@
         />
       </div>
 
+      <!-- Custom Actions Slot -->
+      <div v-if="$slots.actions" class="media-card__actions">
+        <slot name="actions" :file="file" />
+      </div>
+
+      <!-- View Button -->
+      <div v-if="showViewAction" class="media-card__view">
+        <v-btn
+          icon="mdi-eye"
+          size="small"
+          color="primary"
+          variant="tonal"
+          @click.stop="$emit('view', file)"
+        />
+      </div>
+
       <!-- Delete Button -->
       <div v-if="deletable && !hideDelete" class="media-card__delete">
         <v-btn
@@ -59,6 +75,17 @@
           color="error"
           variant="tonal"
           @click.stop="$emit('delete', file)"
+        />
+      </div>
+      
+      <!-- Featured Star Button (Images Only) -->
+      <div v-if="showFeaturedToggle && isImage" class="media-card__featured">
+        <v-btn
+          :icon="isFeatured ? 'mdi-star' : 'mdi-star-outline'"
+          size="small"
+          :color="isFeatured ? 'amber' : 'white'"
+          variant="tonal"
+          @click.stop="$emit('toggle-featured', file)"
         />
       </div>
     </div>
@@ -97,18 +124,26 @@ interface Props {
   hideTitle?: boolean
   hideDelete?: boolean
   transparentTitle?: boolean
+  showFeaturedToggle?: boolean
+  isFeatured?: boolean
+  showViewAction?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   hideTitle: false,
   hideDelete: false,
-  transparentTitle: false
+  transparentTitle: false,
+  showFeaturedToggle: false,
+  isFeatured: false,
+  showViewAction: false,
 })
 
 defineEmits<{
   click: [file: UserFile]
   'toggle-select': [file: UserFile]
   delete: [file: UserFile]
+  'toggle-featured': [file: UserFile]
+  view: [file: UserFile]
 }>()
 
 const filesStore = useFilesStore()
@@ -175,6 +210,34 @@ watch(() => props.file, async (file: UserFile) => {
   z-index: 2;
 }
 
+.media-card__actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  gap: 4px;
+}
+
+.media-card:hover .media-card__actions {
+  opacity: 1;
+}
+
+.media-card__view {
+  position: absolute;
+  top: 8px;
+  right: 48px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.media-card:hover .media-card__view {
+  opacity: 1;
+}
+
 .media-card__delete {
   position: absolute;
   top: 8px;
@@ -186,6 +249,13 @@ watch(() => props.file, async (file: UserFile) => {
 
 .media-card:hover .media-card__delete {
   opacity: 1;
+}
+
+.media-card__featured {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
 }
 
 .media-card__title--transparent {

@@ -1,112 +1,122 @@
 <template>
   <v-card
-    class="magic-item-card glass-card"
+    class="magic-item-card"
     elevation="0"
     hover
     @click="$emit('click', item)"
   >
-    <v-card-title class="d-flex align-center pb-2">
-      <v-icon icon="mdi-treasure-chest" color="#F39C12" class="mr-2" />
-      <span class="text-truncate">{{ item.name }}</span>
-      <v-spacer />
-      <v-chip size="small" :color="getRarityColor(itemData.rarity)">
-        {{ itemData.rarity }}
-      </v-chip>
-    </v-card-title>
+    <!-- Featured Image Background -->
+    <div class="card-background" :style="backgroundStyle"></div>
+    
+    <!-- Content -->
+    <div class="card-content">
+      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor }">
+        <v-icon icon="mdi-treasure-chest" size="small" class="mr-2" :style="{ color: textColor }" />
+        <span class="text-truncate font-weight-bold">{{ item.name }}</span>
+      </v-card-title>
 
-    <v-card-subtitle v-if="itemData.itemType">
-      {{ itemData.itemType }}
-      <span v-if="itemData.attunement"> (Requires Attunement)</span>
-    </v-card-subtitle>
+      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
+        <v-chip size="small" :color="getRarityColor(itemData.rarity)" class="mr-2">
+          {{ itemData.rarity }}
+        </v-chip>
+        {{ itemData.itemType }}
+        <span v-if="itemData.attunement" class="text-caption"> (Requires Attunement)</span>
+      </v-card-subtitle>
 
-    <v-card-text>
-      <!-- Properties -->
-      <div v-if="itemData.value || itemData.weight" class="d-flex gap-3 mb-3">
-        <div v-if="itemData.value" class="text-caption">
-          <v-icon icon="mdi-gold" size="small" class="mr-1" />
-          {{ itemData.value }}
+      <v-card-text class="flex-grow-1">
+        <!-- Properties Row -->
+        <div v-if="itemData.value || itemData.weight || itemData.damage" class="properties-row mb-3">
+          <div v-if="itemData.damage" class="property-item">
+            <v-icon icon="mdi-sword" size="small" :style="{ color: textColor }" />
+            <span :style="{ color: textColor }">{{ itemData.damage }}</span>
+          </div>
+          <div v-if="itemData.value" class="property-item">
+            <v-icon icon="mdi-gold" size="small" :style="{ color: textColor }" />
+            <span :style="{ color: textColor }">{{ itemData.value }}</span>
+          </div>
+          <div v-if="itemData.weight" class="property-item">
+            <v-icon icon="mdi-weight" size="small" :style="{ color: textColor }" />
+            <span :style="{ color: textColor }">{{ itemData.weight }} lb</span>
+          </div>
         </div>
-        <div v-if="itemData.weight" class="text-caption">
-          <v-icon icon="mdi-weight" size="small" class="mr-1" />
-          {{ itemData.weight }} lb
+
+        <!-- Description -->
+        <p v-if="item.description" class="description-text mb-3" :style="{ color: textColor }">
+          {{ item.description }}
+        </p>
+
+        <!-- Properties -->
+        <div v-if="itemData.properties && itemData.properties.length > 0" class="properties-chips">
+          <v-chip
+            v-for="(prop, index) in itemData.properties.slice(0, 4)"
+            :key="index"
+            size="x-small"
+            variant="tonal"
+            class="mr-1 mb-1"
+            :style="{ color: textColor }"
+          >
+            {{ prop }}
+          </v-chip>
+          <v-chip
+            v-if="itemData.properties.length > 4"
+            size="x-small"
+            variant="tonal"
+            :style="{ color: textColor }"
+          >
+            +{{ itemData.properties.length - 4 }}
+          </v-chip>
         </div>
-      </div>
+      </v-card-text>
 
-      <!-- Damage -->
-      <div v-if="itemData.damage" class="mb-2">
-        <v-chip size="small" variant="tonal" color="error">
-          <v-icon icon="mdi-sword" size="small" class="mr-1" />
-          {{ itemData.damage }}
-        </v-chip>
-      </div>
+      <!-- Footer -->
+      <v-card-actions class="card-footer">
+        <!-- Tags -->
+        <div v-if="item.tags && item.tags.length > 0" class="tags-container">
+          <v-chip
+            v-for="tag in item.tags.slice(0, 3)"
+            :key="tag.id"
+            :color="tag.color"
+            size="x-small"
+            class="mr-1"
+          >
+            {{ tag.name }}
+          </v-chip>
+          <v-chip
+            v-if="item.tags.length > 3"
+            size="x-small"
+            variant="tonal"
+            :style="{ color: textColor }"
+          >
+            +{{ item.tags.length - 3 }}
+          </v-chip>
+        </div>
 
-      <!-- Description -->
-      <p v-if="item.description" class="text-body-2 text-grey-lighten-1 text-truncate-2 mb-3">
-        {{ item.description }}
-      </p>
+        <v-spacer />
 
-      <!-- Properties -->
-      <div v-if="itemData.properties && itemData.properties.length > 0" class="mb-2">
-        <v-chip
-          v-for="(prop, index) in itemData.properties.slice(0, 3)"
-          :key="index"
-          size="x-small"
-          variant="outlined"
-          class="mr-1"
-        >
-          {{ prop }}
-        </v-chip>
-        <v-chip
-          v-if="itemData.properties.length > 3"
-          size="x-small"
-          variant="tonal"
-        >
-          +{{ itemData.properties.length - 3 }}
-        </v-chip>
-      </div>
-
-      <!-- Tags -->
-      <div v-if="item.tags && item.tags.length > 0" class="mt-3">
-        <v-chip
-          v-for="tag in item.tags.slice(0, 3)"
-          :key="tag.id"
-          :color="tag.color"
-          size="x-small"
-          class="mr-1"
-        >
-          {{ tag.name }}
-        </v-chip>
-        <v-chip
-          v-if="item.tags.length > 3"
-          size="x-small"
-          variant="tonal"
-        >
-          +{{ item.tags.length - 3 }}
-        </v-chip>
-      </div>
-
-      <!-- File count -->
-      <div v-if="item.userFiles && item.userFiles.length > 0" class="mt-2">
-        <v-icon icon="mdi-paperclip" size="small" class="mr-1" />
-        <span class="text-caption text-grey">{{ item.userFiles.length }} file(s)</span>
-      </div>
-    </v-card-text>
-
-
+        <!-- File count -->
+        <div v-if="item.userFiles && item.userFiles.length > 0" class="file-count" :style="{ color: textColor }">
+          <v-icon icon="mdi-paperclip" size="small" class="mr-1" />
+          <span class="text-caption">{{ item.userFiles.length }}</span>
+        </div>
+      </v-card-actions>
+    </div>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { LibraryItem, ItemData } from '@/types/item.types'
+import { useFilesStore } from '@/stores/files'
 
 interface Props {
   item: LibraryItem
   showActions?: boolean
+  textColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showActions: true,
+  textColor: '#FFFFFF', // White by default, can be customized later
 })
 
 defineEmits<{
@@ -115,7 +125,33 @@ defineEmits<{
   delete: [item: LibraryItem]
 }>()
 
+const filesStore = useFilesStore()
 const itemData = computed<ItemData>(() => props.item.data as ItemData)
+
+// Load featured image URL
+const featuredImageUrl = ref('')
+watch(() => props.item.featuredImage, async (featuredImage) => {
+  if (featuredImage) {
+    try {
+      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
+    } catch (error) {
+      console.error('Failed to load featured image:', error)
+    }
+  } else {
+    featuredImageUrl.value = ''
+  }
+}, { immediate: true })
+
+const backgroundStyle = computed(() => {
+  if (featuredImageUrl.value) {
+    return {
+      backgroundImage: `url(${featuredImageUrl.value})`,
+    }
+  }
+  return {
+    background: 'linear-gradient(135deg, rgba(243, 156, 18, 0.3), rgba(230, 126, 34, 0.3))',
+  }
+})
 
 const getRarityColor = (rarity: string) => {
   const colors: Record<string, string> = {
@@ -132,18 +168,95 @@ const getRarityColor = (rarity: string) => {
 
 <style scoped>
 .magic-item-card {
-  transition: transform 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  height: 320px;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  background-color: rgb(var(--v-theme-card-background)) !important;
+  border-radius: 16px !important;
+  border: none !important;
 }
 
 .magic-item-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-.text-truncate-2 {
+.card-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.magic-item-card:hover .card-background {
+  opacity: 0.4;
+}
+
+.card-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.properties-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.property-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.description-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-</style>
 
+.properties-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.card-footer {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.file-count {
+  display: flex;
+  align-items: center;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+</style>

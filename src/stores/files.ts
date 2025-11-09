@@ -165,6 +165,22 @@ export const useFilesStore = defineStore('files', () => {
     total.value = 0
   }
 
+  // Add or update files in the store (used when receiving files from item responses)
+  const addFiles = (newFiles: UserFile | UserFile[]) => {
+    const filesToAdd = Array.isArray(newFiles) ? newFiles : [newFiles]
+    
+    filesToAdd.forEach(newFile => {
+      const existingIndex = files.value.findIndex(f => f.id === newFile.id)
+      if (existingIndex !== -1) {
+        // Update existing file
+        files.value[existingIndex] = newFile
+      } else {
+        // Add new file
+        files.value.push(newFile)
+      }
+    })
+  }
+
   return {
     files,
     loading,
@@ -179,6 +195,7 @@ export const useFilesStore = defineStore('files', () => {
     deleteFile,
     loadMore,
     reset,
+    addFiles,
   }
 })
 

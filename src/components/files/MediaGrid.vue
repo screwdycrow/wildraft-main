@@ -9,9 +9,11 @@
         :selected="isSelected(file.id)"
         :selectable="selectable"
         :deletable="deletable"
+        :show-view-action="showViewAction"
         @click="$emit('file-click', file)"
         @toggle-select="$emit('toggle-select', file)"
         @delete="$emit('delete', file)"
+        @view="$emit('view', file)"
       />
     </div>
 
@@ -37,6 +39,14 @@
           </v-list-item-subtitle>
 
           <template #append>
+            <v-btn
+              v-if="showViewAction"
+              icon="mdi-eye"
+              variant="text"
+              size="small"
+              color="primary"
+              @click.stop="$emit('view', file)"
+            />
             <v-btn
               v-if="deletable"
               icon="mdi-delete"
@@ -75,6 +85,7 @@ interface Props {
   selectable?: boolean
   deletable?: boolean
   selectedFiles?: Set<number>
+  showViewAction?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -82,12 +93,14 @@ const props = withDefaults(defineProps<Props>(), {
   selectable: false,
   deletable: false,
   selectedFiles: () => new Set(),
+  showViewAction: false,
 })
 
 defineEmits<{
   'file-click': [file: UserFile]
   'toggle-select': [file: UserFile]
   delete: [file: UserFile]
+  view: [file: UserFile]
 }>()
 
 const isSelected = (fileId: number) => props.selectedFiles.has(fileId)

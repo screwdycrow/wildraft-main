@@ -1,94 +1,90 @@
 <template>
   <v-card
-    class="stat-block-card glass-card"
+    class="stat-block-card"
     elevation="0"
     hover
     @click="$emit('click', item)"
   >
-    <v-card-title class="d-flex align-center pb-2">
-      <v-icon icon="mdi-sword-cross" color="#E74C3C" class="mr-2" />
-      <span class="text-truncate">{{ item.name }}</span>
-      <v-spacer />
-      <v-chip size="small" color="#E74C3C">
-        CR {{ statBlockData.cr || '?' }}
-      </v-chip>
-      
-    </v-card-title>
+    <!-- Featured Image Background -->
+    <div class="card-background" :style="backgroundStyle"></div>
+    
+    <!-- Content -->
+    <div class="card-content">
+      <v-card-title class="card-title pb-1" :style="{ color: textColor }">
+        <span class="text-h6 font-weight-bold">{{ item.name }}</span>
+      </v-card-title>
 
-    <v-card-subtitle v-if="statBlockData.size || statBlockData.type">
-      {{ statBlockData.size }} {{ statBlockData.type }}
-      <span v-if="statBlockData.alignment">, {{ statBlockData.alignment }}</span>
-    </v-card-subtitle>
+      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
+        {{ statBlockData.size }} {{ statBlockData.type }}
+        <span v-if="statBlockData.alignment">, {{ statBlockData.alignment }}</span>
+        (CR: {{ statBlockData.cr || '?' }})
+      </v-card-subtitle>
 
-    <v-card-text>
       <!-- Stats Row -->
-      <div class="d-flex justify-space-around mb-3">
-        <div class="text-center">
-          <v-icon icon="mdi-shield" size="small" color="primary" />
-          <div class="text-caption text-grey">AC</div>
-          <div class="font-weight-bold">{{ statBlockData.ac || '?' }}</div>
+      <div class="stats-row mb-2">
+        <div class="stat-item">
+          <div class="stat-label" :style="{ color: textColor }">AC</div>
+          <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.ac || '10' }}</div>
         </div>
-        <v-divider vertical />
-        <div class="text-center">
-          <v-icon icon="mdi-heart" size="small" color="error" />
-          <div class="text-caption text-grey">HP</div>
-          <div class="font-weight-bold">{{ statBlockData.hp || '?' }}</div>
+        <div class="stat-item">
+          <div class="stat-label" :style="{ color: textColor }">HP</div>
+          <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.hp || '10' }}</div>
         </div>
-        <v-divider vertical />
-        <div class="text-center">
-          <v-icon icon="mdi-run" size="small" color="success" />
-          <div class="text-caption text-grey">Speed</div>
-          <div class="font-weight-bold text-caption">{{ statBlockData.speed || '?' }}</div>
+        <div class="stat-item">
+          <div class="stat-label" :style="{ color: textColor }">SPEED</div>
+          <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.speed || '30 ft.' }}</div>
         </div>
       </div>
 
-      <!-- Description -->
-      <p v-if="item.description" class="text-body-2 text-grey-lighten-1 text-truncate-2">
-        {{ item.description }}
-      </p>
+      <!-- Ability Scores -->
+      <div class="abilities-row mb-3">
+        <div v-for="ability in abilities" :key="ability.key" class="ability-item">
+          <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
+          <div class="ability-value" :style="{ color: textColor }">
+            {{ getAbilityScore(ability.key) }}
+          </div>
+          <div class="ability-modifier" :style="{ color: textColor }">
+            {{ getAbilityModifier(ability.key) }}
+          </div>
+        </div>
+      </div>
 
-      <!-- Tags -->
-      <div v-if="item.tags && item.tags.length > 0" class="mt-3">
-        <v-chip
-          v-for="tag in item.tags.slice(0, 3)"
-          :key="tag.id"
-          :color="tag.color"
-          size="x-small"
-          class="mr-1"
+      <!-- Traits/Actions (if any) -->
+      <div v-if="hasAbilities" class="features-list">
+        <div
+          v-for="trait in displayTraits"
+          :key="trait.name"
+          class="feature-chip"
+          :style="{ color: textColor, borderColor: textColor }"
         >
-          {{ tag.name }}
-        </v-chip>
-        <v-chip
-          v-if="item.tags.length > 3"
-          size="x-small"
-          variant="tonal"
+          {{ trait.name }}
+        </div>
+        <div
+          v-if="remainingCount > 0"
+          class="feature-chip"
+          :style="{ color: textColor, borderColor: textColor }"
         >
-          +{{ item.tags.length - 3 }}
-        </v-chip>
+          +{{ remainingCount }}
+        </div>
       </div>
-
-      <!-- File count -->
-      <div v-if="item.userFiles && item.userFiles.length > 0" class="mt-2">
-        <v-icon icon="mdi-paperclip" size="small" class="mr-1" />
-        <span class="text-caption text-grey">{{ item.userFiles.length }} file(s)</span>
-      </div>
-    </v-card-text>
-
-
+    </div>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { LibraryItem, StatBlockData } from '@/types/item.types'
+import { useFilesStore } from '@/stores/files'
 
 interface Props {
   item: LibraryItem
   showActions?: boolean
+  textColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showActions: true,
+  textColor: '#FFFFFF', // White by default, can be customized later
 })
 
 defineEmits<{
@@ -97,23 +93,201 @@ defineEmits<{
   delete: [item: LibraryItem]
 }>()
 
+const filesStore = useFilesStore()
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
+
+const abilities = [
+  { key: 'str', label: 'STR' },
+  { key: 'dex', label: 'DEX' },
+  { key: 'con', label: 'CON' },
+  { key: 'int', label: 'INT' },
+  { key: 'wis', label: 'WIS' },
+  { key: 'cha', label: 'CHA' },
+]
+
+// Load featured image URL
+const featuredImageUrl = ref('')
+watch(() => props.item.featuredImage, async (featuredImage) => {
+  if (featuredImage) {
+    try {
+      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
+    } catch (error) {
+      console.error('Failed to load featured image:', error)
+    }
+  } else {
+    featuredImageUrl.value = ''
+  }
+}, { immediate: true })
+
+const backgroundStyle = computed(() => {
+  if (featuredImageUrl.value) {
+    return {
+      backgroundImage: `url(${featuredImageUrl.value})`,
+    }
+  }
+  return {
+    background: 'linear-gradient(135deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3))',
+  }
+})
+
+const hasAbilities = computed(() => {
+  return (statBlockData.value.traits && statBlockData.value.traits.length > 0) ||
+         (statBlockData.value.actions && statBlockData.value.actions.length > 0)
+})
+
+const displayTraits = computed(() => {
+  const traits = statBlockData.value.traits || []
+  const actions = statBlockData.value.actions || []
+  const combined = [...traits, ...actions]
+  return combined.slice(0, 3)
+})
+
+const remainingCount = computed(() => {
+  const traits = statBlockData.value.traits || []
+  const actions = statBlockData.value.actions || []
+  const total = traits.length + actions.length
+  return Math.max(0, total - 3)
+})
+
+function getAbilityScore(key: string): number {
+  return (statBlockData.value as any)[key] || 10
+}
+
+function getAbilityModifier(key: string): string {
+  const score = getAbilityScore(key)
+  const modifier = Math.floor((score - 10) / 2)
+  return modifier >= 0 ? `+${modifier}` : `${modifier}`
+}
 </script>
 
 <style scoped>
 .stat-block-card {
-  transition: transform 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  height: 380px;
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  background-color: rgb(var(--v-theme-card-background)) !important;
+  border-radius: 16px !important;
+  border: none !important;
 }
 
 .stat-block-card:hover {
   transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-.text-truncate-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.card-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.stat-block-card:hover .card-background {
+  opacity: 0.4;
+}
+
+.card-content {
+  position: relative;
+  z-index: 1;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  line-height: 1.2;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.abilities-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.ability-item {
+  text-align: center;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+.ability-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ability-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  line-height: 1;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.ability-modifier {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.features-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.feature-chip {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
 }
 </style>
-

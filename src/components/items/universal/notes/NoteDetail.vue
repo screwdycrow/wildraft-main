@@ -1,134 +1,163 @@
 <template>
   <div class="note-detail">
-    <!-- Header Section -->
-    <v-card class="glass-card mb-4" elevation="0">
-      <v-card-title class="text-h4 font-weight-bold d-flex align-center">
-        <v-icon icon="mdi-note-text" color="#95A5A6" size="48" class="mr-3" />
-        {{ item.name }}
-        <v-spacer />
-        <v-icon
-          v-if="noteData.isPinned"
-          icon="mdi-pin"
-          size="large"
-          color="warning"
-        />
-      </v-card-title>
-
-      <v-card-subtitle v-if="noteData.category" class="text-h6 mt-2">
-        <v-chip color="primary" variant="tonal">
-          <v-icon icon="mdi-folder" size="small" class="mr-1" />
-          {{ noteData.category }}
-        </v-chip>
-      </v-card-subtitle>
-
-      <v-card-text v-if="item.description" class="text-body-1 mt-2">
-        {{ item.description }}
-      </v-card-text>
-    </v-card>
-
-    <!-- Note Content -->
     <v-card class="glass-card mb-4" elevation="0">
       <v-card-title class="d-flex align-center">
-        <v-icon icon="mdi-text" class="mr-2" />
-        Content
+        <v-icon icon="mdi-note-text" size="32" class="mr-3" color="#95A5A6" />
+        <div>
+          <div class="text-h5 font-weight-bold">{{ item.name }}</div>
+        </div>
         <v-spacer />
-        <v-chip size="small" variant="tonal">
-          {{ noteData.format || 'plain' }}
-        </v-chip>
+        <v-btn  variant="text" @click="$emit('edit')"> 
+          <v-icon size="small" class="mr-1">mdi-pencil</v-icon>
+          <span class="btn-text-mobile">Edit</span>
+        </v-btn>
       </v-card-title>
-      <v-card-text>
-        <!-- Render based on format -->
-        <div v-if="noteData.format === 'markdown'" v-html="renderedContent" class="note-content markdown-content" />
-        <div v-else-if="noteData.format === 'html'" v-html="noteData.content" class="note-content html-content" />
-        <pre v-else class="note-content plain-content">{{ noteData.content }}</pre>
-      </v-card-text>
     </v-card>
 
-    <!-- Tags -->
-    <v-card v-if="item.tags && item.tags.length > 0" class="glass-card mb-4" elevation="0">
-      <v-card-title class="text-h6">
-        <v-icon icon="mdi-tag-multiple" class="mr-2" />
-        Tags
-      </v-card-title>
-      <v-card-text>
-        <v-chip
-          v-for="tag in item.tags"
-          :key="tag.id"
-          :color="tag.color"
-          class="mr-2 mb-2"
-        >
-          <v-icon icon="mdi-tag" size="small" class="mr-1" />
-          {{ tag.name }}
-        </v-chip>
-      </v-card-text>
-    </v-card>
+    <v-row no-gutters class="">
+      <!-- Sections -->
+      <v-col class="glass-card" cols="12" md="2">
+        <div class="mb-4">
+          <v-card-text class="pa-0">
+            <v-list nav density="compact">
+              <v-list-item
+                class="glass-card-item"
+                rounded="lg"
+                :class="{ 'active-item': activeSection === 'main' }"
+                @click="setActiveSection('main')"
+              >
+                <v-list-item-title>{{ item.name || 'Main' }}</v-list-item-title>
+              </v-list-item>
+              <v-divider class="my-2" />
+              <v-list-subheader v-if="orderedChapters.length">Chapters</v-list-subheader>
+              <v-list-item
+                v-for="chapter in orderedChapters"
+                :key="chapter.id"
+                rounded="lg"
+                :class="{ 'active-item': activeSection === chapter.id }"
+                @click="setActiveSection(chapter.id!)"
+              >
+                <v-list-item-title>
+                  {{ chapter.title || `Chapter ${chapter.order}` }}
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+        </div>
+   
+        <attached-files-grid
+          v-if="fileIds.length"
+          class=""
+          :file-ids="fileIds"
+          :featured-image-id="item.featuredImage?.id"
+          :columns="2"
+          :read-only="true"
+        />
+      </v-col>
 
-    <!-- File Attachments -->
-    <file-attachment-manager
-      :attached-files="item.userFiles"
-      :library-id="item.libraryId"
-      :item-id="item.id"
-      :can-edit="canEdit"
-    />
+      <!-- Content -->
+      <v-col class="glass-card" cols="12" md="10">
+        <div>
+          <v-card-text class="pa-6">
+            <div class="note-body">
+              <h1 class="text-h3 font-weight-bold mb-4">
+                {{ activeSectionTitle }}
+              </h1>
+              <article
+                v-if="activeSection === 'main'"
+                v-html="renderedMainContent"
+                class="prose"
+              />
+              <article
+                v-else
+                v-html="activeChapterContent"
+                class="prose"
+              />
+            </div>
+          </v-card-text>
+        </div>
+      
+      </v-col>
 
-    <!-- Metadata -->
-    <v-card class="glass-card" elevation="0">
-      <v-card-title class="text-h6">
-        <v-icon icon="mdi-information" class="mr-2" />
-        Metadata
-      </v-card-title>
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" sm="6">
-            <div class="text-caption text-grey">Created</div>
-            <div>{{ formatDate(item.createdAt) }}</div>
-          </v-col>
-          <v-col cols="12" sm="6">
-            <div class="text-caption text-grey">Last Updated</div>
-            <div>{{ formatDate(item.updatedAt) }}</div>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+      <!--  -->
+
+    </v-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { LibraryItem, NoteData } from '@/types/item.types'
-import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
+import { computed, ref } from 'vue'
+import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
+import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
+import { useFilesStore } from '@/stores/files'
 
 interface Props {
   item: LibraryItem
-  canEdit?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  canEdit: true,
-})
+const props = defineProps<Props>()
+const emit = defineEmits(['edit'])
+
+const filesStore = useFilesStore()
 
 const noteData = computed<NoteData>(() => props.item.data as NoteData)
+const activeSection = ref<'main' | string>('main')
 
-// Simple markdown renderer (you can use a library like marked.js for production)
-const renderedContent = computed(() => {
-  if (noteData.value.format !== 'markdown') return noteData.value.content
-  
-  // Basic markdown conversion (very simplified)
-  let html = noteData.value.content
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    .replace(/\*(.*)\*/gim, '<em>$1</em>')
-    .replace(/\n$/gim, '<br />')
-  
-  return html
+const orderedChapters = computed<NoteChapter[]>(() => {
+  return (noteData.value.chapters || [])
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    .map((chapter, index) => ({
+      ...chapter,
+      id: chapter.id || `chapter-${chapter.order ?? index + 1}`,
+      order: chapter.order ?? index + 1,
+    }))
 })
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
+const activeChapter = computed(() =>
+  orderedChapters.value.find(chapter => chapter.id === activeSection.value)
+)
+
+const activeSectionTitle = computed(() => {
+  if (activeSection.value === 'main') return props.item.name
+  return activeChapter.value?.title || `Chapter ${activeChapter.value?.order}`
+})
+
+
+const renderedMainContent = computed(() => {
+  if (!noteData.value.content) {
+    return '<p class="empty">Nothing here yet.</p>'
+  }
+  return noteData.value.content
+})
+
+const activeChapterContent = computed(() => {
+  if (!activeChapter.value?.content) {
+    return '<p class="empty">This chapter has no content yet.</p>'
+  }
+  return activeChapter.value.content
+})
+
+const fileIds = computed(() => {
+  if (!props.item.userFiles?.length) return []
+  filesStore.addFiles(props.item.userFiles)
+  return props.item.userFiles.map(file => file.id)
+})
+
+function setActiveSection(sectionId: 'main' | string) {
+  activeSection.value = sectionId
+  if (
+    sectionId !== 'main' &&
+    !orderedChapters.value.some(chapter => chapter.id === sectionId)
+  ) {
+    activeSection.value = 'main'
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleString(undefined, {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
@@ -141,40 +170,92 @@ const formatDate = (dateString: string) => {
   width: 100%;
 }
 
-.note-content {
-  padding: 16px;
-  border-radius: 8px;
-  background: rgba(var(--v-theme-surface), 0.3);
+.detail-grid {
+  gap: 16px;
 }
 
-.plain-content {
-  white-space: pre-wrap;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.6;
+.nav-column .section-nav {
+  height: 100%;
 }
 
-.markdown-content,
-.html-content {
-  line-height: 1.8;
+.section-nav :deep(.v-list-item) {
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
-.markdown-content h1,
-.html-content h1 {
-  font-size: 2em;
-  margin-bottom: 0.5em;
+.active-item {
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 3px solid rgba(148, 197, 255, 0.7);
 }
 
-.markdown-content h2,
-.html-content h2 {
-  font-size: 1.5em;
-  margin-bottom: 0.5em;
+.content-card {
+  min-height: 420px;
 }
 
-.markdown-content h3,
-.html-content h3 {
-  font-size: 1.25em;
-  margin-bottom: 0.5em;
+.content-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.note-body {
+  line-height: 1.7;
+  font-size: 1rem;
+  padding-left: 64px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-right: 64px;
+color: rgb(var(--v-theme-on-surface),0.78);
+  
+}
+
+.note-body .empty {
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.prose :deep(h1),
+.prose :deep(h2),
+.prose :deep(h3) {
+  margin-top: 1.5rem;
+  font-weight: 600;
+}
+
+.prose :deep(p) {
+  margin: 0 0 1rem 0;
+}
+
+.detail-line {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+
+.detail-label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  opacity: 0.6;
+}
+
+.sidebar-column .glass-card {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 959px) {
+  .nav-column {
+    order: 2;
+    margin-top: 16px;
+  }
+
+  .content-column {
+    order: 1;
+  }
+
+  .sidebar-column {
+    order: 3;
+  }
 }
 </style>
-

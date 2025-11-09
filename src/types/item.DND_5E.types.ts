@@ -20,6 +20,7 @@ export interface Spell {
   castingTime?: string
   range?: string
   components?: string
+  roll?: string
   duration?: string
   description: string
   concentration?: boolean
@@ -45,11 +46,12 @@ export interface Skill {
   bonus?: number
 }
 
-export interface CharacterItem {
-  title: string
+export interface InventoryItem {
+  name: string
   description?: string
-  uses?: number
-  gold?: string
+  quantity?: number
+  weight?: number
+  equipped?: boolean
 }
 
 // Stat Block Data for D&D 5E creatures/NPCs
@@ -69,6 +71,12 @@ export interface StatBlockData {
   alignment?: string
   languages?: string
   senses?: string
+  strSavingThrow?: boolean
+  dexSavingThrow?: boolean
+  conSavingThrow?: boolean
+  intSavingThrow?: boolean
+  wisSavingThrow?: boolean
+  chaSavingThrow?: boolean
   actions?: Action[]
   traits?: Trait[]
   spells?: Spell[]
@@ -83,14 +91,16 @@ export interface CharacterData extends Omit<StatBlockData, 'cr'> {
   race: string
   subclass?: string
   background?: string
-  playerName?: string
   experience?: number
   maxHp?: number // Additional field for characters
-  items?: CharacterItem[]
+  gold?: number // Gold/currency
+  inventory?: InventoryItem[] // Inventory items
+  quickNotes?: string // Quick editable notes
   proficiencyBonus?: number
   inspiration?: boolean
   proficiencies?: Proficiency[]
   skills?: Skill[]
+  spellSlots?: SpellSlot[] // Spell slots with current/max
   [key: string]: any
 }
 

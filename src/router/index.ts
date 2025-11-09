@@ -99,11 +99,6 @@ const routes: RouteRecordRaw[] = [
         name: 'ItemDetail',
         component: () => import('@/views/ItemDetailView.vue'),
       },
-      {
-        path: ':libraryId/character/:itemId',
-        name: 'CharacterView',
-        component: () => import('@/views/CharacterViewPage.vue'),
-      },
     ],
   },
 ]

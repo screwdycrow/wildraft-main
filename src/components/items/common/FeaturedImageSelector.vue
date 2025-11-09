@@ -22,12 +22,11 @@
       >
         <v-card
           :class="['featured-image-card', { 'selected': modelValue === fileId }]"
-          @click="selectImage(fileId)"
           :color="modelValue === fileId ? 'primary' : undefined"
           :variant="modelValue === fileId ? 'tonal' : 'outlined'"
           hover
         >
-          <div class="image-preview">
+          <div class="image-preview" @click="selectImage(fileId)">
             <v-img
               :src="getFileUrl(fileId)"
               :alt="`File ${fileId}`"
@@ -45,6 +44,17 @@
             <!-- Selected indicator -->
             <div v-if="modelValue === fileId" class="selected-overlay">
               <v-icon icon="mdi-check-circle" size="32" color="primary" />
+            </div>
+
+            <!-- View button -->
+            <div class="view-overlay">
+              <v-btn
+                icon="mdi-eye"
+                size="small"
+                color="white"
+                variant="elevated"
+                @click.stop="viewImage(fileId)"
+              />
             </div>
           </div>
           
@@ -84,6 +94,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useFilesStore } from '@/stores/files'
+import { useMediaViewer } from '@/composables/useMediaViewer'
+import type { UserFile } from '@/api/files'
 
 interface Props {
   modelValue?: number | null
@@ -97,10 +109,25 @@ const emit = defineEmits<{
 }>()
 
 const filesStore = useFilesStore()
+const { openViewer } = useMediaViewer()
+
+// Get file objects from IDs
+const attachedFiles = computed(() => {
+  return props.fileIds
+    .map(id => filesStore.files.find(f => f.id === id))
+    .filter((f): f is UserFile => f !== undefined)
+})
 
 function getFileUrl(fileId: number): string {
   const file = filesStore.files.find(f => f.id === fileId)
   return file?.fileUrl || ''
+}
+
+function viewImage(fileId: number) {
+  const file = attachedFiles.value.find(f => f.id === fileId)
+  if (file) {
+    openViewer(file, attachedFiles.value)
+  }
 }
 
 function selectImage(fileId: number) {
@@ -144,6 +171,20 @@ function clearSelection() {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  pointer-events: none;
+}
+
+.view-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.image-preview:hover .view-overlay {
+  opacity: 1;
 }
 </style>
 
