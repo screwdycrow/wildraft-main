@@ -78,7 +78,7 @@ model LibraryItem  {
   color String @default("#6B7280")
   featuredImageId Int?
   featuredImage UserFile? @relation("FeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now())  
   updatedAt DateTime @updatedAt
   data Json
   tags Tag[] @relation("LibraryItemTags")  

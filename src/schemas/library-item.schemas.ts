@@ -350,6 +350,38 @@ export const getLibraryItemsSchema = {
                   }
                 }
               },
+            featuredImage: {
+              type: 'object',
+              nullable: true,
+              description: 'Featured image UserFile (if set)',
+              properties: {
+                id: { type: 'number' },
+                userId: { type: 'number' },
+                fileUrl: { type: 'string' },
+                fileName: { type: 'string' },
+                fileType: { type: 'string' },
+                fileSize: { type: 'number' },
+                createdAt: { type: 'string', format: 'date-time' },
+                updatedAt: { type: 'string', format: 'date-time' }
+              }
+            },
+            userFiles: {
+              type: 'array',
+              description: 'Associated UserFiles',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'number' },
+                  userId: { type: 'number' },
+                  fileUrl: { type: 'string' },
+                  fileName: { type: 'string' },
+                  fileType: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' }
+                }
+              }
+            },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' }
             }
@@ -480,6 +512,7 @@ export const getLibraryItemSchema = {
             description: { type: 'string', nullable: true },
             data: { 
               type: 'object',
+              additionalProperties: true,
               description: 'Type-specific data with all fields' 
             },
             tags: {

@@ -6,6 +6,7 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'stream';
 
 // Lazy initialization - read environment variables when first needed
 // This ensures dotenv.config() has been called before we read env vars
@@ -206,6 +207,50 @@ export const getFileMetadata = async (
   
   return {
     size: response.ContentLength || 0,
+    contentType: response.ContentType,
+  };
+};
+
+const streamToBuffer = async (stream: Readable): Promise<Buffer> => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+};
+
+/**
+ * Download a file from S3 as a buffer
+ * @param filePath - The path/key of the file
+ * @returns Buffer with file contents and content type metadata
+ */
+export const getFileBuffer = async (
+  filePath: string
+): Promise<{ buffer: Buffer; contentType?: string }> => {
+  const command = new GetObjectCommand({
+    Bucket: getBucketName(),
+    Key: filePath,
+  });
+
+  const response = await getS3Client().send(command);
+  const body = response.Body;
+
+  if (!body) {
+    throw new Error('S3 object body is empty');
+  }
+
+  let buffer: Buffer;
+
+  if (body instanceof Readable) {
+    buffer = await streamToBuffer(body);
+  } else if (body instanceof Uint8Array) {
+    buffer = Buffer.from(body);
+  } else {
+    throw new Error(`Unsupported S3 body type: ${typeof body}`);
+  }
+
+  return {
+    buffer,
     contentType: response.ContentType,
   };
 };

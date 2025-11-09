@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { authenticateToken } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import {
@@ -7,7 +7,10 @@ import {
   getSignedDownloadUrl,
   getSignedUploadUrl,
   fileExistsInS3,
+  getFileMetadata,
+  getFileBuffer,
 } from '../lib/s3';
+import sharp from 'sharp';
 import {
   uploadFileSchema,
   getUploadUrlSchema,
@@ -41,9 +44,24 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
       const userId = request.user!.userId;
 
       try {
+        let buffer: Buffer | null = null;
+
         // If fileBuffer is provided, upload directly
         if (fileBuffer) {
-          const buffer = Buffer.from(fileBuffer, 'base64');
+          buffer = Buffer.from(fileBuffer, 'base64');
+
+          // Optimise images using sharp when possible
+          if (isOptimisableImageMime(fileType)) {
+            try {
+              buffer = await optimiseImageBuffer(buffer, fileType, request.log);
+            } catch (optimiseError) {
+              request.log.warn(
+                { err: optimiseError },
+                'Image optimisation failed, falling back to original buffer'
+              );
+            }
+          }
+
           await uploadToS3(buffer, filePath, fileType);
         } else {
           // If no file buffer, just verify the path is valid
@@ -55,13 +73,14 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
         }
 
         // Create database record
+        const finalBufferSize = buffer?.length ?? fileSize;
         const userFile = await prisma.userFile.create({
           data: {
             userId,
             fileUrl: filePath,
             fileName,
             fileType,
-            fileSize,
+            fileSize: finalBufferSize,
           },
         });
 
@@ -87,7 +106,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
       schema: getUploadUrlSchema,
     },
     async (request, reply) => {
-      const { fileName, fileType, fileSize, filePath } = request.body as {
+        const { fileName, fileType, fileSize, filePath } = request.body as {
         fileName: string;
         fileType: string;
         fileSize: number;
@@ -133,7 +152,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
 
       const userId = request.user!.userId;
 
-      try {
+        try {
         // Verify file exists in S3
         const exists = await fileExistsInS3(filePath);
         if (!exists) {
@@ -143,14 +162,44 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
+          const metadata = await getFileMetadata(filePath);
+          let finalFileType =
+            metadata.contentType ?? fileType ?? 'application/octet-stream';
+          let finalFileSize = metadata.size || fileSize;
+
+          if (isOptimisableImageMime(finalFileType)) {
+            try {
+              const { buffer: originalBuffer, contentType } = await getFileBuffer(filePath);
+              finalFileType = contentType ?? finalFileType;
+              const optimisedBuffer = await optimiseImageBuffer(
+                originalBuffer,
+                finalFileType,
+                request.log
+              );
+
+              // Only overwrite in S3 if optimisation yields a size improvement
+              if (optimisedBuffer.length < originalBuffer.length) {
+                await uploadToS3(optimisedBuffer, filePath, finalFileType);
+                finalFileSize = optimisedBuffer.length;
+              } else {
+                finalFileSize = originalBuffer.length;
+              }
+            } catch (optimiseError) {
+              request.log.warn(
+                { err: optimiseError },
+                'Image optimisation for presigned upload failed; keeping original file'
+              );
+            }
+          }
+
         // Create database record
         const userFile = await prisma.userFile.create({
           data: {
             userId,
             fileUrl: filePath,
             fileName,
-            fileType,
-            fileSize,
+              fileType: finalFileType,
+              fileSize: finalFileSize,
           },
         });
 
@@ -366,3 +415,64 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
   );
 };
 
+
+const SUPPORTED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  'image/tiff',
+]);
+
+const normaliseMimeType = (mime?: string | null): string =>
+  (mime ?? '').toLowerCase();
+
+const isOptimisableImageMime = (mime?: string | null): boolean =>
+  SUPPORTED_IMAGE_TYPES.has(normaliseMimeType(mime));
+
+async function optimiseImageBuffer(
+  buffer: Buffer,
+  mimeType: string,
+  log: FastifyBaseLogger
+): Promise<Buffer> {
+  const normalisedMime = normaliseMimeType(mimeType);
+
+  if (!SUPPORTED_IMAGE_TYPES.has(normalisedMime)) {
+    log.debug({ mimeType }, 'Skipping optimisation for unsupported image mime type');
+    return buffer;
+  }
+
+  const base = sharp(buffer).rotate();
+
+  switch (normalisedMime) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return base.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+
+    case 'image/png':
+      return base
+        .png({
+          compressionLevel: 9,
+          adaptiveFiltering: true,
+          palette: true,
+        })
+        .toBuffer();
+
+    case 'image/webp':
+      return base.webp({ quality: 80, smartSubsample: true }).toBuffer();
+
+    case 'image/gif':
+      return base.gif({ effort: 3 }).toBuffer();
+
+    case 'image/avif':
+      return base.avif({ quality: 50, effort: 4 }).toBuffer();
+
+    case 'image/tiff':
+      return base.tiff({ quality: 80, compression: 'lzw' }).toBuffer();
+
+    default:
+      return buffer;
+  }
+}

@@ -18,7 +18,7 @@ const fastify = Fastify({
   logger: true,
   ajv: {
     customOptions: {
-      removeAdditional: 'all',
+      removeAdditional: false, // Don't strip additional properties - allow flexible JSON in data fields
       coerceTypes: true,
       useDefaults: true,
       // Allow OpenAPI keywords
