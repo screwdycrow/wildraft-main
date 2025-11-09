@@ -199,14 +199,13 @@ async function confirmDelete() {
 
 /* CSS Columns Masonry - Responsive */
 .items-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 20px;
+  columns: 300px auto;
+  column-gap: 1.5rem;
 }
 
 .grid-item {
   break-inside: avoid;
-  width: 100%;
+  margin-bottom: 1.5rem;
 }
 
 .loading-grid .grid-item {
