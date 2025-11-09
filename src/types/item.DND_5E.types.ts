@@ -60,6 +60,7 @@ export interface StatBlockData {
   hp: number
   ac: number
   speed: string
+  initiative?: number
   str?: number
   dex?: number
   con?: number
@@ -71,6 +72,8 @@ export interface StatBlockData {
   alignment?: string
   languages?: string
   senses?: string
+  immunities?: string
+  resistances?: string
   strSavingThrow?: boolean
   dexSavingThrow?: boolean
   conSavingThrow?: boolean

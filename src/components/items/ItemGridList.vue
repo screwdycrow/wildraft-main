@@ -4,7 +4,6 @@
     <div 
       v-if="isLoading && items.length === 0" 
       class="items-grid loading-grid"
-      :class="{ 'use-flex': skeletonShouldUseFlex }"
     >
       <div
         v-for="index in skeletonCount"
@@ -44,7 +43,6 @@
     <div 
       v-else 
       class="items-grid"
-      :class="{ 'use-flex': shouldUseFlex }"
     >
       <div
         v-for="item in items"
@@ -144,10 +142,6 @@ const isDeleting = ref(false)
 const loadingText = computed(() => `Loading ${props.itemTypeNamePlural}...`)
 const skeletonCount = computed(() => props.skeletonCount)
 
-// Use flexbox for 3 or fewer items on desktop
-const shouldUseFlex = computed(() => props.items.length > 0 && props.items.length <= 3)
-const skeletonShouldUseFlex = computed(() => props.skeletonCount <= 3)
-
 const deleteDialogTitle = computed(() => {
   return `Delete ${props.itemTypeName.charAt(0).toUpperCase() + props.itemTypeName.slice(1)}?`
 })
@@ -205,73 +199,18 @@ async function confirmDelete() {
 
 /* CSS Columns Masonry - Responsive */
 .items-grid {
-  columns: 1; /* Mobile: 1 column */
-  column-gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
 }
 
 .grid-item {
   break-inside: avoid;
-  margin-bottom: 16px;
-  display: inline-block;
   width: 100%;
 }
 
-/* Tablet: 2 columns */
-@media (min-width: 600px) {
-  .items-grid {
-    columns: 2;
-    column-gap: 20px;
-  }
-
-  .grid-item {
-    margin-bottom: 20px;
-  }
-}
-
-/* Small desktop: 3 columns */
-@media (min-width: 960px) {
-  .items-grid {
-    columns: 3;
-    column-gap: 24px;
-  }
-
-  .grid-item {
-    margin-bottom: 24px;
-  }
-}
-
-/* Large desktop: 4 columns */
-@media (min-width: 1280px) {
-  .items-grid {
-    columns: 4;
-  }
-}
-
-/* Extra large desktop: 5 columns */
-@media (min-width: 1920px) {
-  .items-grid {
-    columns: 5;
-  }
-}
-
-/* Use flexbox for 3 or fewer items on desktop/tablet */
-@media (min-width: 600px) {
-  .items-grid.use-flex {
-    display: flex;
-    flex-direction: row;
-    gap: 20px;
-    columns: auto; /* Override columns */
-  }
-
-  .items-grid.use-flex .grid-item {
-    flex: 0 0 calc(25% - 15px); /* 25% width minus gap adjustment */
-    width: 25%;
-    margin-bottom: 0;
-  }
-}
-
 .loading-grid .grid-item {
-  margin-bottom: 20px;
+  width: 100%;
 }
 
 .skeleton-card {
@@ -286,4 +225,5 @@ async function confirmDelete() {
   border-top-right-radius: 16px;
 }
 </style>
+
 

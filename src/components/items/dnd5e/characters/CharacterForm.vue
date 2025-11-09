@@ -123,6 +123,36 @@
         </v-col>
       </v-row>
 
+      <v-row>
+        <v-col cols="12" md="2">
+          <v-text-field
+            v-model.number="formData.data.initiative"
+            label="Initiative"
+            type="number"
+            variant="outlined"
+            density="compact"
+          />
+        </v-col>
+        <v-col cols="12" md="5">
+          <v-text-field
+            v-model="formData.data.resistances"
+            label="Resistances"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., fire, cold"
+          />
+        </v-col>
+        <v-col cols="12" md="5">
+          <v-text-field
+            v-model="formData.data.immunities"
+            label="Immunities"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., poison, disease"
+          />
+        </v-col>
+      </v-row>
+
       <!-- Race, Class, Subclass, Alignment, Background -->
       <v-row>
         <v-col cols="12" sm="6" md="2.4">
@@ -373,6 +403,7 @@ const formData = ref<{
     maxHp: 10,
     ac: 10,
     speed: '30 ft',
+    initiative: 0,
     str: 10,
     dex: 10,
     con: 10,
@@ -394,6 +425,8 @@ const formData = ref<{
     gold: 0,
     inventory: [],
     quickNotes: '',
+    resistances: '',
+    immunities: '',
   },
   tagIds: [],
   userFileIds: [],
@@ -494,6 +527,7 @@ watch(() => props.item, (newItem) => {
       maxHp: itemData.maxHp || 10,
       ac: itemData.ac || 10,
       speed: itemData.speed || '30 ft',
+      initiative: itemData.initiative ?? 0,
       str: itemData.str || 10,
       dex: itemData.dex || 10,
       con: itemData.con || 10,
@@ -516,6 +550,8 @@ watch(() => props.item, (newItem) => {
       gold: itemData.gold || 0,
       inventory: itemData.inventory || [],
       quickNotes: itemData.quickNotes || '',
+      resistances: itemData.resistances || '',
+      immunities: itemData.immunities || '',
     }
     
     console.log('[CharacterForm] Loaded data:', formData.value.data)

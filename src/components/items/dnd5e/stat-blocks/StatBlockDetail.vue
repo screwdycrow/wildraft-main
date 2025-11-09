@@ -52,6 +52,36 @@
       </v-col>
     </v-row>
 
+    <v-row class="mb-4">
+      <v-col cols="12" md="4">
+        <v-card class="glass-card text-center" elevation="0">
+          <v-card-text>
+            <v-icon icon="mdi-crosshairs" size="48" color="info" class="mb-2" />
+            <div class="text-h4 font-weight-bold">{{ initiativeDisplay }}</div>
+            <div class="text-overline">Initiative</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card class="glass-card" elevation="0">
+          <v-card-title class="text-subtitle-1 d-flex align-center">
+            <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
+            Resistances
+          </v-card-title>
+          <v-card-text>{{ resistancesDisplay || 'None' }}</v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card class="glass-card" elevation="0">
+          <v-card-title class="text-subtitle-1 d-flex align-center">
+            <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
+            Immunities
+          </v-card-title>
+          <v-card-text>{{ immunitiesDisplay || 'None' }}</v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Ability Scores -->
     <v-card v-if="hasAbilityScores" class="glass-card mb-4" elevation="0">
       <v-card-title>Ability Scores</v-card-title>
@@ -149,6 +179,16 @@ const props = withDefaults(defineProps<Props>(), {
 const filesStore = useFilesStore()
 
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
+
+const initiativeValue = computed(() => statBlockData.value.initiative)
+const initiativeDisplay = computed(() => {
+  const value = initiativeValue.value
+  if (value === undefined || value === null || value === '') return '—'
+  return value
+})
+
+const resistancesDisplay = computed(() => (statBlockData.value.resistances || '').trim())
+const immunitiesDisplay = computed(() => (statBlockData.value.immunities || '').trim())
 
 // Add files to store and get IDs
 const fileIds = computed(() => {

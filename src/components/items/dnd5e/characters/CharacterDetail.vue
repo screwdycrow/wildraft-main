@@ -117,6 +117,47 @@
           </v-col>
         </v-row>
 
+        <v-row class="mb-4">
+          <v-col cols="12" md="4">
+            <v-card class="glass-card text-center stat-card" elevation="0">
+              <v-card-text class="stat-card-content">
+                <v-icon icon="mdi-crosshairs" class="stat-icon" color="info" />
+                <div class="stat-value">
+                  {{ initiativeDisplay }}
+                </div>
+                <div class="stat-label">
+                  <span class="label-desktop">Initiative</span>
+                  <span class="label-mobile">INIT</span>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-card class="glass-card" elevation="0">
+              <v-card-title class="text-subtitle-2 d-flex align-center">
+                <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
+                Resistances
+              </v-card-title>
+              <v-card-text class="text-body-2">
+                <span v-if="resistancesDisplay">{{ resistancesDisplay }}</span>
+                <span v-else class="text-grey">None</span>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-card class="glass-card" elevation="0">
+              <v-card-title class="text-subtitle-2 d-flex align-center">
+                <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
+                Immunities
+              </v-card-title>
+              <v-card-text class="text-body-2">
+                <span v-if="immunitiesDisplay">{{ immunitiesDisplay }}</span>
+                <span v-else class="text-grey">None</span>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+
         <!-- Ability Scores & Saving Throws -->
         <v-card class="glass-card mb-4 abilities-card" elevation="0">
           <v-card-title class="d-flex align-center card-title-mobile">
@@ -376,7 +417,17 @@
             <div class="pdf-stat-label">Proficiency</div>
             <div class="pdf-stat-value">+{{ proficiencyBonus }}</div>
           </div>
+          <div class="pdf-stat-box">
+            <div class="pdf-stat-label">Initiative</div>
+            <div class="pdf-stat-value">{{ initiativeDisplay }}</div>
+          </div>
         </div>
+      </div>
+
+      <div class="pdf-section" v-if="showDefenseInfo">
+        <h3 class="pdf-section-title">Resistances & Immunities</h3>
+        <p><strong>Resistances:</strong> {{ resistancesDisplay || 'None' }}</p>
+        <p><strong>Immunities:</strong> {{ immunitiesDisplay || 'None' }}</p>
       </div>
 
       <!-- Ability Scores -->
@@ -601,6 +652,24 @@ const fileIds = computed(() => {
 const proficiencyBonus = computed(() =>
   calculateProficiencyBonus(characterData.value.level || 1)
 )
+
+const initiativeValue = computed(() => characterData.value.initiative)
+const initiativeDisplay = computed(() => {
+  const value = initiativeValue.value
+  if (value === undefined || value === null || value === '') return '—'
+  return value
+})
+
+const resistancesDisplay = computed(() => (characterData.value.resistances || '').trim())
+const immunitiesDisplay = computed(() => (characterData.value.immunities || '').trim())
+
+const showDefenseInfo = computed(() => {
+  const hasInitiative =
+    initiativeValue.value !== undefined &&
+    initiativeValue.value !== null &&
+    initiativeValue.value !== ''
+  return hasInitiative || resistancesDisplay.value.length > 0 || immunitiesDisplay.value.length > 0
+})
 
 const abilityModifiers = computed(() => ({
   str: calculateModifier(characterData.value.str || 10),

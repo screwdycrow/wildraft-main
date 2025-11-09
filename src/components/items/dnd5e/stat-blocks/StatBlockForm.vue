@@ -69,6 +69,36 @@
           />
         </v-col>
       </v-row>
+      
+      <v-row>
+        <v-col cols="12" md="3">
+          <v-text-field
+            v-model.number="formData.data.initiative"
+            label="Initiative"
+            type="number"
+            variant="outlined"
+            density="compact"
+          />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-text-field
+            v-model="formData.data.resistances"
+            label="Resistances"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., fire, cold"
+          />
+        </v-col>
+        <v-col cols="12" md="5">
+          <v-text-field
+            v-model="formData.data.immunities"
+            label="Immunities"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., poison, psychic"
+          />
+        </v-col>
+      </v-row>
 
       <!-- Type, Size, Alignment -->
       <v-row>
@@ -256,6 +286,7 @@ const formData = ref<{
     hp: 10,
     ac: 10,
     speed: '30 ft',
+    initiative: 0,
     str: 10,
     dex: 10,
     con: 10,
@@ -273,6 +304,8 @@ const formData = ref<{
     alignment: 'Unaligned',
     senses: '',
     languages: '',
+    immunities: '',
+    resistances: '',
     traits: [],
     actions: [],
     spells: [],
@@ -307,6 +340,7 @@ watch(() => props.item, (newItem) => {
       hp: itemData.hp || 10,
       ac: itemData.ac || 10,
       speed: itemData.speed || '30 ft',
+      initiative: itemData.initiative ?? 0,
       str: itemData.str || 10,
       dex: itemData.dex || 10,
       con: itemData.con || 10,
@@ -324,6 +358,8 @@ watch(() => props.item, (newItem) => {
       alignment: itemData.alignment || 'Unaligned',
       senses: itemData.senses || '',
       languages: itemData.languages || '',
+      immunities: itemData.immunities || '',
+      resistances: itemData.resistances || '',
       // Ensure arrays are properly initialized
       traits: itemData.traits || [],
       actions: itemData.actions || [],
