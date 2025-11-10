@@ -99,6 +99,11 @@ const routes: RouteRecordRaw[] = [
         name: 'ItemDetail',
         component: () => import('@/views/ItemDetailView.vue'),
       },
+      {
+        path: ':id/json-import',
+        name: 'LibraryJsonImport',
+        component: () => import('@/views/LibraryJsonImportView.vue'),
+      },
     ],
   },
 ]

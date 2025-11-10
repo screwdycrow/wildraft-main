@@ -8,7 +8,8 @@
       <v-expansion-panels variant="accordion">
         <v-expansion-panel v-for="(action, index) in actions" :key="index">
           <v-expansion-panel-title>
-            <div class="d-flex align-center gap-2">
+            <div class="d-flex align-center justify-space-between w-100">
+              <div class="d-flex align-center gap-2 flex-wrap">
               <strong>{{ action.name }}</strong>
               <v-chip
                 v-if="action.actionType"
@@ -17,17 +18,19 @@
               >
                 {{ getActionTypeLabel(action.actionType) }}
               </v-chip>
+                <v-chip v-if="action.range" size="x-small" variant="outlined">
+                  {{ action.range }}
+                </v-chip>
+              </div>
+              <div v-if="action.roll" class="d-flex align-center action-roll-chip">
+                <v-chip outlined size="small" color="primary" variant="outlined">
+                  <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
+                  {{ action.roll }}
+                </v-chip>
+              </div>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <div v-if="action.roll" class="mb-2">
-              <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
-              <strong>Roll:</strong> {{ action.roll }}
-            </div>
-            <div v-if="action.range" class="mb-2">
-              <v-icon icon="mdi-target" size="small" class="mr-1" />
-              <strong>Range:</strong> {{ action.range }}
-            </div>
             <div v-html="action.description || 'No description'" />
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -68,6 +71,13 @@ function getActionTypeLabel(type: string): string {
 
 <style scoped>
 /* Inherit global styles */
+.action-roll-chip {
+  min-width: 0;
+}
+
+.action-roll-chip :deep(.v-chip) {
+  white-space: nowrap;
+}
 </style>
 
 

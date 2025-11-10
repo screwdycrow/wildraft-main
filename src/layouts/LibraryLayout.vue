@@ -110,6 +110,13 @@
           :value="'library-stat-blocks'"
         />
 
+        <v-list-item
+          :to="{ name: 'LibraryJsonImport', params: { id: libraryId } }"
+          prepend-icon="mdi-import"
+          :title="!effectiveRail ? 'JSON Import' : undefined"
+          :value="'json-import'"
+        />
+
         <v-divider class="my-2" />
 
         <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
@@ -159,7 +166,8 @@
       </v-container>
     </v-main>
 
-    <!-- Global Item Dialog -->
+    <!-- Global Item Dialogs -->
+    <global-quick-item-view />
     <global-item-dialog />
   </v-app>
 </template>
@@ -173,6 +181,7 @@ import { useToast } from 'vue-toastification'
 import UserMenu from '@/components/common/UserMenu.vue'
 import QuickActions from '@/components/common/QuickActions.vue'
 import GlobalItemDialog from '@/components/items/GlobalItemDialog.vue'
+import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
 
 const { mobile } = useDisplay()
 

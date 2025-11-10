@@ -4,7 +4,7 @@
       :is="cardComponent"
       :item="item"
       v-bind="$attrs"
-      @click="$emit('view', item)"
+      @click="handleCardClick"
     />
     
     <!-- Hover Actions -->
@@ -40,6 +40,7 @@
 import { ref, computed } from 'vue'
 import type { LibraryItem } from '@/types/item.types'
 import { useItemComponents } from '@/composables/useItemComponents'
+import { useQuickItemViewStore } from '@/stores/quickItemView'
 
 interface Props {
   item: LibraryItem
@@ -56,10 +57,15 @@ const emit = defineEmits<{
 const showActions = ref(false)
 
 const { getItemComponent } = useItemComponents()
+const quickItemViewStore = useQuickItemViewStore()
 
 const cardComponent = computed(() => {
   return getItemComponent(props.item.type, 'card')
 })
+
+function handleCardClick() {
+  quickItemViewStore.open(props.item)
+}
 </script>
 
 <style scoped>

@@ -12,7 +12,7 @@
         <v-btn
           v-if="canEdit"
           icon="mdi-pencil"
-          variant="text"
+          variant="text"  
           @click="openEditDialog"
         />
         <v-btn

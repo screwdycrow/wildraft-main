@@ -6,6 +6,13 @@
         <v-icon :icon="icon" :color="iconColor" size="32" class="mr-3" />
         {{ title }}
         <v-spacer />
+        <v-btn
+          icon="mdi-code-json"
+          size="small"
+          variant="text"
+          @click="showJsonImport = true"
+          title="Import from JSON"
+        />
         <v-btn icon="mdi-close" size="small" variant="text" @click="$emit('cancel')" />
         <v-btn icon="mdi-check" size="small" variant="text" @click="handleSubmit" :loading="isLoading" />
       </v-card-title>
@@ -79,13 +86,23 @@
       </v-card-actions>
     </v-card>
   </v-form>
+
+  <!-- JSON Import Dialog -->
+  <library-item-json-import
+    v-model="showJsonImport"
+    :item-type="itemType"
+    :is-multiple-mode="false"
+    @import="(data) => handleJsonImport(data as CreateLibraryItemPayload)"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { VForm } from 'vuetify/components'
+import type { ItemType, CreateLibraryItemPayload } from '@/types/item.types'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
+import LibraryItemJsonImport from '@/components/items/LibraryItemJsonImport.vue'
 
 interface Props {
   title: string
@@ -94,6 +111,7 @@ interface Props {
   isLoading: boolean
   saveButtonText: string
   libraryId: number
+  itemType: ItemType
   fileIds: number[]
   featuredImageId: number | null
   tagIds: number[]
@@ -110,12 +128,19 @@ const emit = defineEmits<{
   'update:featuredImageId': [value: number | null]
   'update:tagIds': [value: number[]]
   'add-tag': []
+  'json-import': [data: CreateLibraryItemPayload]
 }>()
 
 const formRef = ref<VForm>()
+const showJsonImport = ref(false)
 
 async function handleSubmit() {
   emit('submit')
+}
+
+function handleJsonImport(data: CreateLibraryItemPayload) {
+  // Emit event to parent to handle the imported data
+  emit('json-import', data)
 }
 
 defineExpose({

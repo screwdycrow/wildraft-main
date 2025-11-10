@@ -12,9 +12,11 @@
     @update:featured-image-id="formData.featuredImageId = $event"
     :tag-ids="formData.tagIds"
     @update:tag-ids="formData.tagIds = $event"
+    :item-type="itemType"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"
+    @json-import="handleJsonImport"
     ref="layoutRef"
   >
     <template #tabs>
@@ -232,7 +234,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, StatBlockData } from '@/types/item.types'
+import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, StatBlockData, ItemType } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
@@ -249,6 +251,7 @@ import {
 interface Props {
   item?: LibraryItem | null
   libraryId: number
+  itemType: ItemType
 }
 
 const props = defineProps<Props>()
@@ -325,6 +328,54 @@ function handleTagCreated(tagId: number) {
   if (!formData.value.tagIds.includes(tagId)) {
     formData.value.tagIds.push(tagId)
   }
+}
+
+function handleJsonImport(importData: CreateLibraryItemPayload) {
+  // Fill the form with imported data
+  formData.value.name = importData.name
+  formData.value.description = importData.description || ''
+
+  // Handle data - could be wrapped in data property or direct
+  const itemData = importData.data || importData
+  if (typeof itemData === 'object' && itemData !== null) {
+    // Fill stat block-specific data
+    Object.assign(formData.value.data, {
+      cr: itemData.cr || '1',
+      hp: itemData.hp || 10,
+      ac: itemData.ac || 10,
+      speed: itemData.speed || '30 ft',
+      initiative: itemData.initiative ?? 0,
+      str: itemData.str || 10,
+      dex: itemData.dex || 10,
+      con: itemData.con || 10,
+      int: itemData.int || 10,
+      wis: itemData.wis || 10,
+      cha: itemData.cha || 10,
+      strSavingThrow: itemData.strSavingThrow || false,
+      dexSavingThrow: itemData.dexSavingThrow || false,
+      conSavingThrow: itemData.conSavingThrow || false,
+      intSavingThrow: itemData.intSavingThrow || false,
+      wisSavingThrow: itemData.wisSavingThrow || false,
+      chaSavingThrow: itemData.chaSavingThrow || false,
+      size: itemData.size || 'Medium',
+      type: itemData.type || 'humanoid',
+      alignment: itemData.alignment || 'Unaligned',
+      senses: itemData.senses || '',
+      languages: itemData.languages || '',
+      immunities: itemData.immunities || '',
+      resistances: itemData.resistances || '',
+      traits: itemData.traits || [],
+      actions: itemData.actions || [],
+      spells: itemData.spells || [],
+    })
+  }
+
+  // Handle attachments
+  formData.value.tagIds = importData.tagIds || []
+  formData.value.userFileIds = importData.userFileIds || []
+  formData.value.featuredImageId = importData.featuredImageId || null
+
+  console.log('[StatBlockForm] JSON import applied:', formData.value)
 }
 
 watch(() => props.item, (newItem) => {

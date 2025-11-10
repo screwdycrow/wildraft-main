@@ -1,9 +1,9 @@
 <template>
   <v-dialog
     v-model="dialogState.isOpen"
-    max-width="1400px"
     persistent
     scrollable
+    fullscreen
     @click:outside="handleCancel"
   >
     <component

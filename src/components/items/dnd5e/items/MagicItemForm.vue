@@ -12,9 +12,11 @@
     @update:featured-image-id="formData.featuredImageId = $event"
     :tag-ids="formData.tagIds"
     @update:tag-ids="formData.tagIds = $event"
+    :item-type="itemType"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"
+    @json-import="handleJsonImport"
     ref="layoutRef"
   >
     <template #content>
@@ -127,7 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, ItemData } from '@/types/item.types'
+import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, ItemData, ItemType } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
@@ -136,6 +138,7 @@ import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 interface Props {
   item?: LibraryItem | null
   libraryId: number
+  itemType: ItemType
 }
 
 const props = defineProps<Props>()
@@ -190,6 +193,35 @@ function handleTagCreated(tagId: number) {
   if (!formData.value.tagIds.includes(tagId)) {
     formData.value.tagIds.push(tagId)
   }
+}
+
+function handleJsonImport(importData: CreateLibraryItemPayload) {
+  // Fill the form with imported data
+  formData.value.name = importData.name
+  formData.value.description = importData.description || ''
+
+  // Handle data - could be wrapped in data property or direct
+  const itemData = importData.data || importData
+  if (typeof itemData === 'object' && itemData !== null) {
+    // Fill magic item-specific data
+    Object.assign(formData.value.data, {
+      rarity: itemData.rarity || 'common',
+      itemType: itemData.itemType || '',
+      attunement: itemData.attunement || false,
+      value: itemData.value || '',
+      weight: itemData.weight || undefined,
+      damage: itemData.damage || '',
+      properties: Array.isArray(itemData.properties) ? itemData.properties : [],
+      effect: itemData.effect || '',
+    })
+  }
+
+  // Handle attachments
+  formData.value.tagIds = importData.tagIds || []
+  formData.value.userFileIds = importData.userFileIds || []
+  formData.value.featuredImageId = importData.featuredImageId || null
+
+  console.log('[MagicItemForm] JSON import applied:', formData.value)
 }
 
 watch(() => props.item, (newItem) => {

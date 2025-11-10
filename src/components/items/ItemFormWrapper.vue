@@ -4,6 +4,7 @@
     v-if="formComponent"
     :item="item"
     :library-id="libraryId"
+    :item-type="itemType"
     v-bind="$attrs"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"

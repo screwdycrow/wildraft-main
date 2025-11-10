@@ -1,10 +1,10 @@
 <template>
   <v-card class="spell-card mb-3" elevation="0" variant="outlined">
     <v-card-text>
-      <div class="d-flex justify-space-between align-center mb-2">
-        <div>
-          <h4 class="text-subtitle-1 font-weight-bold">{{ spell.name }}</h4>
-          <div class="d-flex gap-1 mt-1">
+      <div class="d-flex justify-space-between align-center mb-2 spell-header">
+        <div class="spell-title">
+          <h4 class="text-subtitle-1 font-weight-bold mb-1">{{ spell.name }}</h4>
+          <div class="d-flex gap-1 flex-wrap mt-1">
             <v-chip v-if="spell.school" size="x-small" variant="outlined">
               {{ spell.school }}
             </v-chip>
@@ -16,6 +16,12 @@
               Ritual
             </v-chip>
           </div>
+        </div>
+        <div v-if="spell.roll" class="spell-roll">
+          <v-chip size="small" color="primary" variant="flat">
+            <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
+            {{ spell.roll }}
+          </v-chip>
         </div>
       </div>
       
@@ -59,6 +65,18 @@ defineProps<{
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.spell-header {
+  gap: 12px;
+}
+
+.spell-title {
+  min-width: 0;
+}
+
+.spell-roll :deep(.v-chip) {
+  white-space: nowrap;
 }
 
 .detail-item {

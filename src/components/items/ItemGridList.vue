@@ -40,11 +40,13 @@
     </div>
 
     <!-- Items Grid -->
-    <div 
-      v-else 
+    <MasonryGrid
+      v-else
       class="items-grid"
+      :columns="masonryColumns"
+      :gutter="masonryGutter"
     >
-      <div
+      <MasonryGridItem
         v-for="item in items"
         :key="item.id"
         class="grid-item"
@@ -55,8 +57,8 @@
           @edit="$emit('edit', item)"
           @delete="handleDelete(item)"
         />
-      </div>
-    </div>
+      </MasonryGridItem>
+    </MasonryGrid>
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
@@ -100,6 +102,7 @@
 import { ref, computed } from 'vue'
 import type { LibraryItem } from '@/types/item.types'
 import ItemCardWrapper from './ItemCardWrapper.vue'
+import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
 
 interface Props {
   items: LibraryItem[]
@@ -139,8 +142,22 @@ const showDeleteDialog = ref(false)
 const deletingItem = ref<LibraryItem | null>(null)
 const isDeleting = ref(false)
 
-const loadingText = computed(() => `Loading ${props.itemTypeNamePlural}...`)
 const skeletonCount = computed(() => props.skeletonCount)
+
+const masonryColumns = {
+  default: 5,
+  1920: 5,
+  1600: 4,
+  1280: 3,
+  960: 2,
+  600: 1,
+}
+
+const masonryGutter = {
+  default: '24px',
+  960: '20px',
+  600: '16px',
+}
 
 const deleteDialogTitle = computed(() => {
   return `Delete ${props.itemTypeName.charAt(0).toUpperCase() + props.itemTypeName.slice(1)}?`
@@ -172,7 +189,7 @@ async function confirmDelete() {
   } finally {
     isDeleting.value = false
   }
-}
+}   
 </script>
 
 <style scoped>
@@ -197,15 +214,13 @@ async function confirmDelete() {
   }
 }
 
-/* CSS Columns Masonry - Responsive */
 .items-grid {
-  columns: 300px auto;
-  column-gap: 1.5rem;
+  width: 100%;
+  padding-bottom: 1.5rem;
 }
 
 .grid-item {
-  break-inside: avoid;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1.5rem;
 }
 
 .loading-grid .grid-item {

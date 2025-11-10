@@ -12,9 +12,11 @@
     @update:featured-image-id="formData.featuredImageId = $event"
     :tag-ids="formData.tagIds"
     @update:tag-ids="formData.tagIds = $event"
+    :item-type="itemType"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"
+    @json-import="handleJsonImport"
     ref="layoutRef"
   >
     <template #tabs>
@@ -164,7 +166,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, NoteData } from '@/types/item.types'
+import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, NoteData, ItemType } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
@@ -173,6 +175,7 @@ import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 interface Props {
   item?: LibraryItem | null
   libraryId: number
+  itemType: ItemType
 }
 
 const props = defineProps<Props>()
@@ -253,6 +256,40 @@ function addChapter() {
 
   formData.value.data.chapters.push(newChapter)
   activeTab.value = newChapter.id!
+}
+
+function handleJsonImport(importData: CreateLibraryItemPayload) {
+  // Fill the form with imported data
+  formData.value.name = importData.name
+  formData.value.description = importData.description || ''
+
+  // Handle data - could be wrapped in data property or direct
+  const itemData = importData.data || importData
+  if (typeof itemData === 'object' && itemData !== null) {
+    // Fill note-specific data
+    const incomingChapters = (itemData.chapters || [])
+      .slice()
+      .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      .map((chapter: any, index: number) => ({
+        id: chapter.id || generateChapterId(),
+        order: index + 1,
+        title: chapter.title || `Chapter ${index + 1}`,
+        content: chapter.content || '',
+      }))
+
+    formData.value.data = {
+      content: itemData.content || '',
+      isPinned: itemData.isPinned ?? false,
+      chapters: incomingChapters,
+    }
+  }
+
+  // Handle attachments
+  formData.value.tagIds = importData.tagIds || []
+  formData.value.userFileIds = importData.userFileIds || []
+  formData.value.featuredImageId = importData.featuredImageId || null
+
+  console.log('[NoteForm] JSON import applied:', formData.value)
 }
 
 function handleTagCreated(tagId: number) {

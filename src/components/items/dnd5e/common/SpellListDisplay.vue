@@ -8,7 +8,8 @@
       <v-expansion-panels variant="accordion">
         <v-expansion-panel v-for="(spell, index) in spells" :key="index">
           <v-expansion-panel-title>
-            <div class="d-flex align-center gap-2">
+            <div class="d-flex align-center justify-space-between w-100">
+              <div class="d-flex align-center gap-2 flex-wrap">
               <strong>{{ spell.name }}</strong>
               <v-chip size="x-small" :color="getSpellLevelColor(spell.level)">
                 {{ getSpellLevelLabel(spell.level) }}
@@ -19,6 +20,13 @@
               <v-chip v-if="spell.ritual" size="x-small" color="purple" variant="outlined">
                 R
               </v-chip>
+              </div>
+              <div v-if="spell.roll" class="d-flex align-center spell-roll-chip">
+                <v-chip size="small" color="primary" variant="flat">
+                  <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
+                  {{ spell.roll }}
+                </v-chip>
+              </div>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -91,6 +99,14 @@ function getSpellLevelLabel(level: number): string {
 <style scoped>
 .spell-details {
   line-height: 1.8;
+}
+
+.spell-roll-chip {
+  min-width: 0;
+}
+
+.spell-roll-chip :deep(.v-chip) {
+  white-space: nowrap;
 }
 </style>
 

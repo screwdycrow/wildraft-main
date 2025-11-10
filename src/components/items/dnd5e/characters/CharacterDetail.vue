@@ -61,7 +61,7 @@
 
     <v-row>
       <!-- Left Column: Stats & Skills -->
-      <v-col cols="12" md="9">
+      <v-col cols="12" md="8">
         <!-- Core Stats -->
         <v-row class="mb-4 core-stats-row">
           <v-col cols="6" md="3">
@@ -276,7 +276,7 @@
       </v-col>
 
       <!-- Right Column: Tabbed Content -->
-      <v-col cols="12" md="3">
+      <v-col cols="12" md="4">
         <v-tabs v-model="activeTab" class="transparent-tabs mb-3">
           <v-tab value="combat">Combat</v-tab>
           <v-tab value="spells">Spells</v-tab>
