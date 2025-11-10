@@ -24,14 +24,15 @@
 
       <!-- Description -->
       <v-card-text class="flex-grow-1">
-        <p v-if="item.description" class="text-body-1 mb-3 description-text" :style="{ color: textColor }">
-          {{ item.description }}
-        </p>
+        <div
+          v-if="item.description"
+          class="description-wrapper mb-3"
+          :style="{ color: textColor }"
+        >
+          <div class="description-text" v-html="item.description" />
+        </div>
 
-        <!-- Content Snippet -->
-        <p class="text-body-2 content-preview" :style="{ color: textColor, opacity: 0.85 }">
-          {{ getContentPreview(noteData.content) }}
-        </p>
+
       </v-card-text>
 
       <!-- Footer -->
@@ -173,14 +174,54 @@ const getContentPreview = (content: string): string => {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.description-text {
-  font-weight: 500;
-  line-height: 1.4;
+.description-wrapper {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  scrollbar-width: thin;
+}
+
+.description-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.description-text {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.description-text :deep(p) {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.description-text :deep(h1),
+.description-text :deep(h2),
+.description-text :deep(h3),
+.description-text :deep(h4),
+.description-text :deep(h5),
+.description-text :deep(h6) {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.description-text :deep(ul),
+.description-text :deep(ol) {
+  padding-left: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.description-text :deep(li) {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
 
 .content-preview {

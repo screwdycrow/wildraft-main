@@ -41,9 +41,13 @@
         </div>
 
         <!-- Description -->
-        <p v-if="item.description" class="description-text mb-3" :style="{ color: textColor }">
-          {{ item.description }}
-        </p>
+        <div
+          v-if="item.description"
+          class="description-wrapper mb-3"
+          :style="{ color: textColor }"
+        >
+          <div class="description-text" v-html="item.description" />
+        </div>
 
         <!-- Properties -->
         <div v-if="itemData.properties && itemData.properties.length > 0" class="properties-chips">
@@ -227,14 +231,53 @@ const getRarityColor = (rarity: string) => {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-.description-text {
-  font-size: 0.9rem;
-  line-height: 1.5;
+.description-wrapper {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  scrollbar-width: thin;
+}
+
+.description-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.description-text {
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.description-text :deep(p) {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.description-text :deep(h1),
+.description-text :deep(h2),
+.description-text :deep(h3),
+.description-text :deep(h4),
+.description-text :deep(h5),
+.description-text :deep(h6) {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.description-text :deep(ul),
+.description-text :deep(ol) {
+  padding-left: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.description-text :deep(li) {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
 
 .properties-chips {
