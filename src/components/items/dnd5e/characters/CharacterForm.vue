@@ -13,6 +13,7 @@
     :tag-ids="formData.tagIds"
     @update:tag-ids="formData.tagIds = $event"
     :item-type="itemType"
+    :item="item"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"

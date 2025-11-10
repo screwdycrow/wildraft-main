@@ -13,6 +13,7 @@
     :tag-ids="formData.tagIds"
     @update:tag-ids="formData.tagIds = $event"
     :item-type="itemType"
+    :item="item"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"
@@ -33,12 +34,15 @@
                 {{ formData.name.trim() || 'Main' }}
               </v-list-item-title>
             </v-list-item>
-            <template v-for="(chapter, index) in formData.data.chapters" :key="chapter.id">
+            <template
+              v-for="(chapter, index) in formData.data.chapters || []"
+              :key="resolveChapterId(chapter, index)"
+            >
               <v-list-item
                 rounded="lg"
                 class="chapter-item"
                 :class="{
-                  'chapter-active': activeTab === chapter.id,
+                  'chapter-active': activeTab === resolveChapterId(chapter, index),
                   'chapter-drag-over': dragOverIndex === index
                 }"
                 draggable="true"
@@ -47,7 +51,7 @@
                 @dragleave="onDragLeave(index)"
                 @drop="onDrop(index)"
                 @dragend="onDragEnd"
-                @click="activeTab = chapter.id"
+                @click="activeTab = resolveChapterId(chapter, index)"
               >
            
                 <v-list-item-title>
@@ -67,7 +71,7 @@
             </template>
           </v-list>
           <div
-            v-if="formData.data.chapters.length > 0"
+            v-if="(formData.data.chapters?.length || 0) > 0"
             class="chapter-drop-zone"
             :class="{ 'chapter-drop-zone--active': dropZoneActive }"
             @dragover.prevent="onDragOverEnd"
@@ -115,13 +119,13 @@
 
         <!-- Chapter Tabs -->
         <v-window-item
-          v-for="(chapter, index) in formData.data.chapters"
-          :key="chapter.id"
-          :value="chapter.id"
+          v-for="(chapter, index) in formData.data.chapters || []"
+          :key="resolveChapterId(chapter, index)"
+          :value="resolveChapterId(chapter, index)"
         >
   
           <v-text-field
-            v-model="formData.data.chapters[index].title"
+            v-model="chapter.title"
             variant="outlined"
             density="comfortable"
             class=""
@@ -129,7 +133,7 @@
           />
 
           <tip-tap-editor
-            v-model="formData.data.chapters[index].content"
+            v-model="chapter.content"
             placeholder="Start writing this chapter..."
             min-height="400px"
           />
@@ -166,7 +170,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, NoteData, ItemType } from '@/types/item.types'
+import type {
+  LibraryItem,
+  CreateLibraryItemPayload,
+  UpdateLibraryItemPayload,
+  NoteData,
+  NoteChapter,
+  ItemType,
+} from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
@@ -229,6 +240,10 @@ function generateChapterId(): string {
     return crypto.randomUUID()
   }
   return `chapter-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function resolveChapterId(chapter: NoteChapter, index: number): string {
+  return chapter.id || `chapter-${index + 1}`
 }
 
 watch(
