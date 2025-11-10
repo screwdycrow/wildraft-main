@@ -43,9 +43,9 @@
               </h3>
               <file-attachment-manager 
                 :model-value="fileIds"
-                @update:model-value="$emit('update:fileIds', $event)"
+                @update:model-value="updateFileIds"
                 :featured-image-id="featuredImageId"
-                @update:featured-image-id="$emit('update:featuredImageId', $event)"
+                @update:featured-image-id="updateFeaturedImage"
                 :columns="3"
               />
             </div>
@@ -60,7 +60,7 @@
               </h3>
               <tag-selector
                 :model-value="tagIds"
-                @update:model-value="$emit('update:tagIds', $event)"
+                @update:model-value="updateTagIds"
                 :library-id="libraryId"
                 hint=""
                 show-add-button
@@ -92,17 +92,20 @@
     v-model="showJsonImport"
     :item-type="itemType"
     :is-multiple-mode="false"
+    :current-item="currentItem || undefined"
     @import="(data) => handleJsonImport(data as CreateLibraryItemPayload)"
   />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { VForm } from 'vuetify/components'
 import type { ItemType, CreateLibraryItemPayload } from '@/types/item.types'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
 import LibraryItemJsonImport from '@/components/items/LibraryItemJsonImport.vue'
+
+import type { LibraryItem } from '@/types/item.types'
 
 interface Props {
   title: string
@@ -115,11 +118,15 @@ interface Props {
   fileIds: number[]
   featuredImageId: number | null
   tagIds: number[]
+  item?: LibraryItem | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   iconColor: 'primary',
+  item: null,
 })
+
+const currentItem = computed(() => props.item)
 
 const emit = defineEmits<{
   submit: []
@@ -141,6 +148,18 @@ async function handleSubmit() {
 function handleJsonImport(data: CreateLibraryItemPayload) {
   // Emit event to parent to handle the imported data
   emit('json-import', data)
+}
+
+function updateFileIds(value: unknown) {
+  emit('update:fileIds', Array.isArray(value) ? value as number[] : [])
+}
+
+function updateFeaturedImage(value: unknown) {
+  emit('update:featuredImageId', (typeof value === 'number' ? value : null))
+}
+
+function updateTagIds(value: unknown) {
+  emit('update:tagIds', Array.isArray(value) ? value as number[] : [])
 }
 
 defineExpose({

@@ -16,19 +16,19 @@
       <v-card-text class="pa-0">
         <v-container fluid>
           <!-- Single Item Import Mode -->
-          <template v-if="!isMultipleMode">
+          <template v-if="!isMultipleMode && schema">
             <v-row>
               <v-col cols="12" md="4">
                 <div class="guidelines-section">
                   <h3 class="text-h6 mb-3">JSON Structure Guidelines</h3>
                   <p class="text-body-2 text-grey-lighten-1 mb-4">
-                    {{ schema.description }}
+                    {{ schema!.description }}
                   </p>
 
                   <div class="schema-fields">
                     <h4 class="text-subtitle-2 mb-2">Required Fields:</h4>
                     <v-chip
-                      v-for="(field, key) in requiredFields"
+                      v-for="(_, key) in requiredFields"
                       :key="key"
                       size="small"
                       color="primary"
@@ -45,7 +45,7 @@
                     <h4 class="text-subtitle-2 mb-3">Field Details:</h4>
                     <div class="field-list">
                       <div
-                        v-for="(description, field) in schema.schema"
+                        v-for="(description, field) in schema!.schema"
                         :key="field"
                         class="field-item"
                       >
@@ -62,7 +62,7 @@
                   <h3 class="text-h6 mb-3">Paste JSON Data</h3>
                   <v-textarea
                     v-model="jsonInput"
-                    :placeholder="`Paste your ${schema.title.toLowerCase()} JSON here...`"
+                    :placeholder="`Paste your ${schema!.title.toLowerCase()} JSON here...`"
                     rows="15"
                     variant="outlined"
                     class="json-textarea"
@@ -93,7 +93,7 @@
                       @click="loadExample"
                       prepend-icon="mdi-code-json"
                     >
-                      Load Example
+                      {{ hasCurrentItem ? 'Show Current JSON' : 'Load Example' }}
                     </v-btn>
                     <v-btn
                       variant="text"
@@ -116,15 +116,15 @@
               <v-row>
                 <v-col cols="12" md="4">
                   <div class="guidelines-section">
-                    <h3 class="text-h6 mb-3">{{ schema.title }} Import</h3>
+                    <h3 class="text-h6 mb-3">{{ schema!.title }} Import</h3>
                     <p class="text-body-2 text-grey-lighten-1 mb-4">
-                      Import multiple {{ schema.title.toLowerCase() }} items. The "type" field will be added automatically.
+                      Import multiple {{ schema!.title.toLowerCase() }} items. The "type" field will be added automatically.
                     </p>
 
                     <div class="schema-fields">
                       <h4 class="text-subtitle-2 mb-2">Required Fields per Item:</h4>
-                      <v-chip
-                        v-for="(field, key) in requiredFields"
+                    <v-chip
+                      v-for="(_, key) in requiredFields"
                         :key="key"
                         size="small"
                         color="primary"
@@ -141,7 +141,7 @@
                       <h4 class="text-subtitle-2 mb-3">Field Details:</h4>
                       <div class="field-list">
                         <div
-                          v-for="(description, field) in schema.schema"
+                        v-for="(description, field) in schema!.schema"
                           :key="field"
                           class="field-item"
                         >
@@ -155,13 +155,13 @@
 
                 <v-col cols="12" md="8">
                   <div class="import-section">
-                    <h3 class="text-h6 mb-3">Paste {{ schema.title }} JSON Array</h3>
+                    <h3 class="text-h6 mb-3">Paste {{ schema!.title }} JSON Array</h3>
                     <p class="text-caption text-grey-lighten-1 mb-3">
-                      Provide an array of {{ schema.title.toLowerCase() }} objects (without "type" field - it will be added automatically)
+                      Provide an array of {{ schema!.title.toLowerCase() }} objects (without "type" field - it will be added automatically)
                     </p>
                     <v-textarea
                       v-model="jsonInput"
-                      :placeholder="`Paste your ${schema.title.toLowerCase()} JSON array here...`"
+                      :placeholder="`Paste your ${schema!.title.toLowerCase()} JSON array here...`"
                       rows="15"
                       variant="outlined"
                       class="json-textarea"
@@ -175,7 +175,7 @@
                       class="mb-4"
                     >
                       <v-icon icon="mdi-information" class="mr-2" />
-                      Found {{ bulkItems.length }} {{ schema.title.toLowerCase() }}{{ bulkItems.length > 1 ? 's' : '' }} to import.
+                      Found {{ bulkItems.length }} {{ schema!.title.toLowerCase() }}{{ bulkItems.length > 1 ? 's' : '' }} to import.
                     </v-alert>
 
                     <div class="d-flex gap-3 flex-wrap">
@@ -305,13 +305,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { ItemType, CreateLibraryItemPayload } from '@/types/item.types'
-import { useItemComponents } from '@/composables/useItemComponents'
+import type { ItemType, CreateLibraryItemPayload, LibraryItem } from '@/types/item.types'
+import { useItemComponents, type JsonImportSchema } from '@/composables/useItemComponents'
 
 interface Props {
   modelValue: boolean
   itemType?: ItemType // For single item import
   isMultipleMode?: boolean // For bulk import
+  currentItem?: LibraryItem | null
 }
 
 interface Emits {
@@ -321,6 +322,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   isMultipleMode: false,
+  currentItem: null,
 })
 
 const emit = defineEmits<Emits>()
@@ -334,6 +336,8 @@ const parseError = ref<string[]>([])
 const parseSuccess = ref(false)
 const promptCopied = ref(false)
 
+const hasCurrentItem = computed(() => !!props.currentItem)
+
 const schema = computed(() => {
   if (!props.itemType) return null
   return getJsonImportSchema(props.itemType)
@@ -341,11 +345,8 @@ const schema = computed(() => {
 
 const requiredFields = computed(() => {
   if (!schema.value) return {}
-  return Object.fromEntries(
-    Object.entries(schema.value.schema).filter(([_, desc]) =>
-      desc.includes('(required)')
-    )
-  )
+  const schemaEntries = Object.entries(schema.value.schema as Record<string, string>)
+  return Object.fromEntries(schemaEntries.filter(([, desc]) => desc.includes('(required)')))
 })
 
 const availableItemTypes = computed(() => {
@@ -410,7 +411,12 @@ function resetState() {
 }
 
 function loadExample() {
-  if (schema.value) {
+  if (props.currentItem) {
+    jsonInput.value = formatCurrentItemJson(props.currentItem)
+    parseError.value = []
+    parseSuccess.value = false
+    validateJson()
+  } else if (schema.value) {
     jsonInput.value = schema.value.example
     validateJson()
   }
@@ -473,21 +479,22 @@ async function copyToClipboard(text: string) {
 }
 
 function generateAIPrompt(schema: JsonImportSchema): string {
-  const requiredFields = Object.entries(schema.schema)
-    .filter(([_, desc]) => desc.includes('(required)'))
+  const schemaMap = schema.schema as Record<string, string>
+  const requiredFields = Object.entries(schemaMap)
+    .filter(([, desc]) => desc.includes('(required)'))
     .map(([field]) => field)
 
-  const optionalFields = Object.entries(schema.schema)
-    .filter(([_, desc]) => !desc.includes('(required)'))
+  const optionalFields = Object.entries(schemaMap)
+    .filter(([, desc]) => !desc.includes('(required)'))
     .map(([field]) => field)
 
   return `Please generate a JSON object for a ${schema.title} with the following specifications:
 
 REQUIRED FIELDS:
-${requiredFields.map(field => `- ${field}: ${schema.schema[field]}`).join('\n')}
+${requiredFields.map(field => `- ${field}: ${schemaMap[field]}`).join('\n')}
 
 OPTIONAL FIELDS:
-${optionalFields.map(field => `- ${field}: ${schema.schema[field]}`).join('\n')}
+${optionalFields.map(field => `- ${field}: ${schemaMap[field]}`).join('\n')}
 
 INSTRUCTIONS:
 - Generate a complete, valid JSON object
@@ -501,6 +508,32 @@ EXAMPLE OUTPUT FORMAT:
 ${schema.example}
 
 Please provide only the JSON object, no additional text or explanations.`
+}
+
+function formatCurrentItemJson(item: LibraryItem): string {
+  const clone: Record<string, any> = item.data
+    ? JSON.parse(JSON.stringify(item.data))
+    : {}
+
+  clone.name = item.name
+
+  if (item.description) {
+    clone.description = item.description
+  }
+
+  if (item.tags?.length) {
+    clone.tagIds = item.tags.map(tag => tag.id)
+  }
+
+  if (item.userFiles?.length) {
+    clone.userFileIds = item.userFiles.map(file => file.id)
+  }
+
+  if (item.featuredImage) {
+    clone.featuredImageId = item.featuredImage.id
+  }
+
+  return JSON.stringify(clone, null, 2)
 }
 
 function generateBulkAIPrompt(): string {
