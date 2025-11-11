@@ -145,8 +145,9 @@ const isDeleting = ref(false)
 const skeletonCount = computed(() => props.skeletonCount)
 
 const masonryColumns = {
-  default: 5,
-  1920: 5,
+  default: 6,
+  2560: 7,
+  1920: 4,
   1600: 4,
   1280: 3,
   960: 2,

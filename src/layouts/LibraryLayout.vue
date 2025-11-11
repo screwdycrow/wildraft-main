@@ -26,6 +26,18 @@
 
       <v-btn icon="mdi-bell-outline" variant="text" />
       
+      <v-btn
+        v-if="!mobile"
+        :icon="rightDrawer ? 'mdi-page-layout-sidebar-right' : 'mdi-page-layout-body'"
+        variant="text"
+        @click="rightDrawer = !rightDrawer"
+      >
+        <v-icon />
+        <v-tooltip activator="parent" location="bottom">
+          {{ rightDrawer ? 'Hide sidebar' : 'Show sidebar' }}
+        </v-tooltip>
+      </v-btn>
+      
       <quick-actions />
       
       <user-menu />
@@ -35,7 +47,7 @@
       v-model="drawer"
       :rail="effectiveRail"
       :temporary="mobile"
-      width="250"
+      width="200"
       class="glass-sidebar"
     >
       <!-- Back to Dashboard -->
@@ -166,6 +178,17 @@
       </v-container>
     </v-main>
 
+    <!-- Right Sidebar -->
+    <v-navigation-drawer
+      v-model="rightDrawer"
+      location="right"
+      :temporary="mobile"
+      width="320"
+      class="glass-sidebar"
+    >
+      <!-- Reserved for future content -->
+    </v-navigation-drawer>
+
     <!-- Global Item Dialogs -->
     <global-quick-item-view />
     <global-item-dialog />
@@ -185,8 +208,9 @@ import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
 
 const { mobile } = useDisplay()
 
-const drawer = ref(true)
-const rail = ref(false)
+const drawer = ref(false)
+const rail = ref(true)
+const rightDrawer = ref(true)
 const route = useRoute()
 const router = useRouter()
 const libraryStore = useLibraryStore()
@@ -225,8 +249,10 @@ watch(mobile, (isMobile) => {
   if (isMobile) {
     rail.value = false
     drawer.value = false
+    rightDrawer.value = false
   } else {
     drawer.value = true
+    rightDrawer.value = true
   }
 }, { immediate: true })
 
