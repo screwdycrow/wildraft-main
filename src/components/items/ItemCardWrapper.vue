@@ -127,6 +127,8 @@ async function handleAddToCombat() {
   cursor: pointer;
 }
 
+/* Ensure wrapper maintains card background (theme-based for dark themes, dark for light themes) */
+
 .card-actions {
   position: absolute;
   top: 8px;

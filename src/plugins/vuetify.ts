@@ -17,7 +17,8 @@ const darkTheme = {
     'glass-surface': '#2d284d', // Main glass color
     'glass-border': '#FFFFFF', // Glass border color
     'card-background': '#262430', // Item card background (darker)
-     // Text color
+    'sidebar-background': 'transparent', // Sidebar background
+    'header-background': '#1A1A2E', // Header background
   },
 }
 
@@ -35,6 +36,8 @@ const lightTheme = {
     'glass-surface': '#FFFFFF', // Main glass color for light theme
     'glass-border': '#000000', // Glass border color for light theme
     'card-background': '#F5F5F5', // Item card background (slightly darker)
+    'sidebar-background': '#000000', // Sidebar background
+    'header-background': '#F0F0F0', // Header background
   },
 }
 
@@ -53,6 +56,8 @@ const darkForestTheme = {
     'glass-surface': '#0F1A1F', // Main glass color (blue-green tint)
     'glass-border': '#4CAF50', // Green border
     'card-background': '#0A1215', // Item card background (darker with blue tint)
+    'sidebar-background': '#0F1A1F', // Sidebar background
+    'header-background': '#0F1A1F', // Header background
   },
 }
 
@@ -71,6 +76,8 @@ const deepBlueTheme = {
     'glass-surface': '#1A2F42', // Main glass color
     'glass-border': '#2196F3', // Blue border
     'card-background': '#142535', // Item card background (darker)
+    'sidebar-background': 'transparent', // Sidebar background
+    'header-background': '#1A2F42', // Header background
   },
 }
 
@@ -89,6 +96,8 @@ const crimsonTheme = {
     'glass-surface': '#2A1A1A', // Main glass color
     'glass-border': '#DC143C', // Red border
     'card-background': '#201313', // Item card background (darker)
+    'sidebar-background': '#2A1A1A', // Sidebar background
+    'header-background': '#2A1A1A', // Header background
   },
 }
 
@@ -106,7 +115,9 @@ const papyrusTheme = {
     'on-surface': '#3E2723', // Dark brown text
     'glass-surface': '#FFF9E6', // Main glass color
     'glass-border': '#8D6E63', // Brown border
-    'card-background': '#F0E9D6', // Item card background (slightly darker)
+    'card-background': '#4E2723', // Item card background (slightly darker)
+    'sidebar-background': 'FFF9E6', // Sidebar background (slightly darker)
+    'header-background': '#E8DDD0', // Header background (slightly darker)
   },
 }
 
@@ -125,6 +136,8 @@ const mintTheme = {
     'glass-surface': '#F1F8F6', // Main glass color
     'glass-border': '#00897B', // Teal border
     'card-background': '#E0EDE9', // Item card background (slightly darker)
+    'sidebar-background': '#D4E8E5', // Sidebar background
+    'header-background': '#D4E8E5', // Header background
   },
 }
 
@@ -143,6 +156,8 @@ const sunsetTheme = {
     'glass-surface': '#FFF8F0', // Main glass color
     'glass-border': '#FF6F00', // Orange border
     'card-background': '#F5EBD9', // Item card background (slightly darker)
+    'sidebar-background': '#FFE8D0', // Sidebar background
+    'header-background': '#FFE8D0', // Header background
   },
 }
 
@@ -161,6 +176,8 @@ const midnightTheme = {
     'glass-surface': '#1A162F', // Main glass color
     'glass-border': '#7C4DFF', // Purple border
     'card-background': '#131025', // Item card background (darker)
+    'sidebar-background': '#2A264F', // Sidebar background
+    'header-background': '#1A162F', // Header background
   },
 }
 

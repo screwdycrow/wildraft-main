@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1 class="text-h3 font-weight-bold text-white mb-6">
+    <h1 class="text-h3 font-weight-bold mb-6" style="color: rgb(var(--v-theme-on-surface));">
       Settings
     </h1>
     <v-card class="glass-card pa-6" elevation="0">

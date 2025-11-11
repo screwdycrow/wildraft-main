@@ -27,8 +27,6 @@ const availableThemes = [
   'deepBlueTheme',
   'crimsonTheme',
   'papyrusTheme',
-  'mintTheme',
-  'sunsetTheme',
   'midnightTheme',
 ]
 

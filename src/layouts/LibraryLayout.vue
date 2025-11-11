@@ -184,6 +184,7 @@
       location="right"
       :temporary="mobile"
       width="350"
+      :color="isPapyrusTheme ? 'sidebar-background' : undefined"
       class="glass-sidebar"
     >
       <combat-encounter />
@@ -198,7 +199,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useDisplay } from 'vuetify'
+import { useDisplay, useTheme } from 'vuetify'
 import { useLibraryStore } from '@/stores/library'
 import { useToast } from 'vue-toastification'
 import UserMenu from '@/components/common/UserMenu.vue'
@@ -209,6 +210,7 @@ import CombatEncounter from '@/components/combat/CombatEncounter.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 
 const { mobile } = useDisplay()
+const theme = useTheme()
 
 const drawer = ref(false)
 const rail = ref(true)
@@ -236,6 +238,8 @@ const roleColor = computed(() => {
     default: return 'grey'
   }
 })
+
+const isPapyrusTheme = computed(() => theme.global.name.value === 'papyrusTheme')
 
 // Computed rail state - disable on mobile
 const effectiveRail = computed(() => mobile.value ? false : rail.value)

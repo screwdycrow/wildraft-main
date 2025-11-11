@@ -408,8 +408,6 @@ const themeOptions = [
   { title: 'Deep Blue', value: 'deepBlueTheme' },
   { title: 'Crimson', value: 'crimsonTheme' },
   { title: 'Papyrus', value: 'papyrusTheme' },
-  { title: 'Mint', value: 'mintTheme' },
-  { title: 'Sunset', value: 'sunsetTheme' },
   { title: 'Midnight', value: 'midnightTheme' },
 ]
 

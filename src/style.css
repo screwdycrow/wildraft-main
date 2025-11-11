@@ -91,3 +91,195 @@ button:focus-visible {
 .v-tooltip .v-overlay__content * {
   color: rgb(var(--v-theme-on-surface)) !important;
 }
+
+/* Dark themes use theme's card-background with opacity */
+.v-theme--darkTheme .character-card,
+.v-theme--darkTheme .stat-block-card,
+.v-theme--darkTheme .magic-item-card,
+.v-theme--darkTheme .note-card,
+.v-theme--darkForestTheme .character-card,
+.v-theme--darkForestTheme .stat-block-card,
+.v-theme--darkForestTheme .magic-item-card,
+.v-theme--darkForestTheme .note-card,
+.v-theme--deepBlueTheme .character-card,
+.v-theme--deepBlueTheme .stat-block-card,
+.v-theme--deepBlueTheme .magic-item-card,
+.v-theme--deepBlueTheme .note-card,
+.v-theme--crimsonTheme .character-card,
+.v-theme--crimsonTheme .stat-block-card,
+.v-theme--crimsonTheme .magic-item-card,
+.v-theme--crimsonTheme .note-card,
+.v-theme--midnightTheme .character-card,
+.v-theme--midnightTheme .stat-block-card,
+.v-theme--midnightTheme .magic-item-card,
+.v-theme--midnightTheme .note-card {
+  background-color: rgba(var(--v-theme-card-background), 0.8) !important;
+}
+
+/* Light themes use dark background */
+.v-theme--lightTheme .character-card,
+.v-theme--lightTheme .stat-block-card,
+.v-theme--lightTheme .magic-item-card,
+.v-theme--lightTheme .note-card,
+.v-theme--papyrusTheme .character-card,
+.v-theme--papyrusTheme .stat-block-card,
+.v-theme--papyrusTheme .magic-item-card,
+.v-theme--papyrusTheme .note-card,
+.v-theme--mintTheme .character-card,
+.v-theme--mintTheme .stat-block-card,
+.v-theme--mintTheme .magic-item-card,
+.v-theme--mintTheme .note-card,
+.v-theme--sunsetTheme .character-card,
+.v-theme--sunsetTheme .stat-block-card,
+.v-theme--sunsetTheme .magic-item-card,
+.v-theme--sunsetTheme .note-card {
+  background-color: var(--card-dark-background, #262430) !important;
+}
+
+/* ItemCardWrapper follows same theme rules as cards above */
+
+/* Action chips in cards should use dark mode */
+.character-card .action-chip,
+.stat-block-card .action-chip,
+.magic-item-card .action-chip,
+.note-card .action-chip,
+.item-card-wrapper .action-chip,
+.character-card .action-chip-opacity,
+.stat-block-card .action-chip-opacity,
+.magic-item-card .action-chip-opacity,
+.note-card .action-chip-opacity,
+.item-card-wrapper .action-chip-opacity {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.character-card .action-chip :deep(.v-chip),
+.stat-block-card .action-chip :deep(.v-chip),
+.magic-item-card .action-chip :deep(.v-chip),
+.note-card .action-chip :deep(.v-chip),
+.item-card-wrapper .action-chip :deep(.v-chip),
+.character-card .action-chip-opacity :deep(.v-chip),
+.stat-block-card .action-chip-opacity :deep(.v-chip),
+.magic-item-card .action-chip-opacity :deep(.v-chip),
+.note-card .action-chip-opacity :deep(.v-chip),
+.item-card-wrapper .action-chip-opacity :deep(.v-chip) {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.character-card .action-chip :deep(.v-chip__content),
+.stat-block-card .action-chip :deep(.v-chip__content),
+.magic-item-card .action-chip :deep(.v-chip__content),
+.note-card .action-chip :deep(.v-chip__content),
+.item-card-wrapper .action-chip :deep(.v-chip__content),
+.character-card .action-chip-opacity :deep(.v-chip__content),
+.stat-block-card .action-chip-opacity :deep(.v-chip__content),
+.magic-item-card .action-chip-opacity :deep(.v-chip__content),
+.note-card .action-chip-opacity :deep(.v-chip__content),
+.item-card-wrapper .action-chip-opacity :deep(.v-chip__content) {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Action chips in light themes should have white text */
+.v-theme--papyrusTheme .character-card .action-chip,
+.v-theme--papyrusTheme .stat-block-card .action-chip,
+.v-theme--papyrusTheme .magic-item-card .action-chip,
+.v-theme--papyrusTheme .note-card .action-chip,
+.v-theme--papyrusTheme .item-card-wrapper .action-chip,
+.v-theme--papyrusTheme .character-card .action-chip-opacity,
+.v-theme--papyrusTheme .stat-block-card .action-chip-opacity,
+.v-theme--papyrusTheme .magic-item-card .action-chip-opacity,
+.v-theme--papyrusTheme .note-card .action-chip-opacity,
+.v-theme--papyrusTheme .item-card-wrapper .action-chip-opacity,
+.v-theme--mintTheme .character-card .action-chip,
+.v-theme--mintTheme .stat-block-card .action-chip,
+.v-theme--mintTheme .magic-item-card .action-chip,
+.v-theme--mintTheme .note-card .action-chip,
+.v-theme--mintTheme .item-card-wrapper .action-chip,
+.v-theme--mintTheme .character-card .action-chip-opacity,
+.v-theme--mintTheme .stat-block-card .action-chip-opacity,
+.v-theme--mintTheme .magic-item-card .action-chip-opacity,
+.v-theme--mintTheme .note-card .action-chip-opacity,
+.v-theme--mintTheme .item-card-wrapper .action-chip-opacity,
+.v-theme--sunsetTheme .character-card .action-chip,
+.v-theme--sunsetTheme .stat-block-card .action-chip,
+.v-theme--sunsetTheme .magic-item-card .action-chip,
+.v-theme--sunsetTheme .note-card .action-chip,
+.v-theme--sunsetTheme .item-card-wrapper .action-chip,
+.v-theme--sunsetTheme .character-card .action-chip-opacity,
+.v-theme--sunsetTheme .stat-block-card .action-chip-opacity,
+.v-theme--sunsetTheme .magic-item-card .action-chip-opacity,
+.v-theme--sunsetTheme .note-card .action-chip-opacity,
+.v-theme--sunsetTheme .item-card-wrapper .action-chip-opacity {
+  color: #FFFFFF !important;
+}
+
+.v-theme--papyrusTheme .character-card .action-chip :deep(.v-chip__content),
+.v-theme--papyrusTheme .stat-block-card .action-chip :deep(.v-chip__content),
+.v-theme--papyrusTheme .magic-item-card .action-chip :deep(.v-chip__content),
+.v-theme--papyrusTheme .note-card .action-chip :deep(.v-chip__content),
+.v-theme--papyrusTheme .item-card-wrapper .action-chip :deep(.v-chip__content),
+.v-theme--papyrusTheme .character-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--papyrusTheme .stat-block-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--papyrusTheme .magic-item-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--papyrusTheme .note-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--papyrusTheme .item-card-wrapper .action-chip-opacity :deep(.v-chip__content),
+.v-theme--mintTheme .character-card .action-chip :deep(.v-chip__content),
+.v-theme--mintTheme .stat-block-card .action-chip :deep(.v-chip__content),
+.v-theme--mintTheme .magic-item-card .action-chip :deep(.v-chip__content),
+.v-theme--mintTheme .note-card .action-chip :deep(.v-chip__content),
+.v-theme--mintTheme .item-card-wrapper .action-chip :deep(.v-chip__content),
+.v-theme--mintTheme .character-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--mintTheme .stat-block-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--mintTheme .magic-item-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--mintTheme .note-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--mintTheme .item-card-wrapper .action-chip-opacity :deep(.v-chip__content),
+.v-theme--sunsetTheme .character-card .action-chip :deep(.v-chip__content),
+.v-theme--sunsetTheme .stat-block-card .action-chip :deep(.v-chip__content),
+.v-theme--sunsetTheme .magic-item-card .action-chip :deep(.v-chip__content),
+.v-theme--sunsetTheme .note-card .action-chip :deep(.v-chip__content),
+.v-theme--sunsetTheme .item-card-wrapper .action-chip :deep(.v-chip__content),
+.v-theme--sunsetTheme .character-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--sunsetTheme .stat-block-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--sunsetTheme .magic-item-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--sunsetTheme .note-card .action-chip-opacity :deep(.v-chip__content),
+.v-theme--sunsetTheme .item-card-wrapper .action-chip-opacity :deep(.v-chip__content) {
+  color: #FFFFFF !important;
+}
+
+/* Papyrus theme: Remove opacity from all text in cards */
+.v-theme--papyrusTheme .character-card,
+.v-theme--papyrusTheme .stat-block-card,
+.v-theme--papyrusTheme .magic-item-card,
+.v-theme--papyrusTheme .note-card {
+  opacity: 1 !important;
+}
+
+.v-theme--papyrusTheme .character-card .card-title,
+.v-theme--papyrusTheme .character-card .card-subtitle,
+.v-theme--papyrusTheme .character-card .stat-label,
+.v-theme--papyrusTheme .character-card .stat-value,
+.v-theme--papyrusTheme .character-card .ability-label,
+.v-theme--papyrusTheme .character-card .ability-value,
+.v-theme--papyrusTheme .character-card .ability-modifier,
+.v-theme--papyrusTheme .character-card .stats-row,
+.v-theme--papyrusTheme .character-card .abilities-row,
+.v-theme--papyrusTheme .stat-block-card .card-title,
+.v-theme--papyrusTheme .stat-block-card .card-subtitle,
+.v-theme--papyrusTheme .stat-block-card .stat-label,
+.v-theme--papyrusTheme .stat-block-card .stat-value,
+.v-theme--papyrusTheme .stat-block-card .ability-label,
+.v-theme--papyrusTheme .stat-block-card .ability-value,
+.v-theme--papyrusTheme .stat-block-card .ability-modifier,
+.v-theme--papyrusTheme .stat-block-card .stats-row,
+.v-theme--papyrusTheme .stat-block-card .abilities-container,
+.v-theme--papyrusTheme .magic-item-card .card-title,
+.v-theme--papyrusTheme .magic-item-card .card-subtitle,
+.v-theme--papyrusTheme .magic-item-card .property-item,
+.v-theme--papyrusTheme .magic-item-card .properties-row,
+.v-theme--papyrusTheme .magic-item-card .properties-chips,
+.v-theme--papyrusTheme .magic-item-card .description-wrapper,
+.v-theme--papyrusTheme .note-card .card-title,
+.v-theme--papyrusTheme .note-card .description-wrapper {
+  opacity: 1 !important;
+}

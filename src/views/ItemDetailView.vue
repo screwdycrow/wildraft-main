@@ -9,7 +9,7 @@
     <!-- Error State -->
     <div v-else-if="error" class="text-center py-12">
       <v-icon icon="mdi-alert-circle" size="120" color="error" class="mb-6" />
-      <h2 class="text-h4 font-weight-bold text-white mb-4">Item Not Found</h2>
+      <h2 class="text-h4 font-weight-bold mb-4" style="color: rgb(var(--v-theme-on-surface));">Item Not Found</h2>
       <p class="text-body-1 text-grey-lighten-1 mb-6">
         {{ error }}
       </p>

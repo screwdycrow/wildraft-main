@@ -5,7 +5,7 @@
       <v-col cols="12">
         <div class="d-flex align-items-center justify-space-between">
           <div>
-            <h1 class="text-h3 font-weight-bold text-white mb-2">
+            <h1 class="text-h3 font-weight-bold mb-2" style="color: rgb(var(--v-theme-on-surface));">
               Welcome, {{ authStore.user?.name || 'Adventurer' }}!
             </h1>
             <p class="text-subtitle-1 text-grey-lighten-1">
@@ -40,7 +40,7 @@
       <v-col cols="12">
         <v-card class="glass-card pa-12 text-center" elevation="0">
           <v-icon icon="mdi-book-open-variant" size="120" color="primary" class="mb-6 empty-icon float-animation" />
-          <h2 class="text-h4 font-weight-bold text-white mb-4">
+          <h2 class="text-h4 font-weight-bold mb-4" style="color: rgb(var(--v-theme-on-surface));">
             No Libraries Yet
           </h2>
           <p class="text-body-1 text-grey-lighten-1 mb-6" style="max-width: 600px; margin: 0 auto;">
@@ -63,7 +63,7 @@
     <template v-else>
       <!-- Owned Libraries -->
       <div v-if="libraryStore.ownedLibraries.length > 0" class="mb-8">
-        <h2 class="text-h5 font-weight-bold text-white mb-4 d-flex align-center">
+        <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center" style="color: rgb(var(--v-theme-on-surface));">
           <v-icon icon="mdi-crown" color="primary" class="mr-2" />
           Your Libraries
         </h2>
@@ -88,7 +88,7 @@
 
       <!-- Shared Libraries -->
       <div v-if="libraryStore.sharedLibraries.length > 0">
-        <h2 class="text-h5 font-weight-bold text-white mb-4 d-flex align-center">
+        <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center" style="color: rgb(var(--v-theme-on-surface));">
           <v-icon icon="mdi-share-variant" color="info" class="mr-2" />
           Shared With You
         </h2>

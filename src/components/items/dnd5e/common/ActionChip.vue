@@ -3,6 +3,7 @@
     :size="size"
     :variant="variant"
     :class="chipClass"
+    :style="textColor ? { color: textColor } : undefined"
   >
     <v-icon 
       :icon="actionIcon" 
@@ -48,12 +49,14 @@ interface Props {
   size?: 'x-small' | 'small' | 'default'
   variant?: 'flat' | 'tonal' | 'outlined' | 'text' | 'elevated'
   showTooltip?: boolean
+  textColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'x-small',
   variant: 'tonal',
   showTooltip: true,
+  textColor: undefined,
 })
 
 const actionIcon = computed(() => {
@@ -119,6 +122,11 @@ function getActionTypeLabel(type: string): string {
 
 .action-chip:hover {
   transform: scale(1.05);
+}
+
+/* Apply text color to chip content when textColor prop is provided */
+.action-chip :deep(.v-chip__content) {
+  color: inherit;
 }
 
 .action-tooltip {

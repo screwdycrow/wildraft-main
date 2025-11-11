@@ -119,18 +119,20 @@ defineProps<{
 }
 
 .breadcrumb-item {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgb(var(--v-theme-on-surface));
+  opacity: 0.7;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
   white-space: nowrap;
 }
 
 .breadcrumb-item:hover:not(.current) {
-  color: rgba(220, 20, 60, 1);
+  opacity: 1;
+  color: rgb(var(--v-theme-primary));
 }
 
 .breadcrumb-item.current {
-  color: rgba(255, 255, 255, 0.9);
+  opacity: 0.9;
   font-weight: 500;
 }
 
@@ -157,7 +159,7 @@ defineProps<{
 .topbar-title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: white;
+  color: rgb(var(--v-theme-on-surface));
   margin: 0;
   line-height: 1.2;
   white-space: nowrap;

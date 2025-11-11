@@ -158,7 +158,7 @@ const getRarityColor = (rarity: string) => {
   min-height: 250px;
   cursor: pointer;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  background-color: rgb(var(--v-theme-card-background)) !important;
+  background-color: rgba(var(--v-theme-card-background), 0.8) !important;
   border-radius: 16px !important;
   border: none !important;
 }

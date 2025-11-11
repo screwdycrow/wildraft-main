@@ -108,7 +108,7 @@
     <v-col cols="12">
       <v-card class="glass-card pa-12 text-center" elevation="0">
         <v-icon icon="mdi-alert-circle" size="120" color="error" class="mb-6" />
-        <h2 class="text-h4 font-weight-bold text-white mb-4">
+        <h2 class="text-h4 font-weight-bold mb-4" style="color: rgb(var(--v-theme-on-surface));">
           Library Not Found
         </h2>
         <p class="text-body-1 text-grey-lighten-1 mb-6">

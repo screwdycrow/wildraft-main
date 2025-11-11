@@ -21,7 +21,7 @@
     <div v-else-if="!isLoading && items.length === 0">
       <v-card class="glass-card pa-12 text-center" elevation="0">
         <v-icon :icon="emptyIcon" size="120" :color="emptyIconColor" class="mb-6 empty-icon float-animation" />
-        <h2 class="text-h4 font-weight-bold text-white mb-4">
+        <h2 class="text-h4 font-weight-bold mb-4" style="color: rgb(var(--v-theme-on-surface));">
           {{ emptyTitle }}
         </h2>
         <p class="text-body-1 text-grey-lighten-1 mb-6" style="max-width: 600px; margin: 0 auto;">

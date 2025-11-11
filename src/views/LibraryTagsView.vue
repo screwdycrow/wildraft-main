@@ -34,7 +34,7 @@
       <v-col cols="12">
         <v-card class="glass-card pa-12 text-center" elevation="0">
           <v-icon icon="mdi-tag-off" size="120" color="primary" class="mb-6 empty-icon float-animation" />
-          <h2 class="text-h4 font-weight-bold text-white mb-4">
+          <h2 class="text-h4 font-weight-bold mb-4" style="color: rgb(var(--v-theme-on-surface));">
             No Tags Yet
           </h2>
           <p class="text-body-1 text-grey-lighten-1 mb-6" style="max-width: 600px; margin: 0 auto;">
@@ -60,7 +60,7 @@
         :key="folderName"
         class="mb-6"
       >
-        <h2 class="text-h5 font-weight-bold text-white mb-4 d-flex align-center">
+        <h2 class="text-h5 font-weight-bold mb-4 d-flex align-center" style="color: rgb(var(--v-theme-on-surface));">
           <v-icon icon="mdi-folder" color="primary" class="mr-2" />
           {{ folderName }}
           <v-chip size="small" class="ml-2">{{ folderTags.length }}</v-chip>

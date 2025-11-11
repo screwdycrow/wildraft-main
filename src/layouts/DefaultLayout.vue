@@ -40,8 +40,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useTheme } from 'vuetify'
 import UserMenu from '@/components/common/UserMenu.vue'
 
+const theme = useTheme()
 const drawer = ref(true)
+
+const isPapyrusTheme = computed(() => theme.global.name.value === 'papyrusTheme')
 </script>

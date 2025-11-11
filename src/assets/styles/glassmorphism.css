@@ -6,6 +6,8 @@
 :root {
   --glass-surface-rgb: 26, 26, 46;
   --glass-border-rgb: 255, 255, 255;
+  --glass-sidebar-rgb: 26, 26, 46;
+  --glass-header-rgb: 26, 26, 46;
   
   /* Glass effect variables */
   --glass-opacity: 0.07;
@@ -19,6 +21,9 @@
   --illumination-size: 300px;
   --illumination-opacity: 0.25;
   --illumination-blur: 120px;
+  
+  /* Card dark background - always dark regardless of theme */
+  --card-dark-background: #262430;
 }
 
 /* Default Dark Theme */
@@ -30,6 +35,8 @@
   --glass-accent: 156, 39, 176;        /* Purple accent */
   --glass-background: 15, 15, 30;      /* Very dark blue-black */
   --glass-surface: 26, 26, 46;         /* Surface color */
+  --glass-sidebar-rgb: 26, 26, 46;    /* Sidebar background */
+  --glass-header-rgb: 26, 26, 46;     /* Header background */
   
   /* Text colors */
   --glass-text: 255, 255, 255;
@@ -46,6 +53,8 @@
   --glass-accent: 0, 191, 165;         /* Teal accent */
   --glass-background: 245, 245, 245;   /* Light gray */
   --glass-surface: 255, 255, 255;      /* White surface */
+  --glass-sidebar-rgb: 240, 240, 240;  /* Sidebar background */
+  --glass-header-rgb: 240, 240, 240;   /* Header background */
   
   /* Text colors */
   --glass-text: 0, 0, 0;
@@ -62,6 +71,8 @@
   --glass-accent: 0, 230, 118;         /* Bright green */
   --glass-background: 5, 10, 15;      /* Very dark blue-black (darker with blue tint) */
   --glass-surface: 15, 26, 31;         /* Dark blue-green surface */
+  --glass-sidebar-rgb: 15, 26, 31;    /* Sidebar background */
+  --glass-header-rgb: 15, 26, 31;     /* Header background */
   
   /* Text colors */
   --glass-text: 232, 245, 233;
@@ -78,6 +89,8 @@
   --glass-accent: 0, 229, 255;         /* Bright cyan */
   --glass-background: 10, 25, 41;      /* Very dark blue-black */
   --glass-surface: 26, 47, 66;         /* Dark blue surface */
+  --glass-sidebar-rgb: 26, 47, 66;    /* Sidebar background */
+  --glass-header-rgb: 26, 47, 66;     /* Header background */
   
   /* Text colors */
   --glass-text: 227, 242, 253;
@@ -94,6 +107,8 @@
   --glass-accent: 255, 23, 68;         /* Bright red */
   --glass-background: 26, 10, 10;      /* Very dark red-black */
   --glass-surface: 42, 26, 26;         /* Dark red surface */
+  --glass-sidebar-rgb: 42, 26, 26;    /* Sidebar background */
+  --glass-header-rgb: 42, 26, 26;     /* Header background */
   
   /* Text colors */
   --glass-text: 255, 255, 255;
@@ -110,6 +125,8 @@
   --glass-accent: 109, 76, 65;         /* Dark brown */
   --glass-background: 245, 243, 231;   /* Papyrus beige */
   --glass-surface: 255, 249, 230;      /* Cream surface */
+  --glass-sidebar-rgb: 232, 221, 208; /* Sidebar background (slightly darker) */
+  --glass-header-rgb: 232, 221, 208;  /* Header background (slightly darker) */
   
   /* Text colors */
   --glass-text: 62, 39, 35;
@@ -126,6 +143,8 @@
   --glass-accent: 0, 105, 92;          /* Dark teal */
   --glass-background: 224, 242, 241;   /* Mint background */
   --glass-surface: 241, 248, 246;      /* Light mint surface */
+  --glass-sidebar-rgb: 212, 232, 229; /* Sidebar background */
+  --glass-header-rgb: 212, 232, 229;  /* Header background */
   
   /* Text colors */
   --glass-text: 0, 77, 64;
@@ -142,6 +161,8 @@
   --glass-accent: 244, 81, 30;         /* Red-orange */
   --glass-background: 255, 243, 224;   /* Warm cream */
   --glass-surface: 255, 248, 240;      /* Light peach surface */
+  --glass-sidebar-rgb: 255, 232, 208; /* Sidebar background */
+  --glass-header-rgb: 255, 232, 208;  /* Header background */
   
   /* Text colors */
   --glass-text: 230, 81, 0;
@@ -158,6 +179,8 @@
   --glass-accent: 179, 136, 255;       /* Light purple */
   --glass-background: 13, 10, 31;      /* Very dark purple-black */
   --glass-surface: 26, 22, 47;         /* Dark purple surface */
+  --glass-sidebar-rgb: 26, 22, 47;    /* Sidebar background */
+  --glass-header-rgb: 26, 22, 47;     /* Header background */
   
   /* Text colors */
   --glass-text: 232, 228, 243;
@@ -371,6 +394,11 @@
   z-index: 1;
 }
 
+/* Papyrus Theme: Glass cards should be 0.85 transparent */
+.v-theme--papyrusTheme .glass-card {
+  background: rgba(var(--glass-surface-rgb), 0.85) !important;
+}
+
 /* Removed default hover effect - add .elevation-hover-* classes if needed */
 
 /* Glass Card Variants */
@@ -430,8 +458,11 @@
 }
 
 /* Glass Header */
-.glass-header {
-  background: rgba(var(--glass-surface-rgb), 0.1) !important;
+.glass-header,
+.glass-header .v-toolbar__content,
+.glass-header .v-toolbar__prepend,
+.glass-header .v-toolbar__append {
+  background: rgba(var(--glass-header-rgb, var(--glass-surface-rgb)), 0.3) !important;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
@@ -441,8 +472,10 @@
 }
 
 /* Glass Sidebar */
-.glass-sidebar {
-  background: rgba(var(--glass-surface-rgb), 0.1) !important;
+.glass-sidebar,
+.glass-sidebar .v-navigation-drawer__content,
+.glass-sidebar .v-list {
+  background: rgba(var(--glass-sidebar-rgb, var(--glass-surface-rgb)), 0.3) !important;
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-right: 1px solid rgba(var(--glass-border-rgb), 0.1) !important;
