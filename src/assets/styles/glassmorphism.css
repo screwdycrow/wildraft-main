@@ -55,13 +55,13 @@
 }
 
 .v-theme--darkForestTheme {
-  --glass-surface-rgb: 27, 47, 27;
+  --glass-surface-rgb: 15, 26, 31;
   --glass-border-rgb: 76, 175, 80;
   --glass-primary: 76, 175, 80;        /* Forest green */
-  --glass-secondary: 139, 195, 74;     /* Light green */
+  --glass-secondary: 92, 158, 139;     /* Teal-green (green with blue tint) */
   --glass-accent: 0, 230, 118;         /* Bright green */
-  --glass-background: 10, 31, 10;      /* Very dark green-black */
-  --glass-surface: 27, 47, 27;         /* Dark green surface */
+  --glass-background: 5, 10, 15;      /* Very dark blue-black (darker with blue tint) */
+  --glass-surface: 15, 26, 31;         /* Dark blue-green surface */
   
   /* Text colors */
   --glass-text: 232, 245, 233;

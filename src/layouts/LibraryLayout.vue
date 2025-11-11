@@ -27,9 +27,9 @@
       <v-btn icon="mdi-bell-outline" variant="text" />
       
       <v-btn
-        v-if="!mobile"
         :icon="rightDrawer ? 'mdi-page-layout-sidebar-right' : 'mdi-page-layout-body'"
         variant="text"
+        :permanent="!mobile"
         @click="rightDrawer = !rightDrawer"
       >
         <v-icon />
@@ -183,10 +183,10 @@
       v-model="rightDrawer"
       location="right"
       :temporary="mobile"
-      width="320"
+      width="350"
       class="glass-sidebar"
     >
-      <!-- Reserved for future content -->
+      <combat-encounter />
     </v-navigation-drawer>
 
     <!-- Global Item Dialogs -->
@@ -205,6 +205,8 @@ import UserMenu from '@/components/common/UserMenu.vue'
 import QuickActions from '@/components/common/QuickActions.vue'
 import GlobalItemDialog from '@/components/items/GlobalItemDialog.vue'
 import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
+import CombatEncounter from '@/components/combat/CombatEncounter.vue'
+import { useCombatEncountersStore } from '@/stores/combatEncounters'
 
 const { mobile } = useDisplay()
 
@@ -214,6 +216,7 @@ const rightDrawer = ref(true)
 const route = useRoute()
 const router = useRouter()
 const libraryStore = useLibraryStore()
+const combatEncountersStore = useCombatEncountersStore()
 const toast = useToast()
 
 const libraryId = computed(() => {
@@ -257,14 +260,27 @@ watch(mobile, (isMobile) => {
 }, { immediate: true })
 
 // Fetch library when ID changes
-watch(libraryId, async (newId) => {
+watch(libraryId, async (newId, oldId) => {
   if (newId) {
     try {
       await libraryStore.fetchLibrary(newId)
+      
+      // Fetch combat encounters for the library (non-blocking)
+      try {
+        await combatEncountersStore.fetchEncounters(newId)
+      } catch (encounterError) {
+        console.error('Failed to load combat encounters:', encounterError)
+        // Don't block library load if encounters fail
+      }
     } catch (error) {
       toast.error('Failed to load library')
       router.push({ name: 'Dashboard' })
     }
+  }
+  
+  // Clear encounters when leaving a library
+  if (oldId && !newId) {
+    combatEncountersStore.clearEncounters()
   }
 }, { immediate: true })
 
@@ -272,6 +288,14 @@ onMounted(async () => {
   if (libraryId.value) {
     try {
       await libraryStore.fetchLibrary(libraryId.value)
+      
+      // Fetch combat encounters for the library (non-blocking)
+      try {
+        await combatEncountersStore.fetchEncounters(libraryId.value)
+      } catch (encounterError) {
+        console.error('Failed to load combat encounters:', encounterError)
+        // Don't block library load if encounters fail
+      }
     } catch (error) {
       toast.error('Failed to load library')
       router.push({ name: 'Dashboard' })

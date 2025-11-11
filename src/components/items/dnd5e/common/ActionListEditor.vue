@@ -27,26 +27,36 @@
     </v-alert>
 
     <!-- Actions List -->
-    <v-expansion-panels variant="accordion" multiple>
+    <v-expansion-panels v-model="openPanel" variant="accordion">
       <v-expansion-panel
         v-for="(action, index) in actions"
         :key="index"
+        :value="index"
         class="action-item mb-2"
       >
-        <v-expansion-panel-title>
+        <v-expansion-panel-title class="action-panel-title">
           <div class="d-flex align-center justify-space-between" style="width: 100%;">
             <div class="d-flex align-center gap-2">
-              <span class="font-weight-medium">
+              <v-icon 
+                :icon="getActionTypeIcon(action.actionType)" 
+                size="small"
+                :color="getActionTypeColor(action.actionType)"
+                class="mr-1"
+              />
+              <span class="font-weight-bold text-body-1">
                 {{ action.name || `Action ${index + 1}` }}
               </span>
               <v-chip
                 v-if="action.actionType"
                 size="x-small"
                 :color="getActionTypeColor(action.actionType)"
-                variant="flat"
+                variant="tonal"
               >
                 {{ getActionTypeLabel(action.actionType) }}
               </v-chip>
+              <span v-if="action.range" class="text-caption text-grey ml-2">
+                {{ action.range }}
+              </span>
             </div>
             <v-btn
               icon="mdi-delete"
@@ -133,9 +143,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Action } from '@/types/item.types'
 
 const actions = defineModel<Action[]>({ default: () => [] })
+const openPanel = ref<number | undefined>(undefined)
 
 const actionTypes = [
   { title: 'Action', value: 'action' },
@@ -177,11 +189,36 @@ function getActionTypeLabel(type: string): string {
     default: return type
   }
 }
+
+function getActionTypeIcon(type: string): string {
+  switch (type) {
+    case 'action': return 'mdi-sword'
+    case 'bonus': return 'mdi-lightning-bolt'
+    case 'reaction': return 'mdi-shield'
+    case 'legendary': return 'mdi-star'
+    default: return 'mdi-sword-cross'
+  }
+}
 </script>
 
 <style scoped>
 .action-item {
   animation: fadeIn 0.3s ease-in;
+}
+
+.action-panel-title {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 48px;
+}
+
+.action-panel-title:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.gap-2 {
+  gap: 8px;
 }
 
 @keyframes fadeIn {

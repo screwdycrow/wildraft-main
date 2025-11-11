@@ -10,15 +10,15 @@
     
     <!-- Content -->
     <div class="card-content">
-      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor }">
-        <v-icon icon="mdi-note-text" size="small" class="mr-2" :style="{ color: textColor }" />
+      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.85 }">
+        <v-icon icon="mdi-note-text" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.85 }" />
         <span class="text-truncate font-weight-bold">{{ item.name }}</span>
         <v-spacer />
         <v-icon
           v-if="noteData.isPinned"
           icon="mdi-pin"
           size="small"
-          :style="{ color: textColor }"
+          :style="{ color: textColor, opacity: 0.85 }"
         />
       </v-card-title>
 
@@ -27,45 +27,24 @@
         <div
           v-if="item.description"
           class="description-wrapper mb-3"
-          :style="{ color: textColor }"
+          :style="{ color: textColor, opacity: 0.85 }"
         >
           <div class="description-text" v-html="item.description" />
         </div>
-
-
       </v-card-text>
 
-      <!-- Footer -->
-      <v-card-actions class="card-footer">
-        <!-- Tags -->
-        <div v-if="item.tags && item.tags.length > 0" class="tags-container">
-          <v-chip
-            v-for="tag in item.tags.slice(0, 3)"
-            :key="tag.id"
-            :color="tag.color"
-            size="x-small"
-            class="mr-1"
-          >
-            {{ tag.name }}
-          </v-chip>
-          <v-chip
-            v-if="item.tags.length > 3"
-            size="x-small"
-            variant="tonal"
-            :style="{ color: textColor }"
-          >
-            +{{ item.tags.length - 3 }}
-          </v-chip>
-        </div>
-
-        <v-spacer />
-
-        <!-- File count -->
-        <div v-if="item.userFiles && item.userFiles.length > 0" class="file-count" :style="{ color: textColor }">
-          <v-icon icon="mdi-paperclip" size="small" class="mr-1" />
-          <span class="text-caption">{{ item.userFiles.length }}</span>
-        </div>
-      </v-card-actions>
+      <!-- Tags (Absolute Positioned) -->
+      <div v-if="item.tags && item.tags.length > 0" class="tags-absolute">
+        <v-chip
+          v-for="tag in item.tags"
+          :key="tag.id"
+          :color="tag.color"
+          size="x-small"
+          class="tag-chip"
+        >
+          {{ tag.name }}
+        </v-chip>
+      </div>
     </div>
   </v-card>
 </template>
@@ -132,7 +111,7 @@ const getContentPreview = (content: string): string => {
 .note-card {
   position: relative;
   overflow: hidden;
-  height: 300px;
+  min-height: 200px;
   cursor: pointer;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   background-color: rgba(var(--v-theme-card-background)) !important;
@@ -165,7 +144,7 @@ const getContentPreview = (content: string): string => {
 .card-content {
   position: relative;
   z-index: 1;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -178,23 +157,33 @@ const getContentPreview = (content: string): string => {
   max-height: 180px;
   overflow-y: auto;
   padding-right: 4px;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
   scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  opacity: 0.7;
 }
 
 .description-wrapper::-webkit-scrollbar {
-  width: 4px;
+  width: 2px;
+}
+
+.description-wrapper::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .description-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 999px;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .description-text {
   font-size: 0.75rem;
-  line-height: 1.35;
-  font-weight: 500;
+  line-height: 1.6;
+  opacity:0.8;
+  font-weight: 400;
 }
 
 .description-text :deep(p) {
@@ -233,20 +222,20 @@ const getContentPreview = (content: string): string => {
   overflow: hidden;
 }
 
-.card-footer {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
+.tags-absolute {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 2;
 }
 
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.file-count {
-  display: flex;
-  align-items: center;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+.tag-chip {
+  font-size: 0.6rem !important;
+  height: 16px !important;
+  padding: 0 4px !important;
 }
 </style>

@@ -49,23 +49,9 @@
           >
             <div class="counter-header d-flex align-center justify-space-between">
               <div class="d-flex align-center">
-                <v-icon
-                  v-if="counter.icon"
-                  :icon="counter.icon"
-                  size="small"
-                  class="mr-1"
-                  :color="counter.color || 'purple'"
-                />
+            
                 <span class="text-caption text-grey">{{ counter.name }}</span>
               </div>
-              <v-chip
-                v-if="counter.min !== undefined"
-                size="x-small"
-                color="grey"
-                variant="tonal"
-              >
-                Min {{ counter.min }}
-              </v-chip>
             </div>
             <div class="counter-value text-h6 font-weight-bold">
               {{ counter.value }}

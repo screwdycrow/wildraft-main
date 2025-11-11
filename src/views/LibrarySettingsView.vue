@@ -68,6 +68,36 @@
       </v-col>
     </v-row>
 
+    <!-- Theme Selection -->
+    <v-row class="mb-6">
+      <v-col cols="12">
+        <v-card class="glass-card" elevation="0">
+          <v-card-title class="text-h5 font-weight-bold pa-6 d-flex align-center">
+            <v-icon icon="mdi-palette" color="primary" class="mr-3" />
+            Theme
+          </v-card-title>
+          <v-card-text class="px-6 pb-2">
+            <p class="text-body-1 mb-4">
+              Choose your preferred color theme for the application.
+            </p>
+            <v-select
+              v-model="selectedTheme"
+              label="Select Theme"
+              variant="outlined"
+              :items="themeOptions"
+              item-title="title"
+              item-value="value"
+              prepend-inner-icon="mdi-palette"
+              @update:model-value="changeTheme"
+            />
+            <v-alert type="info" variant="tonal" density="compact" class="mt-4">
+              The theme will be applied globally across the entire application.
+            </v-alert>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Members Section (Owner only) -->
     <v-row v-if="isOwner">
       <v-col cols="12">
@@ -328,6 +358,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useTheme } from 'vuetify'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
@@ -338,6 +369,7 @@ import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 
 const router = useRouter()
 const route = useRoute()
+const theme = useTheme()
 const libraryStore = useLibraryStore()
 const authStore = useAuthStore()
 const toast = useToast()
@@ -369,6 +401,20 @@ const roleOptions = [
   { title: 'Viewer', value: 'VIEWER' },
 ]
 
+const themeOptions = [
+  { title: 'Dark (Default)', value: 'darkTheme' },
+  { title: 'Light', value: 'lightTheme' },
+  { title: 'Dark Forest', value: 'darkForestTheme' },
+  { title: 'Deep Blue', value: 'deepBlueTheme' },
+  { title: 'Crimson', value: 'crimsonTheme' },
+  { title: 'Papyrus', value: 'papyrusTheme' },
+  { title: 'Mint', value: 'mintTheme' },
+  { title: 'Sunset', value: 'sunsetTheme' },
+  { title: 'Midnight', value: 'midnightTheme' },
+]
+
+const selectedTheme = ref<string>(theme.global.name.value || 'darkTheme')
+
 const emailRules = [
   (v: string) => !!v || 'Email is required',
   (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid',
@@ -398,6 +444,13 @@ function getRoleColor(role: string) {
     case 'VIEWER': return 'info'
     default: return 'grey'
   }
+}
+
+function changeTheme(themeName: string) {
+  theme.global.name.value = themeName
+  // Save to localStorage for persistence
+  localStorage.setItem('vuetify-theme', themeName)
+  toast.success(`Theme changed to ${themeOptions.find(t => t.value === themeName)?.title || themeName}`)
 }
 
 async function loadLibraryAccess() {
@@ -554,6 +607,15 @@ watch([() => libraryId.value, () => libraryStore.currentLibrary], async ([newId,
 }, { immediate: true })
 
 onMounted(async () => {
+  // Load saved theme from localStorage
+  const savedTheme = localStorage.getItem('vuetify-theme')
+  if (savedTheme && themeOptions.some(t => t.value === savedTheme)) {
+    theme.global.name.value = savedTheme
+    selectedTheme.value = savedTheme
+  } else {
+    selectedTheme.value = theme.global.name.value || 'darkTheme'
+  }
+
   // Ensure library is loaded
   if (libraryId.value && (!libraryStore.currentLibrary || libraryStore.currentLibrary.id !== libraryId.value)) {
     try {

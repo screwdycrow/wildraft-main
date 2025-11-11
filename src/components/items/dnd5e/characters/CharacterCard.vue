@@ -10,18 +10,18 @@
     
     <!-- Content -->
     <div class="card-content">
-      <v-card-title class="card-title pb-1" :style="{ color: textColor }">
+      <v-card-title class="card-title pb-1" :style="{ color: textColor, opacity: 0.85 }">
         <span class="text-h6 font-weight-bold">{{ item.name }}</span>
       </v-card-title>
 
-      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
+      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.7 }">
         {{ characterData.race }} {{ characterData.class }}
         <span v-if="characterData.subclass">({{ characterData.subclass }})</span>
         (CR: {{ characterData.level || 1 }})
       </v-card-subtitle>
 
       <!-- Stats Row -->
-      <div class="stats-row mb-2">
+      <div class="stats-row mb-2" :style="{ opacity: 0.85 }">
         <div class="stat-item">
           <div class="stat-label" :style="{ color: textColor }">AC</div>
           <div class="stat-value" :style="{ color: textColor }">{{ characterData.ac || '10' }}</div>
@@ -37,7 +37,7 @@
       </div>
 
       <!-- Ability Scores -->
-      <div class="abilities-row mb-3">
+      <div class="abilities-row mb-3" :style="{ opacity: 0.85 }">
         <div v-for="ability in abilities" :key="ability.key" class="ability-item">
           <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
           <div class="ability-value" :style="{ color: textColor }">
@@ -51,21 +51,26 @@
 
       <!-- Actions/Features (if any) -->
       <div v-if="characterData.actions && characterData.actions.length > 0" class="features-list">
-        <div
-          v-for="action in characterData.actions.slice(0, 3)"
-          :key="action.name"
-          class="feature-chip"
-          :style="{ color: textColor, borderColor: textColor }"
+        <action-chip
+          v-for="(action, index) in characterData.actions"
+          :key="index"
+          :action="action"
+          size="small"
+          class="action-chip-opacity"
+        />
+      </div>
+
+      <!-- Tags (Absolute Positioned) -->
+      <div v-if="item.tags && item.tags.length > 0" class="tags-absolute">
+        <v-chip
+          v-for="tag in item.tags"
+          :key="tag.id"
+          :color="tag.color"
+          size="x-small"
+          class="tag-chip"
         >
-          {{ action.name }}
-        </div>
-        <div
-          v-if="characterData.actions.length > 3"
-          class="feature-chip"
-          :style="{ color: textColor, borderColor: textColor }"
-        >
-          +{{ characterData.actions.length - 3 }}
-        </div>
+          {{ tag.name }}
+        </v-chip>
       </div>
     </div>
   </v-card>
@@ -75,6 +80,7 @@
 import { computed, ref, watch } from 'vue'
 import type { LibraryItem, CharacterData } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
+import ActionChip from '../common/ActionChip.vue'
 
 interface Props {
   item: LibraryItem
@@ -146,7 +152,7 @@ function getAbilityModifier(key: string): string {
 .character-card {
   position: relative;
   overflow: hidden;
-  height: 380px;
+  min-height: 300px;
   cursor: pointer;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   background-color: rgb(var(--v-theme-card-background)) !important;
@@ -180,7 +186,7 @@ function getAbilityModifier(key: string): string {
   position: relative;
   z-index: 1;
   padding: 16px;
-  height: 100%;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -206,31 +212,31 @@ function getAbilityModifier(key: string): string {
 .stat-label {
   font-size: 0.7rem;
   font-weight: 500;
-  opacity: 0.8;
+  opacity: 0.7;
   text-transform: uppercase;
   letter-spacing: 1px;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .stat-value {
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.2;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  opacity: 0.7;
 }
 
 .abilities-row {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
 }
 
 .ability-item {
   text-align: center;
   padding: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
 }
 
 .ability-label {
@@ -238,38 +244,70 @@ function getAbilityModifier(key: string): string {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  opacity: 0.9;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  opacity: 0.7;
 }
 
 .ability-value {
   font-size: 1.1rem;
   font-weight: bold;
   line-height: 1;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+  opacity: 0.7;
 }
 
 .ability-modifier {
   font-size: 0.7rem;
-  opacity: 0.8;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  opacity: 0.7;
 }
 
 .features-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   margin-top: auto;
+  max-height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  padding-right: 2px;
 }
 
-.feature-chip {
-  font-size: 0.7rem;
-  padding: 2px 8px;
-  border: 1px solid;
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-  white-space: nowrap;
+.features-list::-webkit-scrollbar {
+  width: 1px;
+}
+
+.features-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.features-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.features-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.action-chip-opacity {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.tags-absolute {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 2;
+}
+
+.tag-chip {
+  font-size: 0.6rem !important;
+  height: 16px !important;
+  padding: 0 4px !important;
 }
 </style>

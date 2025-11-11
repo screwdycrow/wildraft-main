@@ -77,3 +77,17 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Global Tooltip Styling - Ensure all tooltips use theme text color */
+.v-tooltip > .v-overlay__content,
+.v-tooltip .v-overlay__content,
+.v-overlay__content .v-tooltip__content,
+.v-tooltip__content {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* Ensure tooltip text elements use theme color */
+.v-tooltip__content *,
+.v-tooltip .v-overlay__content * {
+  color: rgb(var(--v-theme-on-surface)) !important;
+}

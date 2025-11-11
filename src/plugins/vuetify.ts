@@ -38,21 +38,21 @@ const lightTheme = {
   },
 }
 
-// Dark Forest - Nature inspired dark theme
+// Dark Forest - Nature inspired dark theme with blue tints
 const darkForestTheme = {
   dark: true,
   colors: {
     primary: '#4CAF50', // Forest green
-    secondary: '#8BC34A', // Light green
+    secondary: '#5C9E8B', // Teal-green (green with blue tint)
     accent: '#00E676', // Bright green accent
-    background: '#0A1F0A', // Very dark green-black
-    surface: '#1B2F1B', // Dark green surface
-    'surface-variant': '#2A3F2A', // Green surface variant
-    'surface-bright': '#1B2F1B', // Bright surface
+    background: '#050A0F', // Very dark blue-black (darker with blue tint)
+    surface: '#0F1A1F', // Dark blue-green surface
+    'surface-variant': '#1A252A', // Blue-green surface variant
+    'surface-bright': '#0F1A1F', // Bright surface
     'on-surface': '#E8F5E9', // Light green text
-    'glass-surface': '#1B2F1B', // Main glass color
+    'glass-surface': '#0F1A1F', // Main glass color (blue-green tint)
     'glass-border': '#4CAF50', // Green border
-    'card-background': '#142316', // Item card background (darker)
+    'card-background': '#0A1215', // Item card background (darker with blue tint)
   },
 }
 

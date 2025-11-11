@@ -9,12 +9,36 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useTheme } from 'vuetify'
 import FileManager from '@/components/files/FileManager.vue'
 import GlobalMediaViewer from '@/components/files/GlobalMediaViewer.vue'
 import { useFileManager } from '@/composables/useFileManager'
 
 // Main app component - routing handled by vue-router
 const { isFileManagerOpen } = useFileManager()
+const theme = useTheme()
+
+// Available themes
+const availableThemes = [
+  'darkTheme',
+  'lightTheme',
+  'darkForestTheme',
+  'deepBlueTheme',
+  'crimsonTheme',
+  'papyrusTheme',
+  'mintTheme',
+  'sunsetTheme',
+  'midnightTheme',
+]
+
+// Load saved theme on app start
+onMounted(() => {
+  const savedTheme = localStorage.getItem('vuetify-theme')
+  if (savedTheme && availableThemes.includes(savedTheme)) {
+    theme.global.name.value = savedTheme
+  }
+})
 </script>
 
 <style>
