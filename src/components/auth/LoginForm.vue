@@ -136,11 +136,7 @@ function handleGoogleLogin() {
 </script>
 
 <style scoped>
-.glass-card {
-  background: rgba(26, 26, 46, 0.7) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
+/* Use global glass-card styles from theme */
 </style>
 
 

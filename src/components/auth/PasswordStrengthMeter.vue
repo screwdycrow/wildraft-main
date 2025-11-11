@@ -27,7 +27,7 @@
             size="small"
           />
         </template>
-        <v-list-item-title class="text-caption">
+        <v-list-item-title class="text-caption" :style="{ color: 'rgb(var(--v-theme-on-surface))' }">
           {{ requirement.text }}
         </v-list-item-title>
       </v-list-item>

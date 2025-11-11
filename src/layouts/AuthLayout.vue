@@ -8,10 +8,10 @@
               <div class="logo-container">
                 <v-icon icon="mdi-shield-sword" size="64" color="primary" class="mb-4" />
               </div>
-              <h1 class="text-h3 font-weight-bold text-white mb-2 glow-text">
+              <h1 class="text-h3 font-weight-bold mb-2 glow-text" :style="{ color: 'rgb(var(--v-theme-on-surface))' }">
                 Wildraft
               </h1>
-              <p class="text-subtitle-1 text-grey-lighten-1">
+              <p class="text-subtitle-1" :style="{ color: 'rgb(var(--v-theme-on-surface))', opacity: 0.7 }">
                 D&D Content Management System
               </p>
             </div>
@@ -30,9 +30,9 @@
   overflow: hidden;
 }
 
-/* Use the gradient-background-animated class from global styles */
+/* Use theme background colors */
 .auth-background {
-  background: linear-gradient(135deg, #0F0F1E 0%, #1A1A2E 50%, #16213E 100%);
+  background: rgb(var(--v-theme-background)) !important;
 }
 
 .auth-background::before {
@@ -42,7 +42,7 @@
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(220, 20, 60, 0.1) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--glass-primary, 154, 102, 227), 0.1) 0%, transparent 70%);
   animation: pulse 8s ease-in-out infinite;
 }
 
@@ -53,7 +53,7 @@
   right: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle, rgba(156, 39, 176, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--glass-accent, 156, 39, 176), 0.08) 0%, transparent 70%);
   animation: pulse 10s ease-in-out infinite reverse;
 }
 

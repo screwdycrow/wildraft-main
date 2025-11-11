@@ -19,14 +19,15 @@ defineEmits<{
 
 <style scoped>
 .google-btn {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--glass-border-rgb), 0.2) !important;
+  background: rgba(var(--glass-surface-rgb), 0.05) !important;
   backdrop-filter: blur(10px);
+  color: rgb(var(--v-theme-on-surface)) !important;
 }
 
 .google-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--glass-surface-rgb), 0.1) !important;
+  border-color: rgba(var(--glass-border-rgb), 0.3) !important;
 }
 </style>
 
