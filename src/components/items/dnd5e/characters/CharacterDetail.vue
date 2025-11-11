@@ -286,6 +286,11 @@
         <v-window v-model="activeTab" class="transparent-window">
           <!-- Combat Tab -->
           <v-window-item value="combat" class="transparent-window-item">
+            <custom-counters-display
+              :counters="characterData.customCounters"
+              :editable="props.canEdit"
+              @update:counters="updateCustomCounters"
+            />
             <trait-list-display :traits="characterData.traits" />
             <action-list-display :actions="characterData.actions" />
           </v-window-item>
@@ -591,7 +596,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { LibraryItem } from '@/types/item.types'
+import type { LibraryItem, CustomCounter } from '@/types/item.types'
 import type { CharacterData } from '@/types/item.DND_5E.types'
 import { ABILITIES, ABILITY_LABELS, DND5E_SKILLS } from '@/constants/dnd5e'
 import {
@@ -608,6 +613,7 @@ import TraitListDisplay from '../common/TraitListDisplay.vue'
 import ActionListDisplay from '../common/ActionListDisplay.vue'
 import SpellListDisplay from '../common/SpellListDisplay.vue'
 import SpellSlotsDisplay from '../common/SpellSlotsDisplay.vue'
+import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import InventoryItemList from '../common/InventoryItemList.vue'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import AmountEditor from '@/components/common/AmountEditor.vue'
@@ -793,6 +799,21 @@ async function updateSpellSlots(slots: any[]) {
   } catch (error: any) {
     console.error('Failed to update spell slots:', error)
     toast.error('Failed to save spell slots')
+  }
+}
+
+async function updateCustomCounters(counters: CustomCounter[]) {
+  const updatedData = { ...characterData.value, customCounters: counters }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Custom counters updated!')
+  } catch (error: any) {
+    console.error('Failed to update custom counters:', error)
+    toast.error('Failed to save custom counters')
   }
 }
 

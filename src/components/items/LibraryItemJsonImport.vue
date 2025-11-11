@@ -361,7 +361,16 @@ const bulkItems = computed(() => {
   try {
     const parsed = JSON.parse(jsonInput.value)
     if (Array.isArray(parsed)) {
-      return parsed.filter(item => item && typeof item === 'object' && item.name && item.type)
+      const isTypeSpecific = props.itemType && schema.value
+      return parsed.filter(item => {
+        if (!item || typeof item !== 'object' || !item.name) {
+          return false
+        }
+        if (isTypeSpecific) {
+          return true
+        }
+        return !!item.type && typeof item.type === 'string'
+      })
     }
   } catch {
     // Invalid JSON

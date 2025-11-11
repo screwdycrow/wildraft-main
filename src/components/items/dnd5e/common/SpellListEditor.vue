@@ -136,6 +136,27 @@
             </v-col>
             <v-col cols="12" md="4">
               <v-text-field
+                v-model="spell.toHit"
+                label="To Hit / Bonus"
+                variant="outlined"
+                density="compact"
+                placeholder="+7"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="spell.dc"
+                label="Save DC"
+                variant="outlined"
+                density="compact"
+                placeholder="16 (DEX)"
+              />
+            </v-col>
+          </v-row>
+
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
                 v-model="spell.duration"
                 label="Duration"
                 variant="outlined"
@@ -143,7 +164,7 @@
                 placeholder="Instantaneous"
               />
             </v-col>
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="6">
               <div class="d-flex gap-3 align-center" style="height: 100%;">
                 <v-checkbox
                   v-model="spell.concentration"
@@ -226,6 +247,8 @@ function addSpell() {
   spells.value.push({
     name: '',
     level: 0,
+    toHit: '',
+    dc: '',
     description: '',
   })
 }

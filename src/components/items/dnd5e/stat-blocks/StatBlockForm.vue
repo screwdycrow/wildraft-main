@@ -189,6 +189,17 @@
           />
         </v-col>
       </v-row>
+
+      <v-divider class="my-6" />
+
+      <h3 class="text-h6 mb-4">Custom Counters</h3>
+      <p class="text-caption text-grey-lighten-1 mb-2">
+        Track recharge abilities, legendary actions, or other limited resources with custom counters.
+      </p>
+      <custom-counters-display
+        :counters="formData.data.customCounters"
+        @update:counters="formData.data.customCounters = $event"
+      />
         </v-window-item>
 
         <!-- Traits Tab -->
@@ -244,6 +255,7 @@ import TraitListEditor from '../common/TraitListEditor.vue'
 import ActionListEditor from '../common/ActionListEditor.vue'
 import SpellListEditor from '../common/SpellListEditor.vue'
 import AbilityScoresEditor from '../common/AbilityScoresEditor.vue'
+import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import { DND5E_SIZES, DND5E_ALIGNMENTS } from '@/constants/dnd5e'
 import {
   calculateStatBlockProficiencyBonus,
@@ -313,6 +325,7 @@ const formData = ref<{
     traits: [],
     actions: [],
     spells: [],
+    customCounters: [],
   },
   tagIds: [],
   userFileIds: [],
@@ -368,6 +381,8 @@ function handleJsonImport(importData: CreateLibraryItemPayload) {
       traits: itemData.traits || [],
       actions: itemData.actions || [],
       spells: itemData.spells || [],
+      customCounters: itemData.customCounters || [],
+      customCounters: itemData.customCounters || [],
     })
   }
 

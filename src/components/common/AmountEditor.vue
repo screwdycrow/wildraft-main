@@ -79,6 +79,9 @@
             <span v-if="showMax && previewAmount > maxAmount" class="text-error ml-2">
               (Exceeds max!)
             </span>
+            <span v-if="previewAmount < minAmountComputed" class="text-error ml-2">
+              (Below min!)
+            </span>
           </div>
         </v-alert>
       </v-card-text>
@@ -108,6 +111,7 @@ interface Props {
   modelValue: boolean
   currentAmount: number
   maxAmount?: number
+  minAmount?: number
   label?: string
   title?: string
   icon?: string
@@ -123,6 +127,7 @@ const props = withDefaults(defineProps<Props>(), {
   iconColor: 'primary',
   presets: () => [10, 5, 1, -1, -5, -10],
   showMax: false,
+  minAmount: 0,
 })
 
 const emit = defineEmits<{
@@ -137,6 +142,7 @@ const isOpen = computed({
 
 const operationType = ref<'add' | 'subtract' | 'set'>('add')
 const manualAmount = ref<number | null>(null)
+const minAmountComputed = computed(() => props.minAmount ?? 0)
 
 const previewAmount = computed(() => {
   if (!manualAmount.value) return props.currentAmount
@@ -154,23 +160,23 @@ const previewAmount = computed(() => {
 })
 
 function adjustAmount(amount: number) {
-  const newAmount = Math.max(0, props.currentAmount + amount)
-  if (props.showMax && props.maxAmount) {
-    emit('update:amount', Math.min(newAmount, props.maxAmount))
-  } else {
-    emit('update:amount', newAmount)
+  const minAmount = minAmountComputed.value
+  let newAmount = Math.max(minAmount, props.currentAmount + amount)
+  if (props.showMax && typeof props.maxAmount === 'number') {
+    newAmount = Math.min(newAmount, props.maxAmount)
   }
+  emit('update:amount', newAmount)
 }
 
 function applyManual() {
   if (manualAmount.value === null) return
   
-  const newAmount = Math.max(0, previewAmount.value)
-  if (props.showMax && props.maxAmount) {
-    emit('update:amount', Math.min(newAmount, props.maxAmount))
-  } else {
-    emit('update:amount', newAmount)
+  const minAmount = minAmountComputed.value
+  let newAmount = Math.max(minAmount, previewAmount.value)
+  if (props.showMax && typeof props.maxAmount === 'number') {
+    newAmount = Math.min(newAmount, props.maxAmount)
   }
+  emit('update:amount', newAmount)
   
   manualAmount.value = null
   close()

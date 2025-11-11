@@ -5,6 +5,8 @@ export interface Action {
   actionType: 'action' | 'bonus' | 'reaction' | 'legendary'
   roll?: string
   range?: string
+  toHit?: string
+  dc?: string
   description: string
 }
 
@@ -21,6 +23,8 @@ export interface Spell {
   range?: string
   components?: string
   roll?: string
+  toHit?: string
+  dc?: string
   duration?: string
   description: string
   concentration?: boolean
@@ -31,6 +35,17 @@ export interface SpellSlot {
   level: number // 1-9
   max: number
   remaining: number
+}
+
+export interface CustomCounter {
+  id?: string
+  name: string
+  value: number
+  min?: number
+  max?: number
+  icon?: string
+  color?: string
+  description?: string
 }
 
 export interface Proficiency {
@@ -84,6 +99,7 @@ export interface StatBlockData {
   traits?: Trait[]
   spells?: Spell[]
   spellSlots?: SpellSlot[]
+  customCounters?: CustomCounter[]
   [key: string]: any
 }
 
@@ -104,6 +120,7 @@ export interface CharacterData extends Omit<StatBlockData, 'cr'> {
   proficiencies?: Proficiency[]
   skills?: Skill[]
   spellSlots?: SpellSlot[] // Spell slots with current/max
+  customCounters?: CustomCounter[]
   [key: string]: any
 }
 

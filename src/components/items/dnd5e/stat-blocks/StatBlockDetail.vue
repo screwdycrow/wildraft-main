@@ -117,6 +117,11 @@
 
       <!-- Right Column -->
       <v-col cols="12" md="3">
+        <custom-counters-display
+          :counters="statBlockData.customCounters"
+          :editable="false"
+        />
+
         <v-card class="glass-card mb-4" elevation="0">
           <v-card-title class="text-subtitle-2 d-flex align-center">
             <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
@@ -191,6 +196,7 @@ import TraitListDisplay from '../common/TraitListDisplay.vue'
 import ActionListDisplay from '../common/ActionListDisplay.vue'
 import SpellListDisplay from '../common/SpellListDisplay.vue'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
+import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 
 interface Props {
   item: LibraryItem

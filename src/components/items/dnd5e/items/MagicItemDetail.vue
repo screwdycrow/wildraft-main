@@ -1,267 +1,142 @@
 <template>
   <div class="magic-item-detail">
-    <!-- Hero Header -->
-    <v-card class="glass-card hero-card mb-6" elevation="0">
-      <div class="hero-background" :style="heroBackgroundStyle"></div>
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
-        <div class="hero-header">
-          <v-icon icon="mdi-treasure-chest" class="hero-icon" />
-          <div class="hero-title">
-            <h1 class="item-name text-truncate">
-              {{ item.name }}
-            </h1>
-            <div class="item-meta">
+    <v-row class="content-row" dense>
+
+
+      <v-col cols="12" md="8">
+        <div class="item-card glass-card">
+      
+
+          <div class="item-card__body">
+            <header class="item-card__header">
+              <div class="item-card__title">
+                <h1 class="item-name">{{ item.name }}</h1>
+                <p class="item-meta">
+                  <span v-if="itemData.itemType">{{ itemData.itemType }}</span>
+                  <span v-if="itemData.category"> · {{ itemData.category }}</span>
+                  <span v-if="itemData.subtype"> · {{ itemData.subtype }}</span>
+                </p>
+              </div>
               <v-chip
                 size="small"
-                class="mr-2 text-uppercase rarity-chip"
+                class="rarity-chip"
                 :color="getRarityColor(itemData.rarity)"
               >
                 {{ itemData.rarity || 'Unknown' }}
               </v-chip>
-              <span v-if="itemData.itemType" class="meta-pill">
-                {{ itemData.itemType }}
+            </header>
+
+            <p
+              v-if="itemData.attunement || itemData.requiresAttunement"
+              class="item-card__attunement"
+            >
+              Requires Attunement
+              <span v-if="typeof itemData.attunement === 'string'">
+                · {{ itemData.attunement }}
               </span>
-              <span v-if="itemData.attunement" class="meta-pill attunement">
-                Requires Attunement
+              <span v-else-if="itemData.requiresAttunement">
+                · {{ itemData.requiresAttunement }}
               </span>
+            </p>
+
+            <div class="stat-grid">
+              <div
+                v-for="stat in statGrid"
+                :key="stat.label"
+                class="stat-grid__cell"
+              >
+                <span class="stat-grid__label">{{ stat.label }}</span>
+                <span class="stat-grid__value">{{ stat.value }}</span>
+              </div>
             </div>
+
+            <section
+              v-if="activationText"
+              class="item-card__section"
+            >
+              <h2 class="section-heading">Activation</h2>
+              <p class="section-text">{{ activationText }}</p>
+            </section>
+
+            <section v-if="item.description" class="item-card__section">
+              <h2 class="section-heading">Description</h2>
+              <div class="rich-text" v-html="item.description" />
+            </section>
+
+            <section v-if="itemData.effect" class="item-card__section">
+              <h2 class="section-heading">Effect</h2>
+              <div class="rich-text" v-html="itemData.effect" />
+            </section>
+
+            <section
+              v-if="itemData.properties && itemData.properties.length"
+              class="item-card__section"
+            >
+              <h2 class="section-heading">Properties</h2>
+              <ul class="pill-list">
+                <li v-for="prop in itemData.properties" :key="prop">
+                  {{ prop }}
+                </li>
+              </ul>
+            </section>
+
+            <section
+              v-if="itemData.additionalEffects && itemData.additionalEffects.length"
+              class="item-card__section"
+            >
+              <h2 class="section-heading">Additional Effects</h2>
+              <div
+                v-for="(effect, index) in itemData.additionalEffects"
+                :key="`additional-effect-${index}`"
+                class="item-card__callout"
+              >
+                <strong>{{ effect.name }}</strong>
+                <span v-if="effect.type" class="item-card__callout-badge">
+                  {{ effect.type }}
+                </span>
+                <div
+                  v-if="effect.description"
+                  class="rich-text mt-2"
+                  v-html="effect.description"
+                />
+              </div>
+            </section>
+
+            <section v-if="item.tags && item.tags.length" class="item-card__section">
+              <h2 class="section-heading">Tags</h2>
+              <ul class="pill-list pill-list--tags">
+                <li v-for="tag in item.tags" :key="tag.id">{{ tag.name }}</li>
+              </ul>
+            </section>
           </div>
         </div>
-        <div v-if="item.description" class="hero-description">
-          <div class="description-surface" v-html="item.description" />
-        </div>
-      </div>
-    </v-card>
-
-    <!-- At-a-Glance Stats -->
-    <v-row v-if="highlightStats.length" class="stats-row mb-6">
-      <v-col
-        v-for="stat in highlightStats"
-        :key="stat.label"
-        cols="12"
-        sm="4"
-        md="3"
-      >
-        <v-card class="glass-card stat-card text-center" elevation="0">
-          <v-card-text class="py-6">
-            <v-icon :icon="stat.icon" class="mb-3 stat-icon" :color="stat.color" />
-            <div class="stat-value">
-              {{ stat.value }}
-            </div>
-            <div class="stat-label text-uppercase">
-              {{ stat.label }}
-            </div>
-          </v-card-text>
-        </v-card>
       </v-col>
-    </v-row>
-
-    <v-row class="details-grid" dense>
-      <v-col cols="12" md="7">
-        <v-card
-          v-if="itemData.effect || (itemData.activation && itemData.activation.type)"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-sparkles" class="mr-2" color="purple" />
-            Magical Effect
-          </v-card-title>
-          <v-card-text class="rich-text" v-if="itemData.effect">
-            <div v-html="itemData.effect" />
-          </v-card-text>
-          <v-divider v-if="itemData.effect && itemData.activation && itemData.activation.type" class="my-2" />
-          <v-card-text
-            v-if="itemData.activation && itemData.activation.type"
-            class="activation-details"
+      <v-col cols="12" md="4">
+        <aside class="attachments-panel glass-card">
+          <h3 class="attachments-panel__title">Attachments</h3>
+          <attached-files-grid
+            :file-ids="fileIds"
+            :featured-image-id="item.featuredImage?.id"
+            :columns="1"
+            :read-only="true"
+            class="attachments-panel__grid"
+          />
+          <file-attachment-manager
+            v-if="canEdit"
+            :attached-files="item.userFiles"
+            :library-id="item.libraryId"
+            :item-id="item.id"
+            :can-edit="canEdit"
+            class="attachments-panel__manager"
+          />
+          <p
+            v-if="fileIds.length === 0 && (!canEdit || !item.userFiles?.length)"
+            class="attachments-panel__empty"
           >
-            <v-icon icon="mdi-play-circle" size="small" class="mr-1" />
-            <span>
-              Activation:
-              <strong>{{ formatActivation(itemData.activation) }}</strong>
-            </span>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="itemData.additionalEffects && itemData.additionalEffects.length"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-auto-fix" class="mr-2" color="secondary" />
-            Additional Effects
-          </v-card-title>
-          <v-card-text>
-            <div
-              v-for="(effect, index) in itemData.additionalEffects"
-              :key="`additional-effect-${index}`"
-              class="additional-effect"
-            >
-              <div class="effect-header">
-                <span class="effect-name">{{ effect.name }}</span>
-                <v-chip
-                  v-if="effect.type"
-                  size="x-small"
-                  class="ml-2"
-                  color="primary"
-                  variant="tonal"
-                >
-                  {{ effect.type }}
-                </v-chip>
-              </div>
-              <div v-if="effect.description" class="rich-text mt-2" v-html="effect.description" />
-            </div>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="itemData.properties && itemData.properties.length"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-format-list-bulleted" class="mr-2" />
-            Properties
-          </v-card-title>
-          <v-card-text>
-            <v-chip
-              v-for="(prop, index) in itemData.properties"
-              :key="`property-${index}`"
-              class="mr-2 mb-2 property-chip"
-              variant="tonal"
-              color="primary"
-            >
-              {{ prop }}
-            </v-chip>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="itemData.charges || itemData.recharge"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-battery-charging" class="mr-2" color="info" />
-            Charges & Recharge
-          </v-card-title>
-          <v-card-text>
-            <div v-if="itemData.charges" class="info-line">
-              <v-icon icon="mdi-battery" size="small" class="mr-2" />
-              <span>
-                Charges:
-                <strong>{{ itemData.charges }}</strong>
-              </span>
-            </div>
-            <div v-if="itemData.recharge" class="info-line">
-              <v-icon icon="mdi-refresh" size="small" class="mr-2" />
-              <span v-html="itemData.recharge" />
-            </div>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="item.tags && item.tags.length"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-tag-multiple" class="mr-2" />
-            Tags
-          </v-card-title>
-          <v-card-text>
-            <v-chip
-              v-for="tag in item.tags"
-              :key="tag.id"
-              :color="tag.color"
-              class="mr-2 mb-2 tag-chip"
-            >
-              <v-icon icon="mdi-tag" size="small" class="mr-1" />
-              {{ tag.name }}
-            </v-chip>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="5">
-        <v-card class="glass-card section-card mb-4" elevation="0">
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-information-outline" class="mr-2" />
-            Item Details
-          </v-card-title>
-          <v-card-text class="details-list">
-            <div
-              v-for="detail in detailList"
-              :key="detail.label"
-              class="detail-row"
-            >
-              <span class="detail-label">{{ detail.label }}</span>
-              <span class="detail-value">{{ detail.value }}</span>
-            </div>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="itemData.bonuses && itemData.bonuses.length"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-plus-circle-multiple" class="mr-2" color="success" />
-            Bonuses
-          </v-card-title>
-          <v-card-text>
-            <div
-              v-for="(bonus, index) in itemData.bonuses"
-              :key="`bonus-${index}`"
-              class="info-line"
-            >
-              <v-icon icon="mdi-plus-circle" size="small" class="mr-2" color="success" />
-              <span>{{ formatBonus(bonus) }}</span>
-            </div>
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-if="item.userFiles && item.userFiles.length"
-          class="glass-card section-card mb-4"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-paperclip" class="mr-2" />
-            Attached Files
-          </v-card-title>
-          <v-card-text>
-            <file-attachment-manager
-              :attached-files="item.userFiles"
-              :library-id="item.libraryId"
-              :item-id="item.id"
-              :can-edit="canEdit"
-            />
-          </v-card-text>
-        </v-card>
-
-        <v-card
-          v-else
-          class="glass-card section-card"
-          elevation="0"
-        >
-          <v-card-title class="section-title">
-            <v-icon icon="mdi-paperclip" class="mr-2" />
-            Attachments
-          </v-card-title>
-          <v-card-text>
-            <file-attachment-manager
-              :attached-files="item.userFiles"
-              :library-id="item.libraryId"
-              :item-id="item.id"
-              :can-edit="canEdit"
-            />
-          </v-card-text>
-        </v-card>
-      </v-col>
+            No files attached.
+          </p>
+        </aside>
+      </v-col>  
     </v-row>
   </div>
 </template>
@@ -271,6 +146,7 @@ import { computed, ref, watch } from 'vue'
 import type { LibraryItem, ItemData } from '@/types/item.types'
 import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
 import { useFilesStore } from '@/stores/files'
+import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 
 interface Activation {
   type?: string
@@ -288,163 +164,81 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const filesStore = useFilesStore()
-
 const itemData = computed<ItemData>(() => props.item.data as ItemData)
 
 const featuredImageUrl = ref('')
-
 watch(
   () => props.item.featuredImage,
   async (featuredImage) => {
-    if (featuredImage) {
-      try {
-        featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
-      } catch (error) {
-        console.error('Failed to load featured image:', error)
-        featuredImageUrl.value = ''
-      }
-    } else {
+    if (!featuredImage) {
+      featuredImageUrl.value = ''
+      return
+    }
+
+    try {
+      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
+    } catch (error) {
+      console.error('Failed to load featured image:', error)
       featuredImageUrl.value = ''
     }
   },
   { immediate: true }
 )
 
-const heroBackgroundStyle = computed(() => {
-  if (featuredImageUrl.value) {
-    return {
-      backgroundImage: `url(${featuredImageUrl.value})`,
-    }
-  }
-  return {
-    background:
-      'linear-gradient(135deg, rgba(243, 156, 18, 0.35), rgba(230, 126, 34, 0.45))',
-  }
+const statGrid = computed(() => {
+  const data: Record<string, any> = itemData.value || {}
+  return [
+    { label: 'Bonus', value: asDisplay(data.bonus) },
+    { label: 'Charges', value: asDisplay(data.charges) },
+    { label: 'Save / DC', value: asDisplay(data.saveDc || data.dc || data.save?.dc) },
+    { label: 'Damage', value: asDisplay(data.damage) },
+    { label: 'Weight', value: asDisplay(data.weight, 'lb') },
+    { label: 'Worth', value: asDisplay(data.value) },
+  ]
 })
 
-const highlightStats = computed(() => {
-  const stats: Array<{ label: string; value: string; icon: string; color?: string }> = []
-  const data = itemData.value
+const activationText = computed(() =>
+  itemData.value?.activation ? formatActivation(itemData.value.activation) : ''
+)
 
-  if (!data) {
-    return stats
+const fileIds = computed(() => {
+  if (props.item.userFiles && props.item.userFiles.length > 0) {
+    filesStore.addFiles(props.item.userFiles)
+    return props.item.userFiles.map((file) => file.id)
   }
-
-  if (data.value) {
-    stats.push({
-      label: 'Value',
-      value: String(data.value),
-      icon: 'mdi-gold',
-      color: 'warning',
-    })
-  }
-
-  if (data.weight || data.weight === 0) {
-    stats.push({
-      label: 'Weight',
-      value: `${data.weight} lb`,
-      icon: 'mdi-weight',
-      color: 'info',
-    })
-  }
-
-  if (data.damage) {
-    stats.push({
-      label: 'Damage',
-      value: String(data.damage),
-      icon: 'mdi-sword',
-      color: 'error',
-    })
-  }
-
-  if (data.ac) {
-    stats.push({
-      label: 'Armor Class',
-      value: String(data.ac),
-      icon: 'mdi-shield',
-      color: 'primary',
-    })
-  }
-
-  return stats
+  return []
 })
 
-const detailList = computed(() => {
-  const details: Array<{ label: string; value: string }> = []
-  const data = itemData.value
-
-  if (!data) {
-    return details
+function asDisplay(value: unknown, suffix?: string) {
+  if (value === null || value === undefined || value === '') {
+    return '—'
   }
 
-  if (data.itemType) {
-    details.push({
-      label: 'Item Type',
-      value: data.itemType,
-    })
+  if (typeof value === 'number') {
+    return suffix ? `${value} ${suffix}` : String(value)
   }
 
-  if (data.rarity) {
-    details.push({
-      label: 'Rarity',
-      value: data.rarity,
-    })
+  if (typeof value === 'string') {
+    return suffix ? `${value} ${suffix}` : value
   }
 
-  if (data.attunement) {
-    details.push({
-      label: 'Attunement',
-      value: typeof data.attunement === 'string' ? data.attunement : 'Required',
-    })
+  if (Array.isArray(value)) {
+    return value.length ? value.join(', ') : '—'
   }
 
-  if (data.category) {
-    details.push({
-      label: 'Category',
-      value: data.category,
-    })
-  }
+  return String(value)
+}
 
-  if (data.subtype) {
-    details.push({
-      label: 'Subtype',
-      value: data.subtype,
-    })
-  }
-
-  if (data.requiresAttunement) {
-    details.push({
-      label: 'Requires Attunement By',
-      value: data.requiresAttunement,
-    })
-  }
-
-  if (data.source) {
-    details.push({
-      label: 'Source',
-      value: data.source,
-    })
-  }
-
-  if (data.notes) {
-    details.push({
-      label: 'Notes',
-      value: data.notes,
-    })
-  }
-
-  return details
-})
-
-const formatActivation = (activation: Activation) => {
+function formatActivation(activation: Activation) {
   const parts: string[] = []
+  if (!activation) return ''
 
   if (activation.type) {
     parts.push(activation.type)
   }
 
   if (activation.cost) {
-    parts.push(`${activation.cost}`)
+    parts.push(String(activation.cost))
   }
 
   if (activation.unit) {
@@ -454,31 +248,7 @@ const formatActivation = (activation: Activation) => {
   return parts.join(' ')
 }
 
-const formatBonus = (bonus: unknown) => {
-  if (bonus === null || bonus === undefined) {
-    return ''
-  }
-
-  if (typeof bonus === 'string') {
-    return bonus
-  }
-
-  if (typeof bonus === 'number') {
-    return bonus >= 0 ? `+${bonus}` : String(bonus)
-  }
-
-  if (typeof bonus === 'object') {
-    try {
-      return JSON.stringify(bonus)
-    } catch (error) {
-      console.warn('Unable to stringify bonus object', error)
-    }
-  }
-
-  return String(bonus)
-}
-
-const getRarityColor = (rarity: string) => {
+function getRarityColor(rarity: string) {
   const colors: Record<string, string> = {
     common: 'grey',
     uncommon: 'green',
@@ -496,182 +266,133 @@ const getRarityColor = (rarity: string) => {
   width: 100%;
 }
 
-.hero-card {
-  position: relative;
+.content-row {
+  margin-top: 8px;
+}
+
+.glass-card {
+  background: rgba(25, 26, 33, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.item-card {
   overflow: hidden;
-  min-height: 240px;
-  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
-.hero-background {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: saturate(1.1);
-  transform: scale(1.05);
+.item-card__image :deep(img) {
+  object-fit: cover;
 }
 
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.75),
-    rgba(20, 20, 20, 0.75)
-  );
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  padding: 32px;
+.item-card__body {
+  padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.hero-header {
+.item-card__header {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
 }
 
-.hero-icon {
-  font-size: 48px;
-  color: #f39c12;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.hero-title {
+.item-card__title {
   flex: 1;
-  min-width: 0;
 }
 
 .item-name {
-  font-size: 2.5rem;
+  font-size: 1.8rem;
   font-weight: 700;
+  letter-spacing: 0.03em;
   margin: 0;
-  letter-spacing: 0.02em;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 .item-meta {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.rarity-chip {
-  font-weight: 600;
-  letter-spacing: 0.08em;
-}
-
-.meta-pill {
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border-radius: 999px;
-  font-size: 0.8125rem;
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
   letter-spacing: 0.04em;
 }
 
-.meta-pill.attunement {
-  border: 1px solid rgba(186, 104, 200, 0.5);
-  background: rgba(186, 104, 200, 0.15);
+.rarity-chip {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
 }
 
-.hero-description {
-  background: rgba(0, 0, 0, 0.45);
-  border-radius: 16px;
-  padding: 20px;
-  max-height: 220px;
-  overflow-y: auto;
-  backdrop-filter: blur(6px);
-}
-
-.hero-description::-webkit-scrollbar {
-  width: 6px;
-}
-
-.hero-description::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-}
-
-.description-surface :deep(*) {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.description-surface :deep(p) {
-  margin-bottom: 0.75rem;
-  line-height: 1.6;
-}
-
-.description-surface :deep(h1),
-.description-surface :deep(h2),
-.description-surface :deep(h3) {
-  font-size: 1rem;
-  margin: 0.75rem 0 0.25rem;
-}
-
-.description-surface :deep(ul),
-.description-surface :deep(ol) {
-  padding-left: 1.25rem;
-}
-
-.stats-row {
-  margin-left: -6px !important;
-  margin-right: -6px !important;
-}
-
-.stats-row > .v-col {
-  padding-left: 6px !important;
-  padding-right: 6px !important;
-}
-
-.stat-card {
-  min-height: 160px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  border-radius: 18px;
-}
-
-.stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-}
-
-.stat-icon {
-  font-size: 36px;
-}
-
-.stat-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  letter-spacing: 0.3em;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-}
-
-.section-card {
-  border-radius: 18px;
-}
-
-.section-title {
-  font-weight: 700;
+.item-card__attunement {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
   letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-grid__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stat-grid__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.stat-grid__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.item-card__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-heading {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.section-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .rich-text :deep(p) {
   margin-bottom: 0.75rem;
-  line-height: 1.65;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .rich-text :deep(p:last-child) {
@@ -688,130 +409,102 @@ const getRarityColor = (rarity: string) => {
   margin-bottom: 0.4rem;
 }
 
-.additional-effect + .additional-effect {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  margin-top: 16px;
-  padding-top: 16px;
-}
-
-.effect-header {
+.pill-list {
+  list-style: none;
+  padding: 0;
+  margin: -4px;
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pill-list li {
+  margin: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.activation-details {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-  gap: 6px;
+.pill-list--tags li {
+  border-color: rgba(82, 75, 229, 0.35);
+  background: rgba(82, 75, 229, 0.18);
+  color: #a7a3ff;
 }
 
-.property-chip {
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
-.tag-chip {
-  font-weight: 600;
-}
-
-.details-list {
+.item-card__callout {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.95rem;
-}
-
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.detail-value {
-  font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), 0.9);
-  text-align: right;
-}
-
-.info-line {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 8px 0;
-  color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
-.info-line + .info-line {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+.item-card__callout-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.attachments-panel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+
+.attachments-panel__title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0 0 12px;
+}
+
+.attachments-panel__grid {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.attachments-panel__manager {
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.attachments-panel__empty {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  margin: 0;
 }
 
 @media (max-width: 959px) {
-  .hero-content {
-    padding: 24px;
+  .item-card__body {
+    padding: 20px;
   }
 
-  .hero-icon {
-    font-size: 36px;
-  }
-
-  .item-name {
-    font-size: 1.75rem;
-  }
-
-  .hero-description {
-    max-height: 180px;
-  }
-
-  .stat-card {
-    min-height: 140px;
-  }
-}
-
-@media (max-width: 599px) {
-  .hero-card {
-    border-radius: 18px;
-  }
-
-  .hero-header {
+  .item-card__header {
     flex-direction: column;
-    gap: 12px;
+    align-items: flex-start;
   }
 
-  .hero-icon {
-    align-self: flex-start;
+  .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
-  .item-meta {
-    gap: 6px;
-  }
-
-  .hero-description {
-    max-height: 160px;
-    padding: 16px;
-  }
-
-  .stat-card {
-    min-height: 120px;
+  .attachments-panel {
+    margin-top: 16px;
   }
 }
 </style>

@@ -72,6 +72,7 @@ export type {
   Trait,
   Spell,
   SpellSlot,
+  CustomCounter,
   Proficiency,
   Skill,
   InventoryItem,

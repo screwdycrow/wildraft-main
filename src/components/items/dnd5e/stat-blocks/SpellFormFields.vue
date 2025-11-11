@@ -44,13 +44,31 @@
         placeholder="e.g., Touch, 60 feet"
       />
     </v-col>
-    <v-col cols="12" md="6">
+    <v-col cols="12" md="4">
       <v-text-field
         v-model="spell.components"
         label="Components (optional)"
         variant="outlined"
         density="comfortable"
         placeholder="e.g., V, S, M (a pinch of dust)"
+      />
+    </v-col>
+    <v-col cols="12" md="4">
+      <v-text-field
+        v-model="spell.toHit"
+        label="To Hit / Bonus (optional)"
+        variant="outlined"
+        density="comfortable"
+        placeholder="+7"
+      />
+    </v-col>
+    <v-col cols="12" md="4">
+      <v-text-field
+        v-model="spell.dc"
+        label="Save DC (optional)"
+        variant="outlined"
+        density="comfortable"
+        placeholder="15 (DEX)"
       />
     </v-col>
     <v-col cols="12" md="6">

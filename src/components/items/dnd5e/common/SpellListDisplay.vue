@@ -20,6 +20,22 @@
               <v-chip v-if="spell.ritual" size="x-small" color="purple" variant="outlined">
                 R
               </v-chip>
+              <v-chip
+                v-if="spell.toHit"
+                size="x-small"
+                color="primary"
+                variant="outlined"
+              >
+                {{ spell.toHit }}
+              </v-chip>
+              <v-chip
+                v-if="spell.dc"
+                size="x-small"
+                color="secondary"
+                variant="outlined"
+              >
+                DC {{ spell.dc }}
+              </v-chip>
               </div>
               <div v-if="spell.roll" class="d-flex align-center spell-roll-chip">
                 <v-chip size="small" color="primary" variant="flat">
@@ -45,6 +61,12 @@
               </div>
               <div v-if="spell.duration" class="mb-1">
                 <strong>Duration:</strong> {{ spell.duration }}
+              </div>
+              <div v-if="spell.toHit" class="mb-1">
+                <strong>To Hit / Bonus:</strong> {{ spell.toHit }}
+              </div>
+              <div v-if="spell.dc" class="mb-1">
+                <strong>Save DC:</strong> {{ spell.dc }}
               </div>
               <div v-if="spell.roll" class="mb-1">
                 <strong>Roll:</strong> {{ spell.roll }}

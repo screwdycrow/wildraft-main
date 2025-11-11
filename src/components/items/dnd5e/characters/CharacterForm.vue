@@ -206,6 +206,17 @@
 
       <v-divider class="my-6" />
 
+      <h3 class="text-h6 mb-4">Custom Counters</h3>
+      <p class="text-caption text-grey-lighten-1 mb-2">
+        Track class features, resources, charges, or other custom values. Configure min/max values and optional icons.
+      </p>
+      <custom-counters-display
+        :counters="formData.data.customCounters"
+        @update:counters="formData.data.customCounters = $event"
+      />
+
+      <v-divider class="my-6" />
+
       <!-- Ability Scores, Saving Throws, and Skills Side by Side -->
       <h3 class="text-h6 mb-4">Stats & Skills</h3>
       
@@ -347,6 +358,7 @@ import TraitListEditor from '../common/TraitListEditor.vue'
 import ActionListEditor from '../common/ActionListEditor.vue'
 import SpellListEditor from '../common/SpellListEditor.vue'
 import SpellSlotsDisplay from '../common/SpellSlotsDisplay.vue'
+import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import AbilityScoresEditor from '../common/AbilityScoresEditor.vue'
 import InventoryItemList from '../common/InventoryItemList.vue'
 import {
@@ -431,6 +443,7 @@ const formData = ref<{
     quickNotes: '',
     resistances: '',
     immunities: '',
+    customCounters: [],
   },
   tagIds: [],
   userFileIds: [],
@@ -556,6 +569,7 @@ function handleJsonImport(importData: CreateLibraryItemPayload) {
       quickNotes: itemData.quickNotes || '',
       resistances: itemData.resistances || '',
       immunities: itemData.immunities || '',
+      customCounters: itemData.customCounters || [],
     })
   }
 
@@ -618,6 +632,7 @@ watch(() => props.item, (newItem) => {
       quickNotes: itemData.quickNotes || '',
       resistances: itemData.resistances || '',
       immunities: itemData.immunities || '',
+      customCounters: itemData.customCounters || [],
     }
     
     console.log('[CharacterForm] Loaded data:', formData.value.data)

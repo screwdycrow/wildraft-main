@@ -7,6 +7,12 @@
           <v-chip v-if="action.range" size="small" variant="outlined">
             {{ action.range }}
           </v-chip>
+          <v-chip v-if="action.toHit" size="small" color="primary" variant="outlined">
+            {{ action.toHit }}
+          </v-chip>
+          <v-chip v-if="action.dc" size="small" color="secondary" variant="outlined">
+            DC {{ action.dc }}
+          </v-chip>
         </div>
         <v-chip v-if="action.roll" size="small" color="primary" variant="flat">
           <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />

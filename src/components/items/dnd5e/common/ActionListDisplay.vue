@@ -18,9 +18,25 @@
               >
                 {{ getActionTypeLabel(action.actionType) }}
               </v-chip>
-                <v-chip v-if="action.range" size="x-small" variant="outlined">
-                  {{ action.range }}
-                </v-chip>
+              <v-chip v-if="action.range" size="x-small" variant="outlined">
+                {{ action.range }}
+              </v-chip>
+              <v-chip
+                v-if="action.toHit"
+                size="x-small"
+                color="primary"
+                variant="outlined"
+              >
+                {{ action.toHit }}
+              </v-chip>
+              <v-chip
+                v-if="action.dc"
+                size="x-small"
+                color="secondary"
+                variant="outlined"
+              >
+                DC {{ action.dc }}
+              </v-chip>
               </div>
               <div v-if="action.roll" class="d-flex align-center action-roll-chip">
                 <v-chip outlined size="small" color="primary" variant="outlined">
@@ -31,6 +47,18 @@
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
+            <div class="action-meta">
+              <div v-if="action.toHit" class="mb-1">
+                <strong>To Hit / Bonus:</strong> {{ action.toHit }}
+              </div>
+              <div v-if="action.dc" class="mb-1">
+                <strong>Save DC:</strong> {{ action.dc }}
+              </div>
+              <div v-if="action.roll" class="mb-1">
+                <strong>Roll:</strong> {{ action.roll }}
+              </div>
+            </div>
+            <v-divider v-if="(action.toHit || action.dc || action.roll) && action.description" class="my-2" />
             <div v-html="action.description || 'No description'" />
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -39,16 +67,17 @@
   </v-card>
 </template>
 
-<script setup lang="ts">
-import type { Action } from '@/types/item.types'
+<script setup>
+const props = defineProps({
+  actions: {
+    type: Array,
+    default: () => [],
+  },
+})
 
-interface Props {
-  actions?: Action[]
-}
+const actions = props.actions
 
-defineProps<Props>()
-
-function getActionTypeColor(type: string): string {
+const getActionTypeColor = (type) => {
   switch (type) {
     case 'action': return 'primary'
     case 'bonus': return 'success'
@@ -58,7 +87,7 @@ function getActionTypeColor(type: string): string {
   }
 }
 
-function getActionTypeLabel(type: string): string {
+const getActionTypeLabel = (type) => {
   switch (type) {
     case 'action': return 'Action'
     case 'bonus': return 'Bonus'

@@ -154,6 +154,8 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
       actions: 'array (optional) - Combat actions',
       'actions[].name': 'string - Action name',
       'actions[].actionType': 'string - Type: action, bonus, reaction, legendary',
+      'actions[].toHit': 'string (optional) - Attack bonus or to-hit value',
+      'actions[].dc': 'string (optional) - Saving throw DC',
       'actions[].roll': 'string (optional) - Attack/damage roll',
       'actions[].range': 'string (optional) - Attack range',
       'actions[].description': 'string - Action description',
@@ -162,6 +164,14 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
       'spellSlots[].level': 'number (1-9) - Spell level',
       'spellSlots[].max': 'number - Maximum slots',
       'spellSlots[].remaining': 'number - Remaining slots',
+      customCounters: 'array (optional) - Custom counters for tracking resources',
+      'customCounters[].name': 'string - Counter name',
+      'customCounters[].value': 'number - Current value',
+      'customCounters[].min': 'number (optional) - Minimum value',
+      'customCounters[].max': 'number (optional) - Maximum value',
+      'customCounters[].icon': 'string (optional) - Material Design Icon name (mdi-*)',
+      'customCounters[].color': 'string (optional) - Hex or theme color name',
+      'customCounters[].description': 'string (optional) - Helper text',
       spells: 'array (optional) - Known spells',
       'spells[].name': 'string - Spell name',
       'spells[].level': 'number (0-9) - Spell level (0 for cantrips)',
@@ -170,6 +180,8 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
       'spells[].range': 'string (optional) - Spell range',
       'spells[].components': 'string (optional) - Spell components',
       'spells[].roll': 'string (optional) - Spell attack/save',
+      'spells[].toHit': 'string (optional) - Spell attack bonus',
+      'spells[].dc': 'string (optional) - Spell save DC',
       'spells[].duration': 'string (optional) - Spell duration',
       'spells[].concentration': 'boolean (optional) - Requires concentration',
       'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
@@ -225,16 +237,20 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
         { name: "Fey Ancestry", description: "Advantage on saves vs. charm, immune to sleep" }
       ],
       actions: [
-        { name: "Staff", actionType: "action", roll: "+4 to hit, 1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff attack" }
+        { name: "Staff", actionType: "action", toHit: "+4", dc: "", roll: "1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff swing" }
       ],
       spellSlots: [
         { level: 1, max: 4, remaining: 4 },
         { level: 2, max: 3, remaining: 3 },
         { level: 3, max: 2, remaining: 2 }
       ],
+      customCounters: [
+        { name: "Wild Shape", value: 2, min: 0, max: 2, icon: "mdi-paw", description: "Uses per short rest" },
+        { name: "Starry Form", value: 1, min: 0, max: 1, icon: "mdi-star-circle" }
+      ],
       spells: [
-        { name: "Druidcraft", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 ft", components: "V, S", duration: "Instantaneous", description: "Minor magical effects" },
-        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, description: "Vines restrain creatures" }
+        { name: "Druidcraft", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 ft", components: "V, S", duration: "Instantaneous", description: "Small nature trick" },
+        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, dc: "14 STR", description: "Grasping vines" }
       ],
       gold: 125,
       inventory: [
@@ -288,9 +304,19 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
       actions: 'array (optional) - Combat actions',
       'actions[].name': 'string - Action name',
       'actions[].actionType': 'string - Type: action, bonus, reaction, legendary',
+      'actions[].toHit': 'string (optional) - Attack bonus or to-hit value',
+      'actions[].dc': 'string (optional) - Saving throw DC',
       'actions[].roll': 'string (optional) - Attack/damage roll',
       'actions[].range': 'string (optional) - Attack range',
       'actions[].description': 'string - Action description',
+      customCounters: 'array (optional) - Custom counters for recharge abilities or limited uses',
+      'customCounters[].name': 'string - Counter name',
+      'customCounters[].value': 'number - Current value',
+      'customCounters[].min': 'number (optional) - Minimum value',
+      'customCounters[].max': 'number (optional) - Maximum value',
+      'customCounters[].icon': 'string (optional) - Material Design Icon name (mdi-*)',
+      'customCounters[].color': 'string (optional) - Hex or theme color name',
+      'customCounters[].description': 'string (optional) - Helper text',
       // Spells (array)
       spells: 'array (optional) - Spells the creature can cast',
       'spells[].name': 'string - Spell name',
@@ -300,6 +326,8 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
       'spells[].range': 'string (optional) - Spell range',
       'spells[].components': 'string (optional) - Spell components',
       'spells[].roll': 'string (optional) - Spell attack/save',
+      'spells[].toHit': 'string (optional) - Spell attack bonus',
+      'spells[].dc': 'string (optional) - Spell save DC',
       'spells[].duration': 'string (optional) - Spell duration',
       'spells[].concentration': 'boolean (optional) - Requires concentration',
       'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
@@ -341,13 +369,14 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
         {
           name: "Multiattack",
           actionType: "action",
-          description: "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
+          description: "One bite and two claws."
         },
         {
           name: "Bite",
           actionType: "action",
-          roll: "+17 to hit, reach 15 ft, one target. Hit: 21 (2d10 + 10) piercing damage plus 14 (4d6) fire damage.",
-          description: "Bite attack with fire damage"
+          toHit: "+17",
+          roll: "2d10+10 piercing, 4d6 fire",
+          description: "Bite with flame"
         }
       ],
       spells: [
@@ -360,8 +389,12 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = {
           components: "V, S",
           duration: "Concentration, 10 minutes",
           concentration: true,
-          description: "Detects the location of magic within range"
+          description: "Sense nearby magic"
         }
+      ],
+      customCounters: [
+        { name: "Legendary Resistance", value: 3, min: 0, max: 3, icon: "mdi-shield-star", description: "Uses per day" },
+        { name: "Fire Breath Recharge", value: 0, min: 0, max: 1, icon: "mdi-fire", color: "#E74C3C" }
       ]
     }, null, 2)
   },

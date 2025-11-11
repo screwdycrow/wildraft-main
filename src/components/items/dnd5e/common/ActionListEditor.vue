@@ -98,6 +98,27 @@
               />
             </v-col>
           </v-row>
+
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="action.toHit"
+                label="To Hit / Bonus"
+                variant="outlined"
+                density="compact"
+                placeholder="+7"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="action.dc"
+                label="Save DC"
+                variant="outlined"
+                density="compact"
+                placeholder="15 (DEX)"
+              />
+            </v-col>
+          </v-row>
           
           <v-textarea
             v-model="action.description"
@@ -127,6 +148,8 @@ function addAction() {
   actions.value.push({
     name: '',
     actionType: 'action',
+    toHit: '',
+    dc: '',
     description: '',
   })
 }
