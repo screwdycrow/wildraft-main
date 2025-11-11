@@ -106,7 +106,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
       schema: getUploadUrlSchema,
     },
     async (request, reply) => {
-        const { fileName, fileType, fileSize, filePath } = request.body as {
+      const { fileName, fileType, fileSize, filePath } = request.body as {
         fileName: string;
         fileType: string;
         fileSize: number;
@@ -152,7 +152,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
 
       const userId = request.user!.userId;
 
-        try {
+      try {
         // Verify file exists in S3
         const exists = await fileExistsInS3(filePath);
         if (!exists) {
@@ -190,7 +190,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
                 'Image optimisation for presigned upload failed; keeping original file'
               );
             }
-          }
+        }
 
         // Create database record
         const userFile = await prisma.userFile.create({

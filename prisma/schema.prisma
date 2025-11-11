@@ -135,6 +135,8 @@ model CombatEncounter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   libraryId Int
+  counters Json? //array of counters, each counter is a json object that contains the counter data, and a type of the counter. { 
+  description String?
   round Int @default(1)
   portalViews PortalView[]
   initativeCount Int @default(0)

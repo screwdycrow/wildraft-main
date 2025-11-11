@@ -29,6 +29,9 @@ A backend service built with Prisma, PostgreSQL, Fastify, and TypeScript.
 | **[LIBRARIES.md](./LIBRARIES.md)** | Library & access control | Using library features |
 | **[ENV_SETUP.md](./ENV_SETUP.md)** | Environment config | Setting up .env |
 | **[docs/SCHEMA_ORGANIZATION.md](./docs/SCHEMA_ORGANIZATION.md)** | Schema structure | Adding new routes |
+| **[docs/LIBRARY_ITEMS_API.md](./docs/LIBRARY_ITEMS_API.md)** | Library items (stat blocks, notes) | Working with content |
+| **[docs/TAGS_API.md](./docs/TAGS_API.md)** | Tag management | Organizing content |
+| **[docs/COMBAT_ENCOUNTERS_API.md](./docs/COMBAT_ENCOUNTERS_API.md)** | Combat encounter tracking | Running combat |
 
 ## ⚡ Quick Start
 
@@ -200,14 +203,27 @@ wildraft-prisma-backend/
 - `DELETE /api/libraries/:id/access/:accessId` - Remove access
 - `POST /api/libraries/:id/leave` - Leave library
 
+**Library Content:**
+- `GET/POST/PUT/DELETE /api/libraries/:id/items` - Manage library items (stat blocks, notes, items, characters)
+- `GET/POST/PUT/DELETE /api/libraries/:id/tags` - Manage tags for organizing content
+- `GET/POST/PUT/DELETE /api/libraries/:id/encounters` - Manage combat encounters
+
 **Access Roles:** OWNER (full control), EDITOR (edit + manage viewers), VIEWER (read-only)
 
-**📖 See [LIBRARIES.md](./LIBRARIES.md) for complete library system documentation**
+**📖 See [LIBRARIES.md](./LIBRARIES.md) for library system | [docs/LIBRARY_ITEMS_API.md](./docs/LIBRARY_ITEMS_API.md) for items | [docs/TAGS_API.md](./docs/TAGS_API.md) for tags | [docs/COMBAT_ENCOUNTERS_API.md](./docs/COMBAT_ENCOUNTERS_API.md) for combat**
 
 ### User Profile
 
 - `PUT /api/users/me` - Update current user profile (name, email)
 - `PUT /api/users/me/password` - Change password
+
+### File Management
+
+- `POST /api/files/upload` - Direct file upload (multipart/base64)
+- `POST /api/files/upload-url` - Get presigned S3 URL for upload
+- `POST /api/files/confirm-upload` - Confirm presigned URL upload
+- `GET /api/files` - List user's uploaded files
+- `DELETE /api/files/:id` - Delete a file
 
 ## 🗄️ Database Schema
 
