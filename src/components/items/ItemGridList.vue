@@ -51,7 +51,7 @@
         :key="item.id"
         class="grid-item"
       >
-        <item-card-wrapper
+        <lazy-item-card
           :item="item"
           :selected="selectedItems.has(item.id)"
           :selection-mode="selectionMode"
@@ -129,6 +129,13 @@
             @click="openMassEditDialog"
           />
           <v-list-item
+            prepend-icon="mdi-delete"
+            title="Delete Selected"
+            :disabled="selectedItems.size === 0"
+            @click="openMassDeleteDialog"
+          />
+          <v-divider />
+          <v-list-item
             prepend-icon="mdi-selection-off"
             title="Clear Selection"
             :disabled="selectedItems.size === 0"
@@ -138,7 +145,60 @@
       </v-card>
     </v-overlay>
 
-    <!-- Delete Confirmation Dialog -->
+    <!-- Mass Delete Confirmation Dialog -->
+    <v-dialog v-model="showMassDeleteDialog" max-width="600">
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+          <v-icon icon="mdi-alert" color="error" size="32" class="mr-3" />
+          Delete {{ selectedItems.size }} {{ selectedItems.size === 1 ? props.itemTypeName : props.itemTypeNamePlural }}?
+        </v-card-title>
+        <v-card-text class="px-6 pb-2">
+          <p class="text-body-1 mb-4">
+            Are you sure you want to delete <strong>{{ selectedItems.size }}</strong> {{ selectedItems.size === 1 ? props.itemTypeName : props.itemTypeNamePlural }}?
+          </p>
+          <v-alert type="error" variant="tonal" density="compact" icon="mdi-alert">
+            This will permanently remove {{ selectedItems.size === 1 ? 'this ' + props.itemTypeName : 'these ' + props.itemTypeNamePlural }} and all {{ selectedItems.size === 1 ? 'its' : 'their' }} data. This action cannot be undone.
+          </v-alert>
+          <div v-if="selectedItems.size > 0 && selectedItems.size <= 10" class="mt-4">
+            <p class="text-body-2 mb-2 font-weight-medium">Items to be deleted:</p>
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item
+                v-for="itemId in Array.from(selectedItems)"
+                :key="itemId"
+                class="px-0"
+              >
+                <template v-slot:prepend>
+                  <v-icon icon="mdi-circle-small" size="small" />
+                </template>
+                <v-list-item-title class="text-body-2">
+                  {{ getItemName(itemId) }}
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </div>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="showMassDeleteDialog = false"
+            :disabled="isMassDeleting"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            @click="confirmMassDelete"
+            :loading="isMassDeleting"
+          >
+            Delete {{ selectedItems.size }} {{ selectedItems.size === 1 ? props.itemTypeName : props.itemTypeNamePlural }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Single Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
       <v-card class="glass-card" elevation="0">
         <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
@@ -179,7 +239,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { LibraryItem } from '@/types/item.types'
-import ItemCardWrapper from './ItemCardWrapper.vue'
+import LazyItemCard from './LazyItemCard.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
 import { useItemsStore } from '@/stores/items'
@@ -243,6 +303,11 @@ const showMassEditDialog = ref(false)
 const selectedTagIds = ref<number[]>([])
 const isMassEditing = ref(false)
 
+// Mass delete state
+const showMassDeleteDialog = ref(false)
+const isMassDeleting = ref(false)
+
+// Single delete state
 const showDeleteDialog = ref(false)
 const deletingItem = ref<LibraryItem | null>(null)
 const isDeleting = ref(false)
@@ -351,6 +416,17 @@ function openMassEditDialog() {
   showMassEditDialog.value = true
 }
 
+function openMassDeleteDialog() {
+  if (selectedItems.value.size === 0) return
+  showContextMenu.value = false
+  showMassDeleteDialog.value = true
+}
+
+function getItemName(itemId: number): string {
+  const item = props.items.find(i => i.id === itemId)
+  return item?.name || `Item #${itemId}`
+}
+
 async function confirmMassEdit() {
   if (!props.libraryId || selectedItems.value.size === 0 || selectedTagIds.value.length === 0) {
     return
@@ -371,6 +447,46 @@ async function confirmMassEdit() {
     toast.error(error.message || 'Failed to add tags')
   } finally {
     isMassEditing.value = false
+  }
+}
+
+async function confirmMassDelete() {
+  if (!props.libraryId || selectedItems.value.size === 0) {
+    return
+  }
+
+  isMassDeleting.value = true
+  try {
+    const itemIds = Array.from(selectedItems.value)
+    
+    // Delete items one by one, collecting results
+    const results = await Promise.allSettled(
+      itemIds.map(itemId => 
+        itemsStore.deleteItem(props.libraryId!, itemId)
+      )
+    )
+    
+    const successful = results.filter(r => r.status === 'fulfilled').length
+    const failed = results.filter(r => r.status === 'rejected').length
+    
+    if (failed === 0) {
+      toast.success(`Deleted ${successful} ${successful === 1 ? props.itemTypeName : props.itemTypeNamePlural}`)
+    } else if (successful > 0) {
+      toast.warning(`Deleted ${successful} ${successful === 1 ? props.itemTypeName : props.itemTypeNamePlural}, but ${failed} failed`)
+    } else {
+      toast.error('Failed to delete items')
+      return // Don't clear selection or close dialog if all failed
+    }
+    
+    clearSelection()
+    showMassDeleteDialog.value = false
+    
+    // Refresh items
+    emit('refresh')
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to delete items')
+  } finally {
+    isMassDeleting.value = false
   }
 }
 
