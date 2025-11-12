@@ -1,40 +1,22 @@
 <template>
   <v-card
-    v-if="displayCounters.length > 0 || editable"
-    class="glass-card mb-4"
+    v-if="displayCounters.length > 0"
+    class="glass-card mb-4 custom-counters-wrapper"
     elevation="0"
   >
-    <v-card-title class="d-flex align-center justify-space-between">
-      <div class="d-flex align-center">
-        <v-icon :icon="icon" :color="iconColor" class="mr-2" />
-        {{ title }}
-      </div>
-      <div class="d-flex gap-2" v-if="editable">
-        <v-btn
-          size="small"
-          color="primary"
-          variant="tonal"
-          prepend-icon="mdi-plus"
-          @click="openManagerForCreate"
-        >
-          Add Counter
-        </v-btn>
-        <v-btn
-          icon
-          size="small"
-          color="purple"
-          variant="tonal"
-          @click="openManager"
-        >
-          <v-icon icon="mdi-cog" />
-        </v-btn>
-      </div>
-    </v-card-title>
     <v-card-text>
-      <div v-if="displayCounters.length === 0" class="text-caption text-grey">
-        No counters yet. Click "Add Counter" to create one.
-      </div>
-      <v-row v-else class="custom-counter-grid" dense>
+      <v-btn
+        v-if="editable"
+        icon
+        size="small"
+        color="purple"
+        variant="tonal"
+        class="settings-cog"
+        @click="openManager"
+      >
+        <v-icon icon="mdi-cog" />
+      </v-btn>
+      <v-row class="custom-counter-grid" dense>
         <v-col
           v-for="counter in displayCounters"
           :key="counter.id || counter.name"
@@ -47,26 +29,25 @@
             :class="{ clickable: editable }"
             @click="editable && openValueEditor(counter)"
           >
-            <div class="counter-header d-flex align-center justify-space-between">
-              <div class="d-flex align-center">
-            
-                <span class="text-caption text-grey">{{ counter.name }}</span>
+            <div class="counter-header">
+              <span class="text-caption text-grey">{{ counter.name }}</span>
+            </div>
+            <div class="counter-bottom">
+              <div class="counter-value text-h6 font-weight-bold">
+                {{ counter.value }}
+                <span v-if="counter.max !== undefined" class="text-caption text-grey">
+                  / {{ counter.max }}
+                </span>
               </div>
+              <v-progress-linear
+                v-if="counter.max !== undefined"
+                :model-value="getProgress(counter)"
+                :color="counter.color || 'purple'"
+                height="4"
+                rounded
+                class="counter-progress"
+              />
             </div>
-            <div class="counter-value text-h6 font-weight-bold">
-              {{ counter.value }}
-              <span v-if="counter.max !== undefined" class="text-caption text-grey">
-                / {{ counter.max }}
-              </span>
-            </div>
-            <v-progress-linear
-              v-if="counter.max !== undefined"
-              :model-value="getProgress(counter)"
-              :color="counter.color || 'purple'"
-              height="4"
-              rounded
-              class="mt-2"
-            />
             <div class="text-caption text-grey mt-1" v-if="counter.description">
               {{ counter.description }}
             </div>
@@ -237,6 +218,7 @@ interface Props {
   icon?: string
   iconColor?: string
   editable?: boolean
+  hideTitle?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -245,6 +227,7 @@ const props = withDefaults(defineProps<Props>(), {
   icon: 'mdi-counter',
   iconColor: 'purple',
   editable: true,
+  hideTitle: false,
 })
 
 const emit = defineEmits<{
@@ -324,11 +307,10 @@ function openManager() {
 }
 
 function openManagerForCreate() {
-  managerCounters.value = deepClone(displayCounters.value)
+  openManager()
   if (managerCounters.value.length === 0) {
     managerCounters.value.push(createDefaultCounter())
   }
-  showManager.value = true
 }
 
 function addCounter() {
@@ -405,6 +387,14 @@ function toNumberOrUndefined(value: unknown): number | undefined {
   margin-top: 4px;
 }
 
+.custom-counter-grid .v-col {
+  display: flex;
+}
+
+.custom-counter-grid .v-col > * {
+  width: 100%;
+}
+
 .counter-card {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
@@ -412,6 +402,10 @@ function toNumberOrUndefined(value: unknown): number | undefined {
   position: relative;
   transition: background 0.2s, transform 0.2s;
   min-height: 110px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .counter-card.clickable {
@@ -427,8 +421,19 @@ function toNumberOrUndefined(value: unknown): number | undefined {
   min-height: 20px;
 }
 
+.counter-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
 .counter-value {
-  margin-top: 8px;
+  margin: 0;
+}
+
+.counter-progress {
+  margin: 0;
 }
 
 .edit-hint {
@@ -445,6 +450,23 @@ function toNumberOrUndefined(value: unknown): number | undefined {
 
 .gap-2 {
   gap: 8px;
+}
+
+.custom-counters-wrapper {
+  position: relative;
+}
+
+.custom-counters-wrapper .settings-cog {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+.custom-counters-wrapper:hover .settings-cog {
+  opacity: 1;
 }
 </style>
 

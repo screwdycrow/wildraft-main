@@ -1,5 +1,5 @@
 <template>
-  <div class="note-detail">
+  <div class="note-detail" :style="backgroundImageStyle">
     <v-card class="glass-card mb-4" elevation="0">
       <v-card-title class="d-flex align-center">
         <v-icon icon="mdi-note-text" size="32" class="mr-3" color="#95A5A6" />
@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import { useFilesStore } from '@/stores/files'
@@ -102,6 +102,33 @@ const filesStore = useFilesStore()
 
 const noteData = computed<NoteData>(() => props.item.data as NoteData)
 const activeSection = ref<'main' | string>('main')
+const featuredImageUrl = ref<string>('')
+
+// Background image style
+const backgroundImageStyle = computed(() => {
+  if (!featuredImageUrl.value) return {}
+  return {
+    '--bg-image': `url(${featuredImageUrl.value})`,
+  }
+})
+
+// Load featured image URL
+watch(
+  () => props.item.featuredImage?.id,
+  async (imageId) => {
+    if (imageId) {
+      try {
+        featuredImageUrl.value = await filesStore.getDownloadUrl(imageId)
+      } catch (error) {
+        console.error('Failed to load featured image:', error)
+        featuredImageUrl.value = ''
+      }
+    } else {
+      featuredImageUrl.value = ''
+    }
+  },
+  { immediate: true }
+)
 
 const orderedChapters = computed<NoteChapter[]>(() => {
   return (noteData.value.chapters || [])
@@ -168,6 +195,38 @@ function formatDate(dateString: string) {
 <style scoped>
 .note-detail {
   width: 100%;
+  position: relative;
+  min-height: 100vh;
+}
+
+.note-detail::before {
+  content: '';
+  position: fixed;
+  top: 50px;
+  left: 0;
+  width: 50vw;
+  height: calc(50vw * 4 / 3);
+  max-height: calc(100vh - 50px);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: left center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+  mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+.note-detail > * {
+  position: relative;
+  z-index: 1;
 }
 
 .detail-grid {

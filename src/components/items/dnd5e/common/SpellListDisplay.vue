@@ -8,53 +8,66 @@
       <v-expansion-panels variant="accordion">
         <v-expansion-panel v-for="(spell, index) in spells" :key="index">
           <v-expansion-panel-title>
-            <div class="d-flex align-center justify-space-between w-100">
-              <div class="d-flex align-center gap-2 flex-wrap">
-              <strong>{{ spell.name }}</strong>
-              <v-chip size="x-small" :color="getSpellLevelColor(spell.level)">
-                {{ getSpellLevelLabel(spell.level) }}
-              </v-chip>
-              <v-chip v-if="spell.concentration" size="x-small" color="warning" variant="outlined">
-                C
-              </v-chip>
-              <v-chip v-if="spell.ritual" size="x-small" color="purple" variant="outlined">
-                R
-              </v-chip>
-              <v-chip
-                v-if="spell.toHit"
-                size="x-small"
-                color="primary"
-                variant="outlined"
-              >
-                {{ spell.toHit }}
-              </v-chip>
-              <v-chip
-                v-if="spell.dc"
-                size="x-small"
-                color="secondary"
-                variant="outlined"
-              >
-                DC {{ spell.dc }}
-              </v-chip>
+            <div class="w-100">
+              <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                <strong>{{ spell.name }}</strong>
+                <v-chip v-if="getSpellLevelLabel(spell.level)" size="x-small" :color="getSpellLevelColor(spell.level)">
+                  {{ getSpellLevelLabel(spell.level) }}
+                </v-chip>
+                <v-chip v-if="spell.concentration" size="x-small" color="warning" variant="tonal">
+                  C
+                </v-chip>
+                <v-chip v-if="spell.castingTime" size="x-small" color="primary" variant="tonal">
+                  {{ spell.castingTime }}
+                </v-chip>
               </div>
-              <div v-if="spell.roll" class="d-flex align-center spell-roll-chip">
-                <v-chip size="small" color="primary" variant="flat">
-                  <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
+              <!-- Roll/DC/ToHit/Range as discrete tonal chips below title in header -->
+              <div v-if="spell.roll || spell.toHit || spell.dc || spell.range" class="d-flex gap-1 flex-wrap">
+                <v-chip
+                  v-if="spell.roll"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  <v-icon icon="mdi-dice-d20" size="x-small" class="mr-1" />
                   {{ spell.roll }}
+                </v-chip>
+                <v-chip
+                  v-if="spell.toHit"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  {{ spell.toHit }}
+                </v-chip>
+                <v-chip
+                  v-if="spell.dc"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  DC {{ spell.dc }}
+                </v-chip>
+                <v-chip
+                  v-if="spell.range"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  {{ spell.range }}
                 </v-chip>
               </div>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <div class="spell-details">
+              <!-- All other details -->
               <div v-if="spell.school" class="mb-1">
                 <strong>School:</strong> {{ spell.school }}
-              </div>
-              <div v-if="spell.castingTime" class="mb-1">
-                <strong>Casting Time:</strong> {{ spell.castingTime }}
-              </div>
-              <div v-if="spell.range" class="mb-1">
-                <strong>Range:</strong> {{ spell.range }}
               </div>
               <div v-if="spell.components" class="mb-1">
                 <strong>Components:</strong> {{ spell.components }}
@@ -62,14 +75,10 @@
               <div v-if="spell.duration" class="mb-1">
                 <strong>Duration:</strong> {{ spell.duration }}
               </div>
-              <div v-if="spell.toHit" class="mb-1">
-                <strong>To Hit / Bonus:</strong> {{ spell.toHit }}
-              </div>
-              <div v-if="spell.dc" class="mb-1">
-                <strong>Save DC:</strong> {{ spell.dc }}
-              </div>
-              <div v-if="spell.roll" class="mb-1">
-                <strong>Roll:</strong> {{ spell.roll }}
+              <div v-if="spell.ritual" class="mb-1">
+                <v-chip size="x-small" color="purple" variant="outlined">
+                  Ritual
+                </v-chip>
               </div>
               <v-divider class="my-2" />
               <div v-html="spell.description || 'No description'" />
@@ -123,12 +132,11 @@ function getSpellLevelLabel(level: number): string {
   line-height: 1.8;
 }
 
-.spell-roll-chip {
-  min-width: 0;
-}
-
-.spell-roll-chip :deep(.v-chip) {
-  white-space: nowrap;
+.discrete-chip {
+  opacity: 0.85;
+  font-size: 0.625rem !important;
+  height: 18px !important;
+  padding: 0 6px !important;
 }
 </style>
 

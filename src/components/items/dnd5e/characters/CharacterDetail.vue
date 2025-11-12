@@ -1,60 +1,59 @@
 <template>
-  <div class="character-detail">
+  <div class="character-detail" :style="backgroundImageStyle">
     <!-- Header with Action Buttons -->
     <page-top-bar
       :title="item.name"
       icon="mdi-account-circle"
       icon-color="#3498DB"
-      :description="`${characterData.race} ${characterData.class} - Level ${characterData.level}`"
+      :description="`Level ${characterData.level || 1}`"
     >
       <template #actions>
-        <div class="character-info-grid">
-          <div class="info-item">
-            <v-icon icon="mdi-account" size="small" class="mr-1" color="primary" />
-            <span class="info-label">Race:</span> {{ characterData.race || 'Unknown' }}
-          </div>
-          <div class="info-item">
-            <v-icon icon="mdi-sword-cross" size="small" class="mr-1" color="primary" />
-            <span class="info-label">Class:</span> {{ characterData.class || 'Unknown' }}
-            <span v-if="characterData.subclass" class="text-caption"> ({{ characterData.subclass }})</span>
-          </div>
-          <div v-if="characterData.background" class="info-item">
-            <v-icon icon="mdi-book-open-variant" size="small" class="mr-1" color="primary" />
-            <span class="info-label">BG:</span> {{ characterData.background }}
-          </div>
-          <div class="info-item">
-            <v-icon icon="mdi-chart-line" size="small" class="mr-1" color="success" />
-            <span class="info-label">Lvl:</span> {{ characterData.level || 1 }}
-          </div>
-          <div v-if="characterData.experience" class="info-item">
-            <v-icon icon="mdi-star" size="small" class="mr-1" color="warning" />
-            <span class="info-label">XP:</span> {{ characterData.experience?.toLocaleString() }}
-          </div>
-          <div v-if="characterData.alignment" class="info-item">
-            <v-icon icon="mdi-compass" size="small" class="mr-1" color="info" />
-            <span class="info-label">Align:</span> {{ characterData.alignment }}
-          </div>
-        </div>
+        <div class="d-flex align-center gap-2">
+          <v-tooltip location="bottom">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" icon="mdi-information-outline" size="small" color="primary" />
+            </template>
+            <div class="character-info-tooltip">
+              <div v-if="characterData.race" class="tooltip-item">
+                <v-icon icon="mdi-account" size="small" class="mr-1" /> 
+                <strong>Race:</strong> {{ characterData.race }}
+              </div>
+              <div v-if="characterData.class" class="tooltip-item">
+                <v-icon icon="mdi-sword-cross" size="small" class="mr-1" /> 
+                <strong>Class:</strong> {{ characterData.class }}
+                <span v-if="characterData.subclass"> ({{ characterData.subclass }})</span>
+              </div>
+              <div v-if="characterData.background" class="tooltip-item">
+                <v-icon icon="mdi-book-open-variant" size="small" class="mr-1" /> 
+                <strong>Background:</strong> {{ characterData.background }}
+              </div>
+              <div v-if="characterData.experience" class="tooltip-item">
+                <v-icon icon="mdi-star" size="small" class="mr-1" /> 
+                <strong>XP:</strong> {{ characterData.experience?.toLocaleString() }}
+              </div>
+              <div v-if="characterData.alignment" class="tooltip-item">
+                <v-icon icon="mdi-compass" size="small" class="mr-1" /> 
+                <strong>Alignment:</strong> {{ characterData.alignment }}
+              </div>
+            </div>
+          </v-tooltip>
 
-        <div class="action-buttons">
-          <v-btn 
-            color="success" 
-            prepend-icon="mdi-printer" 
-            size="small" 
-            @click="showPrintDialog = true"
-            class="mobile-compact"
-          >
-            <span class="btn-text-desktop">Print / PDF</span>
-            <span class="btn-text-mobile">Print</span>
-          </v-btn>
-          <v-btn color="primary" prepend-icon="mdi-pencil" size="small" @click="$emit('edit')" class="mobile-compact">
-            <span class="btn-text-desktop">Edit Character</span>
-            <span class="btn-text-mobile">Edit</span>
-          </v-btn>
-          <v-btn color="error" prepend-icon="mdi-delete" variant="outlined" size="small" @click="$emit('delete')" class="mobile-compact">
-            <span class="btn-text-desktop">Delete</span>
-            <span class="btn-text-mobile">Del</span>
-          </v-btn>
+          <v-menu location="bottom end">
+            <template #activator="{ props }">
+              <v-btn icon="mdi-dots-vertical" v-bind="props" size="small" variant="text" />
+            </template>
+            <v-list>
+              <v-list-item prepend-icon="mdi-printer" @click="showPrintDialog = true">
+                <v-list-item-title>Print / PDF</v-list-item-title>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-pencil" @click="$emit('edit')">
+                <v-list-item-title>Edit Character</v-list-item-title>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-delete" @click="$emit('delete')">
+                <v-list-item-title>Delete</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </div>
       </template>
     </page-top-bar>
@@ -63,134 +62,69 @@
       <!-- Left Column: Stats & Skills -->
       <v-col cols="12" md="8">
         <!-- Core Stats -->
-        <v-row class="mb-4 core-stats-row">
-          <v-col cols="6" md="3">
-            <v-card class="glass-card text-center stat-card clickable" elevation="0" @click="showHealthEditor = true">
-              <v-card-text class="stat-card-content">
-                <v-icon icon="mdi-heart" class="stat-icon" color="error" />
-                <div class="stat-value">
-                  {{ characterData.hp || 0 }}<span class="stat-divider">/</span>{{ characterData.maxHp || 0 }}
-                </div>
-                <div class="stat-label">
-                  <span class="label-desktop">Hit Points</span>
-                  <span class="label-mobile">HP</span>
-                </div>
-                <v-icon icon="mdi-pencil" size="x-small" class="edit-hint" />
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="6" md="3">
-            <v-card class="glass-card text-center stat-card" elevation="0">
-              <v-card-text class="stat-card-content">
-                <v-icon icon="mdi-shield" class="stat-icon" color="primary" />
-                <div class="stat-value">{{ characterData.ac || 10 }}</div>
-                <div class="stat-label">
-                  <span class="label-desktop">Armor Class</span>
-                  <span class="label-mobile">AC</span>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="6" md="3">
-            <v-card class="glass-card text-center stat-card" elevation="0">
-              <v-card-text class="stat-card-content">
-                <v-icon icon="mdi-run-fast" class="stat-icon" color="success" />
-                <div class="stat-value">{{ characterData.speed || '30' }}<span class="stat-unit">ft</span></div>
-                <div class="stat-label">
-                  <span class="label-desktop">Speed</span>
-                  <span class="label-mobile">SPD</span>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="6" md="3">
-            <v-card class="glass-card text-center stat-card" elevation="0">
-              <v-card-text class="stat-card-content">
-                <v-icon icon="mdi-dice-d20" class="stat-icon" color="warning" />
-                <div class="stat-value">+{{ proficiencyBonus }}</div>
-                <div class="stat-label">
-                  <span class="label-desktop">Proficiency</span>
-                  <span class="label-mobile">PROF</span>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <v-row class="mb-4">
-          <v-col cols="12" md="4">
-            <v-card class="glass-card text-center stat-card" elevation="0">
-              <v-card-text class="stat-card-content">
-                <v-icon icon="mdi-crosshairs" class="stat-icon" color="info" />
-                <div class="stat-value">
-                  {{ initiativeDisplay }}
-                </div>
-                <div class="stat-label">
-                  <span class="label-desktop">Initiative</span>
-                  <span class="label-mobile">INIT</span>
-                </div>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-card class="glass-card" elevation="0">
-              <v-card-title class="text-subtitle-2 d-flex align-center">
-                <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
-                Resistances
-              </v-card-title>
-              <v-card-text class="text-body-2">
-                <span v-if="resistancesDisplay">{{ resistancesDisplay }}</span>
-                <span v-else class="text-grey">None</span>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-card class="glass-card" elevation="0">
-              <v-card-title class="text-subtitle-2 d-flex align-center">
-                <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
-                Immunities
-              </v-card-title>
-              <v-card-text class="text-body-2">
-                <span v-if="immunitiesDisplay">{{ immunitiesDisplay }}</span>
-                <span v-else class="text-grey">None</span>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+        <div class="core-stats-container mb-4">
+          <v-card class="glass-card text-center stat-card clickable" elevation="0" @click="showHealthEditor = true">
+            <v-card-text class="stat-card-content">
+              <v-icon icon="mdi-heart" class="stat-icon" color="error" />
+              <div class="stat-value">
+                {{ characterData.hp || 0 }}<span class="stat-divider">/</span>{{ characterData.maxHp || 0 }}
+              </div>
+              <div class="stat-label">
+                <span class="label-desktop">Hit Points</span>
+                <span class="label-mobile">HP</span>
+              </div>
+              <v-icon icon="mdi-pencil" size="x-small" class="edit-hint" />
+            </v-card-text>
+          </v-card>
+          <v-card class="glass-card text-center stat-card" elevation="0">
+            <v-card-text class="stat-card-content">
+              <v-icon icon="mdi-shield" class="stat-icon" color="primary" />
+              <div class="stat-value">{{ characterData.ac || 10 }}</div>
+              <div class="stat-label">
+                <span class="label-desktop">Armor Class</span>
+                <span class="label-mobile">AC</span>
+              </div>
+            </v-card-text>
+          </v-card>
+          <v-card class="glass-card text-center stat-card" elevation="0">
+            <v-card-text class="stat-card-content">
+              <v-icon icon="mdi-run-fast" class="stat-icon" color="success" />
+              <div class="stat-value">{{ characterData.speed || '30' }}<span class="stat-unit">ft</span></div>
+              <div class="stat-label">
+                <span class="label-desktop">Speed</span>
+                <span class="label-mobile">SPD</span>
+              </div>
+            </v-card-text>
+          </v-card>
+          <v-card class="glass-card text-center stat-card" elevation="0">
+            <v-card-text class="stat-card-content">
+              <v-icon icon="mdi-dice-d20" class="stat-icon" color="warning" />
+              <div class="stat-value">+{{ proficiencyBonus }}</div>
+              <div class="stat-label">
+                <span class="label-desktop">Proficiency</span>
+                <span class="label-mobile">PROF</span>
+              </div>
+            </v-card-text>
+          </v-card>
+          <v-card class="glass-card text-center stat-card" elevation="0">
+            <v-card-text class="stat-card-content">
+              <v-icon icon="mdi-crosshairs" class="stat-icon" color="info" />
+              <div class="stat-value">
+                {{ initiativeDisplay }}
+              </div>
+              <div class="stat-label">
+                <span class="label-desktop">Initiative</span>
+                <span class="label-mobile">INIT</span>
+              </div>
+            </v-card-text>
+          </v-card>
+        </div>
 
         <!-- Ability Scores & Saving Throws -->
-        <v-card class="glass-card mb-4 abilities-card" elevation="0">
-          <v-card-title class="d-flex align-center card-title-mobile">
-            <v-icon icon="mdi-arm-flex" size="small" class="mr-2" />
-            <span class="title-text">Ability Scores & Saving Throws</span>
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col v-for="ability in ABILITIES" :key="ability" cols="4" md="2">
-                <div class="ability-box">
-                  <div class="ability-name text-overline">{{ ABILITY_LABELS[ability] }}</div>
-                  <div class="ability-score text-h4 font-weight-bold">
-                    {{ characterData[ability] || 10 }}
-                  </div>
-                  <div class="ability-modifier text-h6">
-                    {{ formatModifier(abilityModifiers[ability]) }}
-                  </div>
-                  <v-divider class="my-2" />
-                  <div class="saving-throw">
-                    <v-icon
-                      :icon="isSavingThrowProficient(ability) ? 'mdi-checkbox-marked-circle' : 'mdi-checkbox-blank-circle-outline'"
-                      :color="isSavingThrowProficient(ability) ? 'success' : 'grey'"
-                      size="small"
-                    />
-                    <span class="text-caption ml-1">
-                      Save: {{ formatModifier(savingThrowBonuses[ability]) }}
-                    </span>
-                  </div>
-                </div>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+        <ability-scores-display
+          :data="characterData"
+          :level="characterData.level || 1"
+        />
 
         <!-- Skills -->
         <v-card class="glass-card mb-4 skills-card" elevation="0">
@@ -234,6 +168,34 @@
             </v-row>
           </v-card-text>
         </v-card>
+
+        <!-- Resistances & Immunities -->
+        <v-row class="mb-4">
+          <v-col cols="12" md="6">
+            <v-card class="glass-card" elevation="0">
+              <v-card-title class="text-subtitle-2 d-flex align-center">
+                <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
+                Resistances
+              </v-card-title>
+              <v-card-text class="text-body-2">
+                <span v-if="resistancesDisplay">{{ resistancesDisplay }}</span>
+                <span v-else class="text-grey">None</span>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-card class="glass-card" elevation="0">
+              <v-card-title class="text-subtitle-2 d-flex align-center">
+                <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
+                Immunities
+              </v-card-title>
+              <v-card-text class="text-body-2">
+                <span v-if="immunitiesDisplay">{{ immunitiesDisplay }}</span>
+                <span v-else class="text-grey">None</span>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
 
         <!-- Quick Notes -->
         <v-card class="glass-card mb-4" elevation="0">
@@ -289,10 +251,11 @@
             <custom-counters-display
               :counters="characterData.customCounters"
               :editable="props.canEdit"
+              :hide-title="true"
               @update:counters="updateCustomCounters"
             />
-            <trait-list-display :traits="characterData.traits" />
             <action-list-display :actions="characterData.actions" />
+            <trait-list-display :traits="characterData.traits" />
           </v-window-item>
 
           <!-- Spells Tab -->
@@ -595,7 +558,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { LibraryItem, CustomCounter } from '@/types/item.types'
 import type { CharacterData } from '@/types/item.DND_5E.types'
 import { ABILITIES, ABILITY_LABELS, DND5E_SKILLS } from '@/constants/dnd5e'
@@ -617,6 +580,7 @@ import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import InventoryItemList from '../common/InventoryItemList.vue'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import AmountEditor from '@/components/common/AmountEditor.vue'
+import AbilityScoresDisplay from '../common/AbilityScoresDisplay.vue'
 
 interface Props {
   item: LibraryItem
@@ -642,8 +606,35 @@ const showGoldEditor = ref(false)
 const showPrintDialog = ref(false)
 const editingNotes = ref(false)
 const localQuickNotes = ref('')
+const featuredImageUrl = ref<string>('')
 
 const characterData = computed(() => props.item.data as CharacterData)
+
+// Background image style
+const backgroundImageStyle = computed(() => {
+  if (!featuredImageUrl.value) return {}
+  return {
+    '--bg-image': `url(${featuredImageUrl.value})`,
+  }
+})
+
+// Load featured image URL
+watch(
+  () => props.item.featuredImage?.id,
+  async (imageId) => {
+    if (imageId) {
+      try {
+        featuredImageUrl.value = await filesStore.getDownloadUrl(imageId)
+      } catch (error) {
+        console.error('Failed to load featured image:', error)
+        featuredImageUrl.value = ''
+      }
+    } else {
+      featuredImageUrl.value = ''
+    }
+  },
+  { immediate: true }
+)
 
 // Add files to store and get IDs
 const fileIds = computed(() => {
@@ -956,52 +947,66 @@ function printCharacter() {
 <style scoped>
 .character-detail {
   width: 100%;
+  position: relative;
+  min-height: 100vh;
 }
 
-/* Header Info Grid */
-.character-info-grid {
+.character-detail::before {
+  content: '';
+  position: fixed;
+  top: 50px;
+  left: 0;
+  width: 50vw;
+  height: calc(50vw * 4 / 3);
+  max-height: calc(100vh - 50px);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: left center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+  mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+.character-detail > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Character Info Tooltip */
+.character-info-tooltip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
 }
 
-.info-item {
+.tooltip-item {
   display: flex;
   align-items: center;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
-.info-label {
-  font-weight: 600;
-  margin-right: 4px;
+/* Core Stats Container - 5 equal columns */
+.core-stats-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Desktop button text */
-.btn-text-desktop {
-  display: inline;
-}
-
-.btn-text-mobile {
-  display: none;
-}
-
-/* Core Stats Row - Let Vuetify handle it naturally */
 @media (min-width: 960px) {
-  .core-stats-row {
-    margin-left: -6px !important;
-    margin-right: -6px !important;
-  }
-  
-  .core-stats-row > .v-col {
-    padding-left: 6px !important;
-    padding-right: 6px !important;
+  .core-stats-container {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
   }
 }
 
@@ -1080,37 +1085,6 @@ function printCharacter() {
   opacity: 0.6;
 }
 
-/* Ability Scores */
-.ability-box {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  transition: background 0.2s;
-}
-
-.ability-box:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.ability-name {
-  color: rgb(var(--v-theme-primary));
-  font-weight: bold;
-}
-
-.ability-score {
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.ability-modifier {
-  color: rgb(var(--v-theme-primary));
-}
-
-.saving-throw {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 /* Skills */
 .skills-content .v-row {
@@ -1183,37 +1157,10 @@ function printCharacter() {
 
 /* ==================== MOBILE STYLES ==================== */
 @media (max-width: 959px) {
-  /* Header - More compact on mobile */
-  .character-info-grid {
+
+  /* Core Stats - 2x2 grid on mobile */
+  .core-stats-container {
     gap: 8px;
-    font-size: 0.75rem;
-  }
-
-  .info-item {
-    font-size: 0.75rem;
-  }
-
-  .info-label {
-    margin-right: 2px;
-  }
-
-  /* Mobile button text */
-  .btn-text-desktop {
-    display: none;
-  }
-
-  .btn-text-mobile {
-    display: inline;
-  }
-
-  .mobile-compact {
-    padding: 0 12px !important;
-    min-width: 60px !important;
-  }
-
-  /* Core Stats - 2x2 grid on mobile, slightly bigger */
-  .core-stats-row {
-    margin-bottom: 16px !important;
   }
 
   .stat-card {
@@ -1269,40 +1216,6 @@ function printCharacter() {
     font-weight: 600;
   }
 
-  /* Ability Scores - Smaller on mobile, 3 columns (2 rows) */
-  .abilities-card :deep(.v-card-text) {
-    padding: 12px !important;
-  }
-
-  .ability-box {
-    padding: 6px 4px;
-    border-radius: 6px;
-  }
-
-  .ability-name {
-    font-size: 0.5rem;
-    margin-bottom: 2px;
-  }
-
-  .ability-score {
-    font-size: 1rem;
-  }
-
-  .ability-modifier {
-    font-size: 0.75rem;
-  }
-
-  .saving-throw {
-    font-size: 0.5rem;
-  }
-
-  .saving-throw .v-icon {
-    font-size: 14px !important;
-  }
-
-  .saving-throw .text-caption {
-    font-size: 0.5rem !important;
-  }
 
   /* Skills - Reduce spacing and font size on mobile */
   .skills-card :deep(.v-card-text) {
@@ -1371,30 +1284,6 @@ function printCharacter() {
     padding: 10px 6px !important;
   }
 
-  /* Ability scores even more compact */
-  .ability-box {
-    padding: 4px 2px;
-  }
-
-  .ability-name {
-    font-size: 0.4375rem;
-  }
-
-  .ability-score {
-    font-size: 0.875rem;
-  }
-
-  .ability-modifier {
-    font-size: 0.625rem;
-  }
-
-  .saving-throw {
-    font-size: 0.4375rem;
-  }
-
-  .saving-throw .v-icon {
-    font-size: 12px !important;
-  }
 
   /* Skills compact */
   .skill-item {

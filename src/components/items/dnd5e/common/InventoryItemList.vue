@@ -26,20 +26,18 @@
         class="inventory-item"
       >
         <template #prepend>
-          <v-checkbox
-            v-model="item.equipped"
-            density="compact"
-            hide-details
-            color="success"
-            @update:model-value="$emit('update')"
+          <v-btn
+            icon
+            size="x-small"
+            variant="text"
+            :color="item.equipped ? 'success' : 'grey'"
+            @click="toggleEquipped(index)"
           >
-            <template #label>
-              <v-icon
-                :icon="item.equipped ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline'"
-                size="small"
-              />
-            </template>
-          </v-checkbox>
+            <v-icon
+              :icon="item.equipped ? 'mdi-checkbox-marked-circle' : 'mdi-checkbox-blank-circle-outline'"
+              size="small"
+            />
+          </v-btn>
         </template>
 
         <v-list-item-title class="d-flex align-center gap-2">
@@ -198,6 +196,11 @@ function removeItem(index: number) {
     props.items.splice(index, 1)
     emit('update')
   }
+}
+
+function toggleEquipped(index: number) {
+  props.items[index].equipped = !props.items[index].equipped
+  emit('update')
 }
 
 function closeDialog() {

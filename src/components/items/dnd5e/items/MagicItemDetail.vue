@@ -1,5 +1,5 @@
 <template>
-  <div class="magic-item-detail">
+  <div class="magic-item-detail" :style="backgroundImageStyle">
     <v-row class="content-row" dense>
 
 
@@ -167,18 +167,26 @@ const filesStore = useFilesStore()
 const itemData = computed<ItemData>(() => props.item.data as ItemData)
 
 const featuredImageUrl = ref('')
-watch(
-  () => props.item.featuredImage,
-  async (featuredImage) => {
-    if (!featuredImage) {
-      featuredImageUrl.value = ''
-      return
-    }
 
-    try {
-      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
-    } catch (error) {
-      console.error('Failed to load featured image:', error)
+// Background image style
+const backgroundImageStyle = computed(() => {
+  if (!featuredImageUrl.value) return {}
+  return {
+    '--bg-image': `url(${featuredImageUrl.value})`,
+  }
+})
+
+watch(
+  () => props.item.featuredImage?.id,
+  async (imageId) => {
+    if (imageId) {
+      try {
+        featuredImageUrl.value = await filesStore.getDownloadUrl(imageId)
+      } catch (error) {
+        console.error('Failed to load featured image:', error)
+        featuredImageUrl.value = ''
+      }
+    } else {
       featuredImageUrl.value = ''
     }
   },
@@ -264,6 +272,38 @@ function getRarityColor(rarity: string) {
 <style scoped>
 .magic-item-detail {
   width: 100%;
+  position: relative;
+  min-height: 100vh;
+}
+
+.magic-item-detail::before {
+  content: '';
+  position: fixed;
+  top: 50px;
+  left: 0;
+  width: 50vw;
+  height: calc(50vw * 4 / 3);
+  max-height: calc(100vh - 50px);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: left center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+  mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+.magic-item-detail > * {
+  position: relative;
+  z-index: 1;
 }
 
 .content-row {

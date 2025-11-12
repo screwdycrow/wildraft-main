@@ -8,58 +8,65 @@
       <v-expansion-panels variant="accordion">
         <v-expansion-panel v-for="(action, index) in actions" :key="index">
           <v-expansion-panel-title>
-            <div class="d-flex align-center justify-space-between w-100">
-              <div class="d-flex align-center gap-2 flex-wrap">
-              <strong>{{ action.name }}</strong>
-              <v-chip
-                v-if="action.actionType"
-                size="x-small"
-                :color="getActionTypeColor(action.actionType)"
-              >
-                {{ getActionTypeLabel(action.actionType) }}
-              </v-chip>
-              <v-chip v-if="action.range" size="x-small" variant="outlined">
-                {{ action.range }}
-              </v-chip>
-              <v-chip
-                v-if="action.toHit"
-                size="x-small"
-                color="primary"
-                variant="outlined"
-              >
-                {{ action.toHit }}
-              </v-chip>
-              <v-chip
-                v-if="action.dc"
-                size="x-small"
-                color="secondary"
-                variant="outlined"
-              >
-                DC {{ action.dc }}
-              </v-chip>
+            <div class="w-100">
+              <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                <strong>{{ action.name }}</strong>
+                <v-chip
+                  v-if="action.actionType"
+                  size="x-small"
+                  :color="getActionTypeColor(action.actionType)"
+                >
+                  {{ getActionTypeLabel(action.actionType) }}
+                </v-chip>
               </div>
-              <div v-if="action.roll" class="d-flex align-center action-roll-chip">
-                <v-chip outlined size="small" color="primary" variant="outlined">
-                  <v-icon icon="mdi-dice-d20" size="small" class="mr-1" />
+              <!-- Roll/DC/ToHit/Range as discrete tonal chips below title in header -->
+              <div v-if="action.roll || action.toHit || action.dc || action.range" class="d-flex gap-1 flex-wrap">
+                <v-chip
+                  v-if="action.roll"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  <v-icon icon="mdi-dice-d20" size="x-small" class="mr-1" />
                   {{ action.roll }}
+                </v-chip>
+                <v-chip
+                  v-if="action.toHit"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  {{ action.toHit }}
+                </v-chip>
+                <v-chip
+                  v-if="action.dc"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  DC {{ action.dc }}
+                </v-chip>
+                <v-chip
+                  v-if="action.range"
+                  size="x-small"
+                  color="info"
+                  variant="tonal"
+                  class="discrete-chip"
+                >
+                  {{ action.range }}
                 </v-chip>
               </div>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
-            <div class="action-meta">
-              <div v-if="action.toHit" class="mb-1">
-                <strong>To Hit / Bonus:</strong> {{ action.toHit }}
-              </div>
-              <div v-if="action.dc" class="mb-1">
-                <strong>Save DC:</strong> {{ action.dc }}
-              </div>
-              <div v-if="action.roll" class="mb-1">
-                <strong>Roll:</strong> {{ action.roll }}
-              </div>
+            <div class="action-details">
+              <!-- All other details -->
+              <v-divider v-if="(action.roll || action.toHit || action.dc) && action.description" class="my-2" />
+              <div v-html="action.description || 'No description'" />
             </div>
-            <v-divider v-if="(action.toHit || action.dc || action.roll) && action.description" class="my-2" />
-            <div v-html="action.description || 'No description'" />
           </v-expansion-panel-text>
         </v-expansion-panel>
       </v-expansion-panels>
@@ -99,13 +106,15 @@ const getActionTypeLabel = (type) => {
 </script>
 
 <style scoped>
-/* Inherit global styles */
-.action-roll-chip {
-  min-width: 0;
+.action-details {
+  line-height: 1.8;
 }
 
-.action-roll-chip :deep(.v-chip) {
-  white-space: nowrap;
+.discrete-chip {
+  opacity: 0.85;
+  font-size: 0.625rem !important;
+  height: 18px !important;
+  padding: 0 6px !important;
 }
 </style>
 

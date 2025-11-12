@@ -1,37 +1,40 @@
 <template>
-  <div class="stat-block-detail">
+  <div class="stat-block-detail" :style="backgroundImageStyle">
     <page-top-bar
       :title="item.name"
       icon="mdi-sword-cross"
       icon-color="#E74C3C"
-      :description="headerDescription"
+      :description="headerDescriptionSimple"
     >
       <template #actions>
-        <div class="stat-info-grid">
-          <div class="info-item">
-            <v-icon icon="mdi-sword-cross" size="small" color="#E74C3C" class="mr-1" />
-            <span class="info-label">CR:</span> {{ statBlockData.cr || '?' }}
-          </div>
-          <div class="info-item">
-            <v-icon icon="mdi-shield" size="small" color="primary" class="mr-1" />
-            <span class="info-label">AC:</span> {{ statBlockData.ac || '?' }}
-          </div>
-          <div class="info-item">
-            <v-icon icon="mdi-heart" size="small" color="error" class="mr-1" />
-            <span class="info-label">HP:</span> {{ statBlockData.hp || '?' }}
-          </div>
-          <div class="info-item">
-            <v-icon icon="mdi-run" size="small" color="success" class="mr-1" />
-            <span class="info-label">Speed:</span> {{ statBlockData.speed || '?' }}
-          </div>
-          <div v-if="statBlockData.senses" class="info-item">
-            <v-icon icon="mdi-eye" size="small" color="info" class="mr-1" />
-            <span class="info-label">Senses:</span> {{ statBlockData.senses }}
-          </div>
-          <div v-if="statBlockData.languages" class="info-item">
-            <v-icon icon="mdi-translate" size="small" color="warning" class="mr-1" />
-            <span class="info-label">Languages:</span> {{ statBlockData.languages }}
-          </div>
+        <div class="d-flex align-center gap-2">
+          <v-tooltip location="bottom">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" icon="mdi-information-outline" size="small" color="primary" />
+            </template>
+            <div class="stat-info-tooltip">
+              <div v-if="statBlockData.ac" class="tooltip-item">
+                <v-icon icon="mdi-shield" size="small" class="mr-1" /> 
+                <strong>AC:</strong> {{ statBlockData.ac }}
+              </div>
+              <div v-if="statBlockData.hp" class="tooltip-item">
+                <v-icon icon="mdi-heart" size="small" class="mr-1" /> 
+                <strong>HP:</strong> {{ statBlockData.hp }}
+              </div>
+              <div v-if="statBlockData.speed" class="tooltip-item">
+                <v-icon icon="mdi-run" size="small" class="mr-1" /> 
+                <strong>Speed:</strong> {{ statBlockData.speed }}
+              </div>
+              <div v-if="statBlockData.senses" class="tooltip-item">
+                <v-icon icon="mdi-eye" size="small" class="mr-1" /> 
+                <strong>Senses:</strong> {{ statBlockData.senses }}
+              </div>
+              <div v-if="statBlockData.languages" class="tooltip-item">
+                <v-icon icon="mdi-translate" size="small" class="mr-1" /> 
+                <strong>Languages:</strong> {{ statBlockData.languages }}
+              </div>
+            </div>
+          </v-tooltip>
         </div>
       </template>
     </page-top-bar>
@@ -79,20 +82,11 @@
           </v-col>
         </v-row>
 
-        <!-- Ability Scores -->
-        <v-row class="mb-4">
-              <v-col v-for="(score, ability) in abilityScores" :key="ability" cols="4" md="2">
-                <div class="ability-box">
-                  <div class="ability-name text-overline">{{ ability.toUpperCase() }}</div>
-                  <div class="ability-score text-h4 font-weight-bold">
-                    {{ score || 10 }}
-                  </div>
-                  <div class="ability-modifier text-h6">
-                    {{ getModifier(score) }}
-                  </div>
-                </div>
-              </v-col>
-            </v-row>
+        <!-- Ability Scores & Saving Throws -->
+        <ability-scores-display
+          :data="statBlockData"
+          :proficiency-bonus="statBlockProficiencyBonus"
+        />
 
     
 
@@ -188,7 +182,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { LibraryItem, StatBlockData } from '@/types/item.types'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import { useFilesStore } from '@/stores/files'
@@ -197,6 +191,8 @@ import ActionListDisplay from '../common/ActionListDisplay.vue'
 import SpellListDisplay from '../common/SpellListDisplay.vue'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
+import AbilityScoresDisplay from '../common/AbilityScoresDisplay.vue'
+import { calculateStatBlockProficiencyBonus } from '@/composables/useDnd5eCalculations'
 
 interface Props {
   item: LibraryItem
@@ -210,16 +206,46 @@ const props = withDefaults(defineProps<Props>(), {
 const filesStore = useFilesStore()
 
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
+const featuredImageUrl = ref<string>('')
 
-const headerDescription = computed(() => {
-  const parts: string[] = []
-  if (statBlockData.value.size) parts.push(statBlockData.value.size)
-  if (statBlockData.value.type) parts.push(statBlockData.value.type)
-  let text = parts.join(' ')
-  if (statBlockData.value.alignment) {
-    text += text ? ` • ${statBlockData.value.alignment}` : statBlockData.value.alignment
+// Background image style
+const backgroundImageStyle = computed(() => {
+  if (!featuredImageUrl.value) return {}
+  return {
+    '--bg-image': `url(${featuredImageUrl.value})`,
   }
-  return text || 'Stat Block'
+})
+
+// Load featured image URL
+watch(
+  () => props.item.featuredImage?.id,
+  async (imageId) => {
+    if (imageId) {
+      try {
+        featuredImageUrl.value = await filesStore.getDownloadUrl(imageId)
+      } catch (error) {
+        console.error('Failed to load featured image:', error)
+        featuredImageUrl.value = ''
+      }
+    } else {
+      featuredImageUrl.value = ''
+    }
+  },
+  { immediate: true }
+)
+
+const headerDescriptionSimple = computed(() => {
+  const parts: string[] = []
+  if (statBlockData.value.cr) parts.push(`CR ${statBlockData.value.cr}`)
+  if (statBlockData.value.size) parts.push(statBlockData.value.size)
+  return parts.join(' • ') || 'Stat Block'
+})
+
+const statBlockProficiencyBonus = computed(() => {
+  if (statBlockData.value.cr) {
+    return calculateStatBlockProficiencyBonus(statBlockData.value.cr)
+  }
+  return 0
 })
 
 const initiativeValue = computed(() => statBlockData.value.initiative)
@@ -241,50 +267,60 @@ const fileIds = computed(() => {
   return []
 })
 
-const abilityScores = computed(() => {
-  const data = statBlockData.value
-  return {
-    str: data.str,
-    dex: data.dex,
-    con: data.con,
-    int: data.int,
-    wis: data.wis,
-    cha: data.cha,
-  }
-})
-
-const hasAbilityScores = computed(() => {
-  return Object.values(abilityScores.value).some(score => score !== undefined && score !== null)
-})
-
-const getModifier = (score: number | undefined): string => {
-  if (score === undefined || score === null) return '+0'
-  const mod = Math.floor((score - 10) / 2)
-  return mod >= 0 ? `+${mod}` : `${mod}`
-}
 </script>
 
 <style scoped>
 .stat-block-detail {
   width: 100%;
+  position: relative;
+  min-height: 100vh;
 }
 
-.stat-info-grid {
+.stat-block-detail::before {
+  content: '';
+  position: fixed;
+  top: 50px;
+  left: 0;
+  width: 50vw;
+  height: calc(50vw * 4 / 3);
+  max-height: calc(100vh - 50px);
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: left center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.3;
+  mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    linear-gradient(to right, black 0%, black 60%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+.stat-block-detail > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Stat Info Tooltip */
+.stat-info-tooltip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
 }
 
-.info-item {
+.tooltip-item {
   display: flex;
   align-items: center;
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
-.info-label {
-  font-weight: 600;
-  margin-right: 4px;
-}
 
 .core-stats-row {
   margin-bottom: 16px;
@@ -322,34 +358,6 @@ const getModifier = (score: number | undefined): string => {
   opacity: 0.85;
 }
 
-.abilities-card :deep(.v-card-text) {
-  padding: 16px !important;
-}
-
-.ability-box {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  transition: background 0.2s;
-}
-
-.ability-box:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.ability-name {
-  font-weight: bold;
-  color: rgb(var(--v-theme-primary));
-}
-
-.ability-score {
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.ability-modifier {
-  color: rgb(var(--v-theme-primary));
-}
 
 .card-title-mobile {
   padding: 16px !important;
@@ -361,33 +369,12 @@ const getModifier = (score: number | undefined): string => {
 }
 
 @media (max-width: 959px) {
-  .stat-info-grid {
-    gap: 8px;
-    font-size: 0.75rem;
-  }
-
   .stat-card-content {
     padding: 12px 8px !important;
   }
 
   .stat-value {
     font-size: 1.4rem;
-  }
-
-  .ability-box {
-    padding: 10px 6px;
-  }
-
-  .ability-name {
-    font-size: 0.5rem;
-  }
-
-  .ability-score {
-    font-size: 1.2rem;
-  }
-
-  .ability-modifier {
-    font-size: 0.85rem;
   }
 }
 </style>
