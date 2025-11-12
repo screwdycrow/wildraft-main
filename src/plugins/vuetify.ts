@@ -55,7 +55,7 @@ const darkForestTheme = {
     'on-surface': '#E8F5E9', // Light green text
     'glass-surface': '#0F1A1F', // Main glass color (blue-green tint)
     'glass-border': '#4CAF50', // Green border
-    'card-background': '#0A1215', // Item card background (darker with blue tint)
+    'card-background': '#223c43', // Item card background (darker with blue tint)
     'sidebar-background': '#0F1A1F', // Sidebar background
     'header-background': '#0F1A1F', // Header background
   },
@@ -75,7 +75,7 @@ const deepBlueTheme = {
     'on-surface': '#E3F2FD', // Light blue text
     'glass-surface': '#1A2F42', // Main glass color
     'glass-border': '#2196F3', // Blue border
-    'card-background': '#142535', // Item card background (darker)
+    'card-background': '#203851', // Item card background (a bit more light)
     'sidebar-background': 'transparent', // Sidebar background
     'header-background': '#1A2F42', // Header background
   },
@@ -95,7 +95,7 @@ const crimsonTheme = {
     'on-surface': '#FFFFFF', // Text on surface
     'glass-surface': '#2A1A1A', // Main glass color
     'glass-border': '#DC143C', // Red border
-    'card-background': '#201313', // Item card background (darker)
+    'card-background': '#3a1a1a', // Item card background (darker)
     'sidebar-background': '#2A1A1A', // Sidebar background
     'header-background': '#2A1A1A', // Header background
   },
@@ -175,7 +175,7 @@ const midnightTheme = {
     'on-surface': '#E8E4F3', // Light purple text
     'glass-surface': '#1A162F', // Main glass color
     'glass-border': '#7C4DFF', // Purple border
-    'card-background': '#131025', // Item card background (darker)
+    'card-background': '#2a264f', // Item card background (darker)
     'sidebar-background': '#2A264F', // Sidebar background
     'header-background': '#1A162F', // Header background
   },

@@ -10,15 +10,15 @@
     
     <!-- Content -->
     <div class="card-content">
-      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.85 }">
-        <v-icon icon="mdi-note-text" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.85 }" />
+      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.95 }">
+        <v-icon icon="mdi-note-text" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.95 }" />
         <span class="text-truncate font-weight-bold">{{ item.name }}</span>
         <v-spacer />
         <v-icon
           v-if="noteData.isPinned"
           icon="mdi-pin"
           size="small"
-          :style="{ color: textColor, opacity: 0.85 }"
+          :style="{ color: textColor, opacity: 0.95 }"
         />
       </v-card-title>
 
@@ -27,7 +27,7 @@
         <div
           v-if="item.description"
           class="description-wrapper mb-3"
-          :style="{ color: textColor, opacity: 0.85 }"
+          :style="{ color: textColor, opacity: 0.95 }"
         >
           <div class="description-text" v-html="item.description" />
         </div>
@@ -138,7 +138,7 @@ const getContentPreview = (content: string): string => {
 }
 
 .note-card:hover .card-background {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .card-content {
@@ -159,7 +159,7 @@ const getContentPreview = (content: string): string => {
   padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .description-wrapper::-webkit-scrollbar {
@@ -182,7 +182,7 @@ const getContentPreview = (content: string): string => {
 .description-text {
   font-size: 0.75rem;
   line-height: 1.6;
-  opacity:0.8;
+  opacity:0.95;
   font-weight: 400;
 }
 

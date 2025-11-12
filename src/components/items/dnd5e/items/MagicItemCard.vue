@@ -10,12 +10,12 @@
     
     <!-- Content -->
     <div class="card-content">
-      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.85 }">
-        <v-icon icon="mdi-treasure-chest" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.85 }" />
+      <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.95 }">
+        <v-icon icon="mdi-treasure-chest" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.95 }" />
         <span class="text-truncate font-weight-bold">{{ item.name }}</span>
       </v-card-title>
 
-      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.7 }">
+      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
         <v-chip size="small" :color="getRarityColor(itemData.rarity)" class="mr-2">
           {{ itemData.rarity }}
         </v-chip>
@@ -25,7 +25,7 @@
 
       <v-card-text class="flex-grow-1">
         <!-- Properties Row -->
-        <div v-if="itemData.value || itemData.weight || itemData.damage" class="properties-row mb-3" :style="{ opacity: 0.85 }">
+        <div v-if="itemData.value || itemData.weight || itemData.damage" class="properties-row mb-3" :style="{ opacity: 0.95 }">
           <div v-if="itemData.damage" class="property-item">
             <v-icon icon="mdi-sword" size="small" :style="{ color: textColor }" />
             <span :style="{ color: textColor }">{{ itemData.damage }}</span>
@@ -44,13 +44,13 @@
         <div
           v-if="item.description"
           class="description-wrapper mb-3"
-          :style="{ color: textColor, opacity: 0.85 }"
+          :style="{ color: textColor, opacity: 0.95 }"
         >
           <div class="description-text" v-html="item.description" />
         </div>
 
         <!-- Properties -->
-        <div v-if="itemData.properties && itemData.properties.length > 0" class="properties-chips" :style="{ opacity: 0.85 }">
+        <div v-if="itemData.properties && itemData.properties.length > 0" class="properties-chips" :style="{ opacity: 0.95 }">
           <v-chip
             v-for="(prop, index) in itemData.properties.slice(0, 4)"
             :key="index"
@@ -177,7 +177,7 @@ const getRarityColor = (rarity: string) => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.3;
+  opacity: 0.5;
   transition: opacity 0.3s ease;
 }
 
@@ -209,7 +209,7 @@ const getRarityColor = (rarity: string) => {
   gap: 4px;
   font-size: 0.875rem;
   font-weight: 500;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .description-wrapper {
@@ -218,7 +218,7 @@ const getRarityColor = (rarity: string) => {
   padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .description-wrapper::-webkit-scrollbar {
@@ -241,7 +241,7 @@ const getRarityColor = (rarity: string) => {
 .description-text {
   font-size: 0.75rem;
   line-height: 1.6;
-  opacity:0.8;
+  opacity:0.95;
   font-weight: 400;
 }
 

@@ -146,7 +146,7 @@ const skeletonCount = computed(() => props.skeletonCount)
 
 const masonryColumns = {
   default: 6,
-  2560: 7,
+  2560: 6,
   1920: 4,
   1600: 4,
   1280: 3,

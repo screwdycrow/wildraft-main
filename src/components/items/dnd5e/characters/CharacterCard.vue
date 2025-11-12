@@ -10,18 +10,18 @@
     
     <!-- Content -->
     <div class="card-content">
-      <v-card-title class="card-title pb-1" :style="{ color: textColor, opacity: 0.85 }">
+      <v-card-title class="card-title pb-1" :style="{ color: textColor, opacity: 0.95 }">
         <span class="text-h6 font-weight-bold">{{ item.name }}</span>
       </v-card-title>
 
-      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.7 }">
+      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
         {{ characterData.race }} {{ characterData.class }}
         <span v-if="characterData.subclass">({{ characterData.subclass }})</span>
         (CR: {{ characterData.level || 1 }})
       </v-card-subtitle>
 
       <!-- Stats Row -->
-      <div class="stats-row mb-2" :style="{ opacity: 0.85 }">
+      <div class="stats-row mb-2" :style="{ opacity: 0.95 }">
         <div class="stat-item">
           <div class="stat-label" :style="{ color: textColor }">AC</div>
           <div class="stat-value" :style="{ color: textColor }">{{ characterData.ac || '10' }}</div>
@@ -37,7 +37,7 @@
       </div>
 
       <!-- Ability Scores -->
-      <div class="abilities-row mb-3" :style="{ opacity: 0.85 }">
+      <div class="abilities-row mb-3" :style="{ opacity: 0.95 }">
         <div v-for="ability in abilities" :key="ability.key" class="ability-item">
           <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
           <div class="ability-value" :style="{ color: textColor }">
@@ -175,7 +175,7 @@ function getAbilityModifier(key: string): string {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.3;
+  opacity: 0.5;
   transition: opacity 0.3s ease;
 }
 
@@ -213,7 +213,7 @@ function getAbilityModifier(key: string): string {
 .stat-label {
   font-size: 0.7rem;
   font-weight: 500;
-  opacity: 0.7;
+  opacity: 0.9;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -222,7 +222,7 @@ function getAbilityModifier(key: string): string {
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.2;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .abilities-row {
@@ -245,19 +245,19 @@ function getAbilityModifier(key: string): string {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .ability-value {
   font-size: 1.1rem;
   font-weight: bold;
   line-height: 1;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .ability-modifier {
   font-size: 0.7rem;
-  opacity: 0.7;
+  opacity: 0.9;
 }
 
 .features-list {
@@ -291,7 +291,7 @@ function getAbilityModifier(key: string): string {
 }
 
 .action-chip-opacity {
-  opacity: 0.7;
+  opacity: 0.9;
   flex-shrink: 0;
 }
 
