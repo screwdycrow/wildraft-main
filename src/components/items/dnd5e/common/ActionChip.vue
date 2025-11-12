@@ -4,6 +4,7 @@
     :variant="variant"
     :class="chipClass"
     :style="textColor ? { color: textColor } : undefined"
+    @click="handleClick"
   >
     <v-icon 
       :icon="actionIcon" 
@@ -43,6 +44,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Action } from '@/types/item.types'
+import { useDiceRollerStore } from '@/stores/diceRoller'
 
 interface Props {
   action: Action
@@ -58,6 +60,33 @@ const props = withDefaults(defineProps<Props>(), {
   showTooltip: true,
   textColor: undefined,
 })
+
+const diceStore = useDiceRollerStore()
+
+function handleClick() {
+  // Build roll text from action properties
+  const rollParts: string[] = []
+  
+  // If there's a toHit, add it as a d20 roll with proper spacing
+  if (props.action.toHit) {
+    // Remove spaces from toHit (e.g., "+ 5" or "+5") and ensure proper format
+    const modifier = props.action.toHit.replace(/\s+/g, '')
+    rollParts.push(`1d20 ${modifier}`)
+  }
+  
+  // Add damage roll
+  if (props.action.roll) {
+    rollParts.push(props.action.roll)
+  }
+  
+  const rollText = rollParts.length > 0 
+    ? `${props.action.name}: ${rollParts.join(' ')}`
+    : null
+  
+  if (rollText) {
+    diceStore.rollFromText(rollText)
+  }
+}
 
 const actionIcon = computed(() => {
   if (!props.action.actionType) return 'mdi-sword'
@@ -116,12 +145,13 @@ function getActionTypeLabel(type: string): string {
 
 <style scoped>
 .action-chip {
-  cursor: help;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .action-chip:hover {
   transform: scale(1.05);
+  opacity: 1 !important;
 }
 
 /* Apply text color to chip content when textColor prop is provided */

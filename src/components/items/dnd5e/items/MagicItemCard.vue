@@ -40,13 +40,14 @@
           </div>
         </div>
 
-        <!-- Description -->
+        <!-- Description or Effect -->
         <div
-          v-if="item.description"
+          v-if="item.description || itemData.effect"
           class="description-wrapper mb-3"
           :style="{ color: textColor, opacity: 0.95 }"
         >
-          <div class="description-text" v-html="item.description" />
+          <div v-if="item.description" class="description-text" v-html="item.description" />
+          <div v-else-if="itemData.effect" class="description-text" v-html="itemData.effect" />
         </div>
 
         <!-- Properties -->

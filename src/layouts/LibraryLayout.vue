@@ -19,6 +19,9 @@
 
       <v-spacer />
 
+      <!-- Dice Roller -->
+      <dice-roller class="mx-2" />
+
       <v-btn
         icon="mdi-magnify"
         variant="text"
@@ -193,6 +196,9 @@
     <!-- Global Item Dialogs -->
     <global-quick-item-view />
     <global-item-dialog />
+
+    <!-- 3D Dice Box -->
+    <DiceBox3D />
   </v-app>
 </template>
 
@@ -207,6 +213,8 @@ import QuickActions from '@/components/common/QuickActions.vue'
 import GlobalItemDialog from '@/components/items/GlobalItemDialog.vue'
 import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
 import CombatEncounter from '@/components/combat/CombatEncounter.vue'
+import DiceRoller from '@/components/dice/DiceRoller.vue'
+import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 
 const { mobile } = useDisplay()

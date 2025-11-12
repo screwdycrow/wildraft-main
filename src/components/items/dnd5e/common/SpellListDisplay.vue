@@ -20,6 +20,17 @@
                 <v-chip v-if="spell.castingTime" size="x-small" color="primary" variant="tonal">
                   {{ spell.castingTime }}
                 </v-chip>
+                <v-btn
+                  v-if="spell.roll || spell.toHit || spell.dc"
+                  icon="mdi-dice-multiple"
+                  size="x-small"
+                  variant="tonal"
+                  color="purple"
+                  @click.stop="rollSpell(spell)"
+                >
+                  <v-icon size="small" />
+                  <v-tooltip activator="parent" location="top">Roll</v-tooltip>
+                </v-btn>
               </div>
               <!-- Roll/DC/ToHit/Range as discrete tonal chips below title in header -->
               <div v-if="spell.roll || spell.toHit || spell.dc || spell.range" class="d-flex gap-1 flex-wrap">
@@ -92,12 +103,36 @@
 
 <script setup lang="ts">
 import type { Spell } from '@/types/item.types'
+import { useDiceRollerStore } from '@/stores/diceRoller'
 
 interface Props {
   spells?: Spell[]
 }
 
 defineProps<Props>()
+
+const diceStore = useDiceRollerStore()
+
+function rollSpell(spell: Spell) {
+  const rollParts: string[] = []
+  
+  // If there's a toHit, add it as a d20 roll with proper spacing
+  if (spell.toHit) {
+    // Remove spaces from toHit (e.g., "+ 5" or "+5") and ensure proper format
+    const modifier = spell.toHit.replace(/\s+/g, '')
+    rollParts.push(`1d20 ${modifier}`)
+  }
+  
+  // Add damage/effect roll
+  if (spell.roll) {
+    rollParts.push(spell.roll)
+  }
+  
+  if (rollParts.length > 0) {
+    const rollText = `${spell.name}: ${rollParts.join(' ')}`
+    diceStore.rollFromText(rollText)
+  }
+}
 
 function getSpellLevelColor(level: number): string {
   if (level === 0) return 'grey'

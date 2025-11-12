@@ -21,6 +21,18 @@
             >
               {{ action.actionType }}
             </v-chip>
+            <v-spacer />
+            <v-btn
+              v-if="action.roll || action.toHit"
+              icon="mdi-dice-multiple"
+              size="small"
+              variant="tonal"
+              color="primary"
+              @click="rollAction(action)"
+            >
+              <v-icon />
+              <v-tooltip activator="parent" location="top">Roll</v-tooltip>
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <div v-if="action.toHit || action.dc || action.roll || action.range" class="stats-row">
@@ -70,6 +82,18 @@
             >
               Level {{ spell.level }}
             </v-chip>
+            <v-spacer />
+            <v-btn
+              v-if="spell.roll || spell.toHit || spell.dc"
+              icon="mdi-dice-multiple"
+              size="small"
+              variant="tonal"
+              color="purple"
+              @click="rollSpell(spell)"
+            >
+              <v-icon />
+              <v-tooltip activator="parent" location="top">Roll</v-tooltip>
+            </v-btn>
           </v-card-title>
           <v-card-text>
             <div class="stats-row">
@@ -133,6 +157,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useDiceRollerStore } from '@/stores/diceRoller'
+
+const diceStore = useDiceRollerStore()
 
 interface Action {
   name: string
@@ -198,6 +225,48 @@ function getActionTypeColor(actionType: string): string {
   }
 
   return colorMap[actionType.toLowerCase()] || 'grey'
+}
+
+function rollAction(action: Action) {
+  const rollParts: string[] = []
+  
+  // If there's a toHit, add it as a d20 roll with proper spacing
+  if (action.toHit) {
+    // Remove spaces from toHit (e.g., "+ 5" or "+5") and ensure proper format
+    const modifier = action.toHit.replace(/\s+/g, '')
+    rollParts.push(`1d20 ${modifier}`)
+  }
+  
+  // Add damage roll
+  if (action.roll) {
+    rollParts.push(action.roll)
+  }
+  
+  if (rollParts.length > 0) {
+    const rollText = `${action.name}: ${rollParts.join(' ')}`
+    diceStore.rollFromText(rollText)
+  }
+}
+
+function rollSpell(spell: Spell) {
+  const rollParts: string[] = []
+  
+  // If there's a toHit, add it as a d20 roll with proper spacing
+  if (spell.toHit) {
+    // Remove spaces from toHit (e.g., "+ 5" or "+5") and ensure proper format
+    const modifier = spell.toHit.replace(/\s+/g, '')
+    rollParts.push(`1d20 ${modifier}`)
+  }
+  
+  // Add damage/effect roll
+  if (spell.roll) {
+    rollParts.push(spell.roll)
+  }
+  
+  if (rollParts.length > 0) {
+    const rollText = `${spell.name}: ${rollParts.join(' ')}`
+    diceStore.rollFromText(rollText)
+  }
 }
 </script>
 

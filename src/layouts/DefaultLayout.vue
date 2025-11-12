@@ -10,6 +10,9 @@
 
       <v-spacer />
 
+      <!-- Dice Roller -->
+      <dice-roller class="mx-2" />
+
       <v-btn icon="mdi-bell-outline" variant="text" />
       
       <user-menu />
@@ -36,6 +39,9 @@
         <router-view />
       </v-container>
     </v-main>
+
+    <!-- 3D Dice Box -->
+    <DiceBox3D />
   </v-app>
 </template>
 
@@ -43,6 +49,8 @@
 import { ref, computed } from 'vue'
 import { useTheme } from 'vuetify'
 import UserMenu from '@/components/common/UserMenu.vue'
+import DiceRoller from '@/components/dice/DiceRoller.vue'
+import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 
 const theme = useTheme()
 const drawer = ref(true)

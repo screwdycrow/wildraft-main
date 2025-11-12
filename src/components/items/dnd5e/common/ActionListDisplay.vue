@@ -18,6 +18,17 @@
                 >
                   {{ getActionTypeLabel(action.actionType) }}
                 </v-chip>
+                <v-btn
+                  v-if="action.roll || action.toHit"
+                  icon="mdi-dice-multiple"
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  @click.stop="rollAction(action)"
+                >
+                  <v-icon size="small" />
+                  <v-tooltip activator="parent" location="top">Roll</v-tooltip>
+                </v-btn>
               </div>
               <!-- Roll/DC/ToHit/Range as discrete tonal chips below title in header -->
               <div v-if="action.roll || action.toHit || action.dc || action.range" class="d-flex gap-1 flex-wrap">
@@ -75,6 +86,8 @@
 </template>
 
 <script setup>
+import { useDiceRollerStore } from '@/stores/diceRoller'
+
 const props = defineProps({
   actions: {
     type: Array,
@@ -83,6 +96,28 @@ const props = defineProps({
 })
 
 const actions = props.actions
+const diceStore = useDiceRollerStore()
+
+const rollAction = (action) => {
+  const rollParts = []
+  
+  // If there's a toHit, add it as a d20 roll with proper spacing
+  if (action.toHit) {
+    // Remove spaces from toHit (e.g., "+ 5" or "+5") and ensure proper format
+    const modifier = action.toHit.replace(/\s+/g, '')
+    rollParts.push(`1d20 ${modifier}`)
+  }
+  
+  // Add damage roll
+  if (action.roll) {
+    rollParts.push(action.roll)
+  }
+  
+  if (rollParts.length > 0) {
+    const rollText = `${action.name}: ${rollParts.join(' ')}`
+    diceStore.rollFromText(rollText)
+  }
+}
 
 const getActionTypeColor = (type) => {
   switch (type) {

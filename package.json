@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@3d-dice/dice-box": "^1.1.4",
     "@mdi/font": "^7.4.47",
     "@tiptap/extension-link": "^3.10.2",
     "@tiptap/extension-placeholder": "^3.10.2",
