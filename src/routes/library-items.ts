@@ -10,6 +10,10 @@ import {
   updateLibraryItemSchema,
   deleteLibraryItemSchema,
 } from '../schemas/library-item.schemas';
+import {
+  enrichUserFileWithDownloadUrl,
+  enrichUserFilesWithDownloadUrls,
+} from './user-files';
 
 export const libraryItemRoutes = async (fastify: FastifyInstance) => {
   // Create a library item
@@ -68,10 +72,17 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Add download URLs to featuredImage and userFiles
+        const enrichedItem = {
+          ...item,
+          featuredImage: await enrichUserFileWithDownloadUrl(item.featuredImage),
+          userFiles: await enrichUserFilesWithDownloadUrls(item.userFiles),
+        };
+
         reply.code(201);
         return {
           message: 'Item created successfully',
-          item,
+          item: enrichedItem,
         };
       } catch (error) {
         console.error('Create item error:', error);
@@ -107,7 +118,16 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
-        return { items };
+        // Add download URLs to featuredImage and userFiles for all items
+        const enrichedItems = await Promise.all(
+          items.map(async (item) => ({
+            ...item,
+            featuredImage: await enrichUserFileWithDownloadUrl(item.featuredImage),
+            userFiles: await enrichUserFilesWithDownloadUrls(item.userFiles),
+          }))
+        );
+
+        return { items: enrichedItems };
       } catch (error) {
         console.error('Get items error:', error);
         reply.code(500);
@@ -148,7 +168,14 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Item not found' };
         }
 
-        return { item };
+        // Add download URLs to featuredImage and userFiles
+        const enrichedItem = {
+          ...item,
+          featuredImage: await enrichUserFileWithDownloadUrl(item.featuredImage),
+          userFiles: await enrichUserFilesWithDownloadUrls(item.userFiles),
+        };
+
+        return { item: enrichedItem };
       } catch (error) {
         console.error('Get item error:', error);
         reply.code(500);
@@ -221,9 +248,16 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Add download URLs to featuredImage and userFiles
+        const enrichedItem = {
+          ...item,
+          featuredImage: await enrichUserFileWithDownloadUrl(item.featuredImage),
+          userFiles: await enrichUserFilesWithDownloadUrls(item.userFiles),
+        };
+
         return {
           message: 'Item updated successfully',
-          item,
+          item: enrichedItem,
         };
       } catch (error) {
         console.error('Update item error:', error);

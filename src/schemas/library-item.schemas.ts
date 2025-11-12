@@ -240,6 +240,7 @@ Additional custom fields are always allowed.`,
                 fileName: { type: 'string' },
                 fileType: { type: 'string' },
                 fileSize: { type: 'number' },
+                downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                 createdAt: { type: 'string', format: 'date-time' },
                 updatedAt: { type: 'string', format: 'date-time' }
               }
@@ -256,6 +257,7 @@ Additional custom fields are always allowed.`,
                   fileName: { type: 'string' },
                   fileType: { type: 'string' },
                   fileSize: { type: 'number' },
+                  downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' }
                 }
@@ -361,6 +363,7 @@ export const getLibraryItemsSchema = {
                 fileName: { type: 'string' },
                 fileType: { type: 'string' },
                 fileSize: { type: 'number' },
+                downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                 createdAt: { type: 'string', format: 'date-time' },
                 updatedAt: { type: 'string', format: 'date-time' }
               }
@@ -377,6 +380,7 @@ export const getLibraryItemsSchema = {
                   fileName: { type: 'string' },
                   fileType: { type: 'string' },
                   fileSize: { type: 'number' },
+                  downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' }
                 }
@@ -413,6 +417,7 @@ export const getLibraryItemsSchema = {
                 fileName: 'goblin-image.png',
                 fileType: 'image/png',
                 fileSize: 12345,
+                downloadUrl: 'https://s3.example.com/presigned-url-for-goblin-image.png?signature=...',
                 createdAt: '2025-01-01T00:00:00.000Z',
                 updatedAt: '2025-01-01T00:00:00.000Z'
               },
@@ -424,6 +429,7 @@ export const getLibraryItemsSchema = {
                   fileName: 'goblin-stat-sheet.pdf',
                   fileType: 'application/pdf',
                   fileSize: 54321,
+                  downloadUrl: 'https://s3.example.com/presigned-url-for-goblin-stat-sheet.pdf?signature=...',
                   createdAt: '2025-01-01T00:00:00.000Z',
                   updatedAt: '2025-01-01T00:00:00.000Z'
                 }
@@ -538,6 +544,7 @@ export const getLibraryItemSchema = {
                 fileName: { type: 'string' },
                 fileType: { type: 'string' },
                 fileSize: { type: 'number' },
+                downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                 createdAt: { type: 'string', format: 'date-time' },
                 updatedAt: { type: 'string', format: 'date-time' }
               }
@@ -554,6 +561,7 @@ export const getLibraryItemSchema = {
                   fileName: { type: 'string' },
                   fileType: { type: 'string' },
                   fileSize: { type: 'number' },
+                  downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' }
                 }
@@ -603,6 +611,7 @@ export const getLibraryItemSchema = {
               fileName: 'character-portrait.jpg',
               fileType: 'image/jpeg',
               fileSize: 23456,
+              downloadUrl: 'https://s3.example.com/presigned-url-for-character-portrait.jpg?signature=...',
               createdAt: '2025-01-03T00:00:00.000Z',
               updatedAt: '2025-01-03T00:00:00.000Z'
             },
@@ -614,6 +623,7 @@ export const getLibraryItemSchema = {
                 fileName: 'character-sheet.pdf',
                 fileType: 'application/pdf',
                 fileSize: 67890,
+                downloadUrl: 'https://s3.example.com/presigned-url-for-character-sheet.pdf?signature=...',
                 createdAt: '2025-01-03T00:00:00.000Z',
                 updatedAt: '2025-01-03T00:00:00.000Z'
               }
@@ -788,6 +798,7 @@ If updating the data field, it must still conform to the item's type schema. Req
                 fileName: { type: 'string' },
                 fileType: { type: 'string' },
                 fileSize: { type: 'number' },
+                downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                 createdAt: { type: 'string', format: 'date-time' },
                 updatedAt: { type: 'string', format: 'date-time' }
               }
@@ -804,6 +815,7 @@ If updating the data field, it must still conform to the item's type schema. Req
                   fileName: { type: 'string' },
                   fileType: { type: 'string' },
                   fileSize: { type: 'number' },
+                  downloadUrl: { type: 'string', description: 'Presigned download URL (valid for 1 hour)' },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' }
                 }

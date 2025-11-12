@@ -21,6 +21,46 @@ import {
   getFileSchema,
 } from '../schemas/user-file.schemas';
 
+/**
+ * Helper function to add download URL to a UserFile object
+ * Exported for use in other route files
+ */
+export async function enrichUserFileWithDownloadUrl(
+  userFile: { fileUrl: string; [key: string]: any } | null,
+  expiresIn: number = 3600
+): Promise<{ downloadUrl: string; [key: string]: any } | null> {
+  if (!userFile) {
+    return null;
+  }
+  try {
+    const downloadUrl = await getSignedDownloadUrl(userFile.fileUrl, expiresIn);
+    return {
+      ...userFile,
+      downloadUrl,
+    };
+  } catch (error) {
+    // If URL generation fails, return the file without downloadUrl
+    return {
+      ...userFile,
+      downloadUrl: null,
+    };
+  }
+}
+
+/**
+ * Helper function to add download URLs to an array of UserFile objects
+ * Uses Promise.all for parallel URL generation
+ * Exported for use in other route files
+ */
+export async function enrichUserFilesWithDownloadUrls(
+  userFiles: Array<{ fileUrl: string; [key: string]: any }>,
+  expiresIn: number = 3600
+): Promise<Array<{ downloadUrl: string; [key: string]: any }>> {
+  return Promise.all(
+    userFiles.map((file) => enrichUserFileWithDownloadUrl(file, expiresIn))
+  );
+}
+
 export const userFileRoutes = async (fastify: FastifyInstance) => {
   /**
    * POST /api/files/upload
@@ -87,7 +127,9 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
-        return reply.code(201).send(userFile);
+        // Add download URL to response
+        const enrichedFile = await enrichUserFileWithDownloadUrl(userFile);
+        return reply.code(201).send(enrichedFile);
       } catch (error) {
         request.log.error({ error }, 'Failed to upload file');
         return reply.code(500).send({
@@ -203,7 +245,9 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
-        return reply.code(201).send(userFile);
+        // Add download URL to response
+        const enrichedFile = await enrichUserFileWithDownloadUrl(userFile);
+        return reply.code(201).send(enrichedFile);
       } catch (error) {
         request.log.error({ error }, 'Failed to confirm upload');
         return reply.code(500).send({
@@ -297,8 +341,11 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           }),
         ]);
 
+        // Add download URLs to all files
+        const enrichedFiles = await enrichUserFilesWithDownloadUrls(files);
+
         return reply.code(200).send({
-          files,
+          files: enrichedFiles,
           total,
           limit,
           offset,
@@ -347,7 +394,9 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        return reply.code(200).send(file);
+        // Add download URL to response
+        const enrichedFile = await enrichUserFileWithDownloadUrl(file);
+        return reply.code(200).send(enrichedFile);
       } catch (error) {
         request.log.error({ error }, 'Failed to get file');
         return reply.code(500).send({
