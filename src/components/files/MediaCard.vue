@@ -111,10 +111,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { UserFile } from '@/api/files'
 import { formatFileSize, getFileIcon } from '@/api/files'
-import { useFilesStore } from '@/stores/files'
 
 interface Props {
   file: UserFile
@@ -146,8 +145,6 @@ defineEmits<{
   view: [file: UserFile]
 }>()
 
-const filesStore = useFilesStore()
-
 const isImage = computed(() => props.file.fileType.startsWith('image/'))
 const isVideo = computed(() => props.file.fileType.startsWith('video/'))
 const isAudio = computed(() => props.file.fileType.startsWith('audio/'))
@@ -155,17 +152,13 @@ const isPdf = computed(() => props.file.fileType.includes('pdf'))
 
 const fileIcon = computed(() => getFileIcon(props.file.fileType))
 
-// Load thumbnail URL for images
-const thumbnailUrl = ref('')
-watch(() => props.file, async (file: UserFile) => {
-  if (isImage.value) {
-    try {
-      thumbnailUrl.value = await filesStore.getDownloadUrl(file.id)
-    } catch (error) {
-      console.error('Failed to load thumbnail:', error)
-    }
+// Get thumbnail URL for images - use downloadUrl directly from file
+const thumbnailUrl = computed(() => {
+  if (isImage.value && props.file.downloadUrl) {
+    return props.file.downloadUrl
   }
-}, { immediate: true })
+  return ''
+})
 </script>
 
 <style scoped>

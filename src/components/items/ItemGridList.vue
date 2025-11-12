@@ -53,12 +53,90 @@
       >
         <item-card-wrapper
           :item="item"
+          :selected="selectedItems.has(item.id)"
+          :selection-mode="selectionMode"
           @view="$emit('view', item)"
           @edit="$emit('edit', item)"
           @delete="handleDelete(item)"
+          @select="(emittedItem, ctrlKey, metaKey) => handleItemSelect(emittedItem, ctrlKey, metaKey)"
+          @contextmenu="handleContextMenu($event, item)"
         />
       </MasonryGridItem>
     </MasonryGrid>
+
+    <!-- Mass Edit Dialog -->
+    <v-dialog v-model="showMassEditDialog" max-width="600">
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+          <v-icon icon="mdi-tag-multiple" color="primary" size="32" class="mr-3" />
+          Add Tags to {{ selectedItems.size }} {{ selectedItems.size === 1 ? props.itemTypeName : props.itemTypeNamePlural }}
+        </v-card-title>
+        <v-card-text class="px-6 pb-2">
+          <tag-selector
+            v-if="props.libraryId"
+            v-model="selectedTagIds"
+            :library-id="props.libraryId"
+            label="Select Tags"
+            hint="Tags will be added to all selected items"
+            :show-add-button="true"
+            @add-tag="$emit('add-tag')"
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="showMassEditDialog = false"
+            :disabled="isMassEditing"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="confirmMassEdit"
+            :loading="isMassEditing"
+            :disabled="selectedTagIds.length === 0"
+          >
+            Add Tags
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Context Menu -->
+    <v-overlay
+      v-model="showContextMenu"
+      class="context-menu-overlay"
+      :style="{ zIndex: 2000 }"
+      @click="showContextMenu = false"
+    >
+      <v-card
+        class="glass-card context-menu-card"
+        :style="{
+          position: 'fixed',
+          left: contextMenuLocation.x + 'px',
+          top: contextMenuLocation.y + 'px',
+          minWidth: '200px'
+        }"
+        @click.stop
+      >
+        <v-list density="compact">
+          <v-list-item
+            prepend-icon="mdi-tag-plus"
+            title="Add Tags"
+            :disabled="selectedItems.size === 0"
+            @click="openMassEditDialog"
+          />
+          <v-list-item
+            prepend-icon="mdi-selection-off"
+            title="Clear Selection"
+            :disabled="selectedItems.size === 0"
+            @click="clearSelection"
+          />
+        </v-list>
+      </v-card>
+    </v-overlay>
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
@@ -99,10 +177,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { LibraryItem } from '@/types/item.types'
 import ItemCardWrapper from './ItemCardWrapper.vue'
+import TagSelector from '@/components/tags/TagSelector.vue'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
+import { useItemsStore } from '@/stores/items'
+import { useToast } from 'vue-toastification'
 
 interface Props {
   items: LibraryItem[]
@@ -116,6 +197,7 @@ interface Props {
   emptyMessage?: string
   createButtonText?: string
   skeletonCount?: number
+  libraryId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -136,7 +218,30 @@ const emit = defineEmits<{
   view: [item: LibraryItem]
   edit: [item: LibraryItem]
   delete: [item: LibraryItem]
+  'add-tag': []
 }>()
+
+const itemsStore = useItemsStore()
+const toast = useToast()
+
+// Selection state
+const selectedItems = ref<Set<number>>(new Set())
+const lastSelectedIndex = ref<number | null>(null)
+const isCtrlClickSelection = ref(false) // Track if selection was made via Ctrl+Click
+const selectionMode = computed(() => {
+  // Show selection mode if 2+ items selected OR if any item was selected via Ctrl+Click
+  return selectedItems.value.size > 1 || (selectedItems.value.size > 0 && isCtrlClickSelection.value)
+})
+
+// Context menu state
+const showContextMenu = ref(false)
+const contextMenuLocation = ref({ x: 0, y: 0 })
+const contextMenuItem = ref<LibraryItem | null>(null)
+
+// Mass edit state
+const showMassEditDialog = ref(false)
+const selectedTagIds = ref<number[]>([])
+const isMassEditing = ref(false)
 
 const showDeleteDialog = ref(false)
 const deletingItem = ref<LibraryItem | null>(null)
@@ -171,6 +276,116 @@ const deleteWarningMessage = computed(() => {
 const deleteButtonText = computed(() => {
   return `Delete ${props.itemTypeName.charAt(0).toUpperCase() + props.itemTypeName.slice(1)}`
 })
+
+function handleItemSelect(item: LibraryItem, ctrlKey: boolean, metaKey: boolean) {
+  const itemIndex = props.items.findIndex(i => i.id === item.id)
+  
+  // Check for Ctrl/Cmd key
+  const isCtrlClick = !!(ctrlKey || metaKey)
+  
+  if (isCtrlClick) {
+    // Ctrl/Cmd+Click: Toggle selection (multi-select)
+    isCtrlClickSelection.value = true // Mark that we're using Ctrl+Click selection
+    if (selectedItems.value.has(item.id)) {
+      selectedItems.value.delete(item.id)
+      if (selectedItems.value.size === 0) {
+        lastSelectedIndex.value = null
+        isCtrlClickSelection.value = false // Reset if no items selected
+      } else if (lastSelectedIndex.value === itemIndex) {
+        // Update last selected index if we removed it
+        const remaining = Array.from(selectedItems.value)
+        if (remaining.length > 0) {
+          const remainingIndex = props.items.findIndex(i => i.id === remaining[0])
+          lastSelectedIndex.value = remainingIndex >= 0 ? remainingIndex : null
+        }
+      }
+    } else {
+      selectedItems.value.add(item.id)
+      lastSelectedIndex.value = itemIndex
+    }
+  } else {
+    // Regular click: Single selection only (no multi-select)
+    isCtrlClickSelection.value = false // Reset Ctrl+Click flag for regular clicks
+    if (selectedItems.value.has(item.id) && selectedItems.value.size === 1) {
+      // If this is the only selected item, deselect it
+      selectedItems.value.clear()
+      lastSelectedIndex.value = null
+    } else {
+      // Select only this item
+      selectedItems.value.clear()
+      selectedItems.value.add(item.id)
+      lastSelectedIndex.value = itemIndex
+    }
+  }
+}
+
+function handleContextMenu(event: MouseEvent, item: LibraryItem) {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // If item is not selected, select it first
+  if (!selectedItems.value.has(item.id)) {
+    selectedItems.value.clear()
+    selectedItems.value.add(item.id)
+    const itemIndex = props.items.findIndex(i => i.id === item.id)
+    lastSelectedIndex.value = itemIndex
+  }
+  
+  contextMenuItem.value = item
+  // Set menu location to cursor position
+  contextMenuLocation.value = { x: event.clientX, y: event.clientY }
+  showContextMenu.value = true
+}
+
+function clearSelection() {
+  selectedItems.value.clear()
+  lastSelectedIndex.value = null
+  isCtrlClickSelection.value = false
+  showContextMenu.value = false
+}
+
+function openMassEditDialog() {
+  if (selectedItems.value.size === 0) return
+  showContextMenu.value = false
+  selectedTagIds.value = []
+  showMassEditDialog.value = true
+}
+
+async function confirmMassEdit() {
+  if (!props.libraryId || selectedItems.value.size === 0 || selectedTagIds.value.length === 0) {
+    return
+  }
+
+  isMassEditing.value = true
+  try {
+    const itemIds = Array.from(selectedItems.value)
+    await itemsStore.batchAddTags(props.libraryId, itemIds, selectedTagIds.value)
+    
+    toast.success(`Added ${selectedTagIds.value.length} tag(s) to ${itemIds.length} item(s)`)
+    clearSelection()
+    showMassEditDialog.value = false
+    
+    // Refresh items
+    emit('refresh')
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to add tags')
+  } finally {
+    isMassEditing.value = false
+  }
+}
+
+// Clear selection when items change
+watch(() => props.items, () => {
+  // Remove items from selection that no longer exist
+  const itemIds = new Set(props.items.map(i => i.id))
+  selectedItems.value = new Set(Array.from(selectedItems.value).filter(id => itemIds.has(id)))
+  if (lastSelectedIndex.value !== null && lastSelectedIndex.value >= props.items.length) {
+    lastSelectedIndex.value = null
+  }
+  if (selectedItems.value.size === 0) {
+    isCtrlClickSelection.value = false
+  }
+}, { deep: true })
 
 function handleDelete(item: LibraryItem) {
   deletingItem.value = item
@@ -238,6 +453,14 @@ async function confirmDelete() {
 .skeleton-card :deep(.v-skeleton-loader__image) {
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
+}
+
+.context-menu-overlay :deep(.v-overlay__scrim) {
+  background: transparent;
+}
+
+.context-menu-card {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 </style>
 

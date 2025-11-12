@@ -50,9 +50,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { LibraryItem, NoteData } from '@/types/item.types'
-import { useFilesStore } from '@/stores/files'
+import { getFileDownloadUrl } from '@/config/api'
 
 interface Props {
   item: LibraryItem
@@ -71,27 +71,14 @@ defineEmits<{
   delete: [item: LibraryItem]
 }>()
 
-const filesStore = useFilesStore()
 const noteData = computed<NoteData>(() => props.item.data as NoteData)
 
-// Load featured image URL
-const featuredImageUrl = ref('')
-watch(() => props.item.featuredImage, async (featuredImage) => {
-  if (featuredImage) {
-    try {
-      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
-    } catch (error) {
-      console.error('Failed to load featured image:', error)
-    }
-  } else {
-    featuredImageUrl.value = ''
-  }
-}, { immediate: true })
-
+// Get featured image URL directly from the file object
 const backgroundStyle = computed(() => {
-  if (featuredImageUrl.value) {
+  if (props.item.featuredImage?.downloadUrl) {
+    const imageUrl = getFileDownloadUrl(props.item.featuredImage)
     return {
-      backgroundImage: `url(${featuredImageUrl.value})`,
+      backgroundImage: `url(${imageUrl})`,
     }
   }
   return {

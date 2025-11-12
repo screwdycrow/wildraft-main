@@ -1,10 +1,16 @@
 <template>
-  <div class="item-card-wrapper" @mouseenter="showActions = true" @mouseleave="showActions = false">
+  <div 
+    class="item-card-wrapper"
+    :class="{ 'selected': selected, 'selection-mode': selectionMode }"
+    @mouseenter="showActions = true" 
+    @mouseleave="showActions = false"
+    @click="handleCardClick"
+    @contextmenu="handleContextMenu"
+  >
     <component
       :is="cardComponent"
       :item="item"
       v-bind="$attrs"
-      @click="handleCardClick"
     />
     
     <!-- Hover Actions -->
@@ -75,14 +81,21 @@ import { useToast } from 'vue-toastification'
 
 interface Props {
   item: LibraryItem
+  selected?: boolean
+  selectionMode?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  selected: false,
+  selectionMode: false,
+})
 
 const emit = defineEmits<{
   edit: [item: LibraryItem]
   view: [item: LibraryItem]
   delete: [item: LibraryItem]
+  select: [item: LibraryItem, ctrlKey: boolean, metaKey: boolean]
+  contextmenu: [event: MouseEvent, item: LibraryItem]
 }>()
 
 const showActions = ref(false)
@@ -102,8 +115,34 @@ const canAddToCombat = computed(() => {
   return !!activeEncounter.value
 })
 
-function handleCardClick() {
+function handleCardClick(event: MouseEvent) {
+  // If Ctrl/Cmd is pressed, always handle selection (don't open quick view)
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault()
+    event.stopPropagation()
+    // Pass ctrlKey and metaKey explicitly
+    emit('select', props.item, event.ctrlKey, event.metaKey)
+    return
+  }
+  
+  // If in selection mode (2+ items selected), handle selection
+  if (props.selectionMode) {
+    emit('select', props.item, false, false)
+    return
+  }
+  
+  // If this item is selected (single selection), deselect it instead of opening
+  if (props.selected) {
+    emit('select', props.item, false, false)
+    return
+  }
+  
+  // Normal mode: open quick view
   quickItemViewStore.open(props.item)
+}
+
+function handleContextMenu(event: MouseEvent) {
+  emit('contextmenu', event, props.item)
 }
 
 async function handleAddToCombat() {
@@ -125,6 +164,26 @@ async function handleAddToCombat() {
 .item-card-wrapper {
   position: relative;
   cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 16px;
+  border: 3px solid transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.item-card-wrapper.selection-mode.selected {
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 2px rgba(var(--v-theme-primary), 0.3);
+}
+
+.item-card-wrapper.selection-mode {
+  cursor: pointer;
+}
+
+.item-card-wrapper.selection-mode:hover {
+  border-color: rgba(var(--v-theme-primary), 0.5);
 }
 
 /* Ensure wrapper maintains card background (theme-based for dark themes, dark for light themes) */

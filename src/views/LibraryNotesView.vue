@@ -63,6 +63,7 @@
       :items="filteredItems"
       :is-loading="itemsStore.isLoading && itemsStore.items.length === 0"
       :can-create="canEdit"
+      :library-id="libraryId"
       item-type-name="note"
       item-type-name-plural="notes"
       empty-icon="mdi-note-text"
@@ -74,6 +75,8 @@
       @view="viewItem"
       @edit="editItem"
       @delete="deleteItemConfirmed"
+      @refresh="handleRefresh"
+      @add-tag="handleAddTag"
     />
 
     <!-- Create/Edit Dialog -->
@@ -241,6 +244,21 @@ function handleItemUpdated(item: LibraryItem) {
   // Item already updated in store by ItemDialog
   console.log('Note updated:', item.name)
   editingItem.value = null
+}
+
+async function handleRefresh() {
+  if (libraryId.value) {
+    try {
+      await itemsStore.fetchItems(libraryId.value, { type: ITEM_TYPE })
+    } catch (error) {
+      toast.error('Failed to refresh items')
+    }
+  }
+}
+
+function handleAddTag() {
+  // Emit event to parent or open tag creation dialog
+  console.log('Add tag requested')
 }
 
 async function deleteItemConfirmed(item: LibraryItem) {

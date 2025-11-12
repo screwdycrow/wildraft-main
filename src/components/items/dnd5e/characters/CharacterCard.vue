@@ -78,10 +78,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { LibraryItem, CharacterData } from '@/types/item.types'
-import { useFilesStore } from '@/stores/files'
 import ActionChip from '../common/ActionChip.vue'
+import { getFileDownloadUrl } from '@/config/api'
 
 interface Props {
   item: LibraryItem
@@ -89,7 +89,6 @@ interface Props {
   textColor?: string
 }
 
-const filesStore = useFilesStore()
 const props = withDefaults(defineProps<Props>(), {
   showActions: true,
   textColor: '#FFFFFF', // White by default, can be customized later
@@ -112,24 +111,12 @@ const abilities = [
   { key: 'cha', label: 'CHA' },
 ]
 
-// Load featured image URL
-const featuredImageUrl = ref('')
-watch(() => props.item.featuredImage, async (featuredImage) => {
-  if (featuredImage) {
-    try {
-      featuredImageUrl.value = await filesStore.getDownloadUrl(featuredImage.id)
-    } catch (error) {
-      console.error('Failed to load featured image:', error)
-    }
-  } else {
-    featuredImageUrl.value = ''
-  }
-}, { immediate: true })
-
+// Get featured image URL directly from the file object
 const backgroundStyle = computed(() => {
-  if (featuredImageUrl.value) {
+  if (props.item.featuredImage?.downloadUrl) {
+    const imageUrl = getFileDownloadUrl(props.item.featuredImage)
     return {
-      backgroundImage: `url(${featuredImageUrl.value})`,
+      backgroundImage: `url(${imageUrl})`,
     }
   }
   return {

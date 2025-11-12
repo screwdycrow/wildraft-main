@@ -120,6 +120,7 @@
       :items="filteredItems"
       :is-loading="itemsStore.isLoading && itemsStore.items.length === 0"
       :can-create="canEdit"
+      :library-id="libraryId"
       item-type-name="item"
       item-type-name-plural="items"
       empty-icon="mdi-bookshelf"
@@ -131,6 +132,8 @@
       @view="viewItem"
       @edit="editItem"
       @delete="deleteItemConfirmed"
+      @refresh="handleRefresh"
+      @add-tag="handleAddTag"
     />
 
     <!-- Create/Edit Dialog -->
@@ -374,6 +377,22 @@ async function deleteItemConfirmed(item: LibraryItem) {
   } catch (error) {
     toast.error('Failed to delete item')
   }
+}
+
+async function handleRefresh() {
+  if (libraryId.value) {
+    try {
+      await itemsStore.fetchItems(libraryId.value)
+    } catch (error) {
+      toast.error('Failed to refresh items')
+    }
+  }
+}
+
+function handleAddTag() {
+  // Emit event to parent or open tag creation dialog
+  // This can be implemented based on your tag creation flow
+  console.log('Add tag requested')
 }
 </script>
 

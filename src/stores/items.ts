@@ -7,6 +7,12 @@ import type {
   UpdateLibraryItemPayload 
 } from '@/types/item.types'
 
+interface CacheMetadata {
+  libraryId: number | null
+  params: string
+  timestamp: number
+}
+
 export const useItemsStore = defineStore('items', () => {
   // State
   const items = ref<LibraryItem[]>([])
@@ -14,6 +20,13 @@ export const useItemsStore = defineStore('items', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const total = ref(0)
+  
+  // Cache metadata (not persisted, just for runtime checks)
+  const cacheMetadata = ref<CacheMetadata>({
+    libraryId: null,
+    params: '',
+    timestamp: 0
+  })
 
   // Getters
   const sortedItems = computed(() => {
@@ -36,20 +49,58 @@ export const useItemsStore = defineStore('items', () => {
     return items.value.find(item => item.id === id)
   })
 
+  // Helper: Check if items are already loaded for this library/params
+  function isAlreadyLoaded(libraryId: number, params?: Record<string, any>): boolean {
+    if (cacheMetadata.value.libraryId !== libraryId) return false
+    
+    const paramsKey = params ? JSON.stringify(params) : ''
+    return cacheMetadata.value.params === paramsKey && items.value.length > 0
+  }
+
+  // Helper: Serialize params for comparison
+  function serializeParams(params?: Record<string, any>): string {
+    if (!params) return ''
+    const sorted = Object.keys(params).sort().reduce((acc, key) => {
+      acc[key] = params[key]
+      return acc
+    }, {} as Record<string, any>)
+    return JSON.stringify(sorted)
+  }
+
   // Actions
-  async function fetchItems(libraryId: number, params?: { 
-    type?: string 
-    tagIds?: number[]
-    search?: string
-    limit?: number
-    offset?: number
-  }) {
+  async function fetchItems(
+    libraryId: number, 
+    params?: { 
+      type?: string 
+      tagIds?: number[]
+      search?: string
+      limit?: number
+      offset?: number
+    },
+    forceRefresh: boolean = false
+  ) {
+    // Check if already loaded (unless force refresh)
+    if (!forceRefresh && isAlreadyLoaded(libraryId, params)) {
+      console.log('Items already loaded from cache, skipping API call')
+      return items.value
+    }
+
     isLoading.value = true
     error.value = null
     try {
       const response = await itemsApi.getAll(libraryId, params)
+      
+      // Update cached items with API response
       items.value = response.items
       total.value = response.total
+      
+      // Update cache metadata
+      cacheMetadata.value = {
+        libraryId,
+        params: serializeParams(params),
+        timestamp: Date.now()
+      }
+      
       return response.items
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to fetch items'
@@ -59,18 +110,35 @@ export const useItemsStore = defineStore('items', () => {
     }
   }
 
-  async function fetchItem(libraryId: number, itemId: number) {
+  async function fetchItem(libraryId: number, itemId: number, forceRefresh: boolean = false) {
+    // Check if item is already in cached items
+    if (!forceRefresh) {
+      const existingItem = items.value.find(item => item.id === itemId)
+      if (existingItem) {
+        if (currentItem.value?.id === itemId) {
+          console.log('Item already loaded from cache, skipping API call')
+          return currentItem.value
+        }
+        // Update current item from cache
+        currentItem.value = existingItem
+        return existingItem
+      }
+    }
+
     isLoading.value = true
     error.value = null
     try {
       const response = await itemsApi.getById(libraryId, itemId)
+      
+      // Update cached items with API response
       currentItem.value = response.item
       
-      // Update in the list if it exists
       const index = items.value.findIndex(item => item.id === itemId)
       if (index !== -1) {
+        // Update existing item in cache
         items.value[index] = response.item
       } else {
+        // Add new item to cache
         items.value.push(response.item)
       }
       
@@ -88,8 +156,16 @@ export const useItemsStore = defineStore('items', () => {
     error.value = null
     try {
       const response = await itemsApi.create(libraryId, payload)
+      
+      // Update cached items with API response
       items.value.unshift(response.item)
       total.value++
+      
+      // Invalidate cache metadata (items changed, might need refresh)
+      if (cacheMetadata.value.libraryId === libraryId) {
+        cacheMetadata.value.params = '' // Force reload on next fetch
+      }
+      
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to create item'
@@ -104,6 +180,8 @@ export const useItemsStore = defineStore('items', () => {
     error.value = null
     try {
       const response = await itemsApi.update(libraryId, itemId, payload)
+      
+      // Update cached items with API response
       const index = items.value.findIndex(item => item.id === itemId)
       if (index !== -1) {
         items.value[index] = response.item
@@ -111,6 +189,8 @@ export const useItemsStore = defineStore('items', () => {
       if (currentItem.value?.id === itemId) {
         currentItem.value = response.item
       }
+      
+      // Cache is still valid, just updated the item
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to update item'
@@ -125,11 +205,18 @@ export const useItemsStore = defineStore('items', () => {
     error.value = null
     try {
       await itemsApi.delete(libraryId, itemId)
+      
+      // Update cached items (remove deleted item)
       items.value = items.value.filter(item => item.id !== itemId)
       if (currentItem.value?.id === itemId) {
         currentItem.value = null
       }
       total.value--
+      
+      // Invalidate cache metadata (items changed)
+      if (cacheMetadata.value.libraryId === libraryId) {
+        cacheMetadata.value.params = '' // Force reload on next fetch
+      }
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to delete item'
       throw err
@@ -143,8 +230,13 @@ export const useItemsStore = defineStore('items', () => {
     try {
       await itemsApi.attachFile(libraryId, itemId, fileId)
       
-      // Refresh the item to get updated file list
-      await fetchItem(libraryId, itemId)
+      // Refresh item to get updated file list from API, then update cache
+      const existingItem = items.value.find(item => item.id === itemId)
+      if (!existingItem || !existingItem.userFiles?.some(f => f.id === fileId)) {
+        await fetchItem(libraryId, itemId, true) // Force refresh to get updated file list
+      } else {
+        await fetchItem(libraryId, itemId) // Will use cache if available
+      }
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to attach file'
       throw err
@@ -183,6 +275,56 @@ export const useItemsStore = defineStore('items', () => {
     items.value = []
     currentItem.value = null
     total.value = 0
+    cacheMetadata.value = {
+      libraryId: null,
+      params: '',
+      timestamp: 0
+    }
+  }
+
+  // Force refresh function
+  async function refreshItems(libraryId: number, params?: Record<string, any>) {
+    return fetchItems(libraryId, params, true)
+  }
+
+  async function batchAddTags(libraryId: number, itemIds: number[], tagIds: number[]) {
+    isLoading.value = true
+    error.value = null
+    try {
+      // Update each item individually (batch endpoint can be added later if needed)
+      const updatePromises = itemIds.map(async (itemId) => {
+        const item = items.value.find(i => i.id === itemId)
+        if (!item) return null
+        
+        // Merge existing tags with new tags
+        const existingTagIds = item.tags?.map(t => t.id) || []
+        const newTagIds = [...new Set([...existingTagIds, ...tagIds])]
+        
+        const response = await itemsApi.update(libraryId, itemId, { tagIds: newTagIds })
+        return response.item
+      })
+      
+      const updatedItems = await Promise.all(updatePromises)
+      
+      // Update cached items with API responses
+      updatedItems.forEach(updatedItem => {
+        if (!updatedItem) return
+        const index = items.value.findIndex(item => item.id === updatedItem.id)
+        if (index !== -1) {
+          items.value[index] = updatedItem
+        }
+        if (currentItem.value?.id === updatedItem.id) {
+          currentItem.value = updatedItem
+        }
+      })
+      
+      return updatedItems.filter(Boolean) as LibraryItem[]
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to add tags'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
   }
 
   return {
@@ -205,6 +347,17 @@ export const useItemsStore = defineStore('items', () => {
     setCurrentItem,
     clearError,
     clearItems,
+    batchAddTags,
+    refreshItems,
+    isAlreadyLoaded,
+  }
+}, {
+  // Persistence configuration
+  persist: {
+    key: 'items-store',
+    storage: localStorage,
+    pick: ['items', 'currentItem', 'total'], // Only persist these
+    // Don't persist: isLoading, error, cacheMetadata (runtime only)
   }
 })
 
