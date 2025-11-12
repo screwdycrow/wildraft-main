@@ -45,24 +45,27 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
 
       try {
         let buffer: Buffer | null = null;
+        let finalFileType = fileType;
 
         // If fileBuffer is provided, upload directly
         if (fileBuffer) {
           buffer = Buffer.from(fileBuffer, 'base64');
 
-          // Optimise images using sharp when possible
+          // Convert images to WebP using sharp when possible
           if (isOptimisableImageMime(fileType)) {
             try {
-              buffer = await optimiseImageBuffer(buffer, fileType, request.log);
+              const result = await convertImageToWebP(buffer, fileType, request.log);
+              buffer = result.buffer;
+              finalFileType = result.mimeType;
             } catch (optimiseError) {
               request.log.warn(
                 { err: optimiseError },
-                'Image optimisation failed, falling back to original buffer'
+                'Image conversion to WebP failed, falling back to original buffer'
               );
             }
           }
 
-          await uploadToS3(buffer, filePath, fileType);
+          await uploadToS3(buffer, filePath, finalFileType);
         } else {
           // If no file buffer, just verify the path is valid
           // Frontend will handle the actual upload using presigned URL
@@ -79,7 +82,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
             userId,
             fileUrl: filePath,
             fileName,
-            fileType,
+            fileType: finalFileType,
             fileSize: finalBufferSize,
           },
         });
@@ -170,24 +173,21 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           if (isOptimisableImageMime(finalFileType)) {
             try {
               const { buffer: originalBuffer, contentType } = await getFileBuffer(filePath);
-              finalFileType = contentType ?? finalFileType;
-              const optimisedBuffer = await optimiseImageBuffer(
+              const originalMimeType = contentType ?? finalFileType;
+              const result = await convertImageToWebP(
                 originalBuffer,
-                finalFileType,
+                originalMimeType,
                 request.log
               );
 
-              // Only overwrite in S3 if optimisation yields a size improvement
-              if (optimisedBuffer.length < originalBuffer.length) {
-                await uploadToS3(optimisedBuffer, filePath, finalFileType);
-                finalFileSize = optimisedBuffer.length;
-              } else {
-                finalFileSize = originalBuffer.length;
-              }
+              // Always convert to WebP and overwrite in S3
+              await uploadToS3(result.buffer, filePath, result.mimeType);
+              finalFileType = result.mimeType;
+              finalFileSize = result.buffer.length;
             } catch (optimiseError) {
               request.log.warn(
                 { err: optimiseError },
-                'Image optimisation for presigned upload failed; keeping original file'
+                'Image conversion to WebP for presigned upload failed; keeping original file'
               );
             }
         }
@@ -432,47 +432,32 @@ const normaliseMimeType = (mime?: string | null): string =>
 const isOptimisableImageMime = (mime?: string | null): boolean =>
   SUPPORTED_IMAGE_TYPES.has(normaliseMimeType(mime));
 
-async function optimiseImageBuffer(
+async function convertImageToWebP(
   buffer: Buffer,
   mimeType: string,
   log: FastifyBaseLogger
-): Promise<Buffer> {
+): Promise<{ buffer: Buffer; mimeType: string }> {
   const normalisedMime = normaliseMimeType(mimeType);
 
   if (!SUPPORTED_IMAGE_TYPES.has(normalisedMime)) {
-    log.debug({ mimeType }, 'Skipping optimisation for unsupported image mime type');
-    return buffer;
+    log.debug({ mimeType }, 'Skipping conversion for unsupported image mime type');
+    return { buffer, mimeType };
   }
 
-  const base = sharp(buffer).rotate();
-
-  switch (normalisedMime) {
-    case 'image/jpeg':
-    case 'image/jpg':
-      return base.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
-
-    case 'image/png':
-      return base
-        .png({
-          compressionLevel: 9,
-          adaptiveFiltering: true,
-          palette: true,
-        })
-        .toBuffer();
-
-    case 'image/webp':
-      return base.webp({ quality: 80, smartSubsample: true }).toBuffer();
-
-    case 'image/gif':
-      return base.gif({ effort: 3 }).toBuffer();
-
-    case 'image/avif':
-      return base.avif({ quality: 50, effort: 4 }).toBuffer();
-
-    case 'image/tiff':
-      return base.tiff({ quality: 80, compression: 'lzw' }).toBuffer();
-
-    default:
-      return buffer;
+  // If already WebP, just optimize it
+  if (normalisedMime === 'image/webp') {
+    const optimizedBuffer = await sharp(buffer)
+      .rotate()
+      .webp({ quality: 80, smartSubsample: true })
+      .toBuffer();
+    return { buffer: optimizedBuffer, mimeType: 'image/webp' };
   }
+
+  // Convert all other image types to WebP
+  const webpBuffer = await sharp(buffer)
+    .rotate()
+    .webp({ quality: 80, smartSubsample: true })
+    .toBuffer();
+
+  return { buffer: webpBuffer, mimeType: 'image/webp' };
 }
