@@ -11,8 +11,13 @@
   "dependencies": {
     "@3d-dice/dice-box": "^1.1.4",
     "@mdi/font": "^7.4.47",
+    "@tiptap/extension-image": "^3.10.6",
     "@tiptap/extension-link": "^3.10.2",
     "@tiptap/extension-placeholder": "^3.10.2",
+    "@tiptap/extension-table": "^3.10.6",
+    "@tiptap/extension-table-cell": "^3.10.6",
+    "@tiptap/extension-table-header": "^3.10.6",
+    "@tiptap/extension-table-row": "^3.10.6",
     "@tiptap/starter-kit": "^3.10.2",
     "@tiptap/vue-3": "^3.10.2",
     "@vueuse/core": "^14.0.0",

@@ -114,6 +114,10 @@
             v-model="formData.data.content"
             placeholder="Start writing your note..."
             min-height="400px"
+            :library-id="libraryId"
+            :library-item-id="item?.id || null"
+            :user-file-ids="formData.userFileIds"
+            @update:user-file-ids="formData.userFileIds = $event"
           />
         </v-window-item>
 
@@ -136,6 +140,10 @@
             v-model="chapter.content"
             placeholder="Start writing this chapter..."
             min-height="400px"
+            :library-id="libraryId"
+            :library-item-id="item?.id || null"
+            :user-file-ids="formData.userFileIds"
+            @update:user-file-ids="formData.userFileIds = $event"
           />
         </v-window-item>
       </v-window>

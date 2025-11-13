@@ -450,7 +450,7 @@ async function handleDuplicate() {
 }
 
 .combatant-item.is-player {
-  border-color: rgba(52, 152, 219, 0.4);
+  border-color: rgba(var(--v-theme-primary), 1);
 }
 
 .combatant-background {
@@ -561,7 +561,6 @@ async function handleDuplicate() {
 .combatant-name {
   font-size: 16px;
   font-weight: bold;
-  color: white;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;

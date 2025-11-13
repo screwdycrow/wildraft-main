@@ -95,6 +95,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/LibraryTagsView.vue'),
       },
       {
+        path: ':id/tags/:tagId/items',
+        name: 'TagLibraryItems',
+        component: () => import('@/views/TagLibraryItemsView.vue'),
+      },
+      {
         path: ':libraryId/item/:itemId',
         name: 'ItemDetail',
         component: () => import('@/views/ItemDetailView.vue'),

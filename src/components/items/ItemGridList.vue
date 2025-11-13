@@ -5,16 +5,14 @@
       v-if="isLoading && items.length === 0" 
       class="items-grid loading-grid"
     >
-      <div
-        v-for="index in skeletonCount"
-        :key="`skeleton-${index}`"
-        class="grid-item"
-      >
+    <MasonryGrid>
+      <MasonryGridItem>
         <v-skeleton-loader
           class="skeleton-card glass-card"
-          type="card"
-        />
-      </div>
+            type="card"
+          />
+        </MasonryGridItem>
+      </MasonryGrid>
     </div>
 
     <!-- Empty State -->
@@ -104,6 +102,45 @@
       </v-card>
     </v-dialog>
 
+    <!-- Mass Remove Tags Dialog -->
+    <v-dialog v-model="showMassRemoveTagsDialog" max-width="600">
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+          <v-icon icon="mdi-tag-remove" color="warning" size="32" class="mr-3" />
+          Remove Tags from {{ selectedItems.size }} {{ selectedItems.size === 1 ? props.itemTypeName : props.itemTypeNamePlural }}
+        </v-card-title>
+        <v-card-text class="px-6 pb-2">
+          <tag-selector
+            v-if="props.libraryId"
+            v-model="tagsToRemoveIds"
+            :library-id="props.libraryId"
+            label="Select Tags to Remove"
+            hint="Selected tags will be removed from all selected items"
+            :show-add-button="false"
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="showMassRemoveTagsDialog = false"
+            :disabled="isMassRemovingTags"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            @click="confirmMassRemoveTags"
+            :loading="isMassRemovingTags"
+            :disabled="tagsToRemoveIds.length === 0"
+          >
+            Remove Tags
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Context Menu -->
     <v-overlay
       v-model="showContextMenu"
@@ -123,10 +160,22 @@
       >
         <v-list density="compact">
           <v-list-item
+            v-if="selectedItems.size === 1"
+            prepend-icon="mdi-tag-edit"
+            title="Edit Tags"
+            @click="openSingleEditTagsDialog"
+          />
+          <v-list-item
+            v-if="selectedItems.size > 1"
             prepend-icon="mdi-tag-plus"
             title="Add Tags"
-            :disabled="selectedItems.size === 0"
             @click="openMassEditDialog"
+          />
+          <v-list-item
+            v-if="selectedItems.size > 1"
+            prepend-icon="mdi-tag-remove"
+            title="Remove Tags"
+            @click="openMassRemoveTagsDialog"
           />
           <v-list-item
             prepend-icon="mdi-delete"
@@ -144,6 +193,45 @@
         </v-list>
       </v-card>
     </v-overlay>
+
+    <!-- Single Item Edit Tags Dialog -->
+    <v-dialog v-model="showSingleEditTagsDialog" max-width="600">
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+          <v-icon icon="mdi-tag-edit" color="primary" size="32" class="mr-3" />
+          Edit Tags - {{ editingTagsItem?.name }}
+        </v-card-title>
+        <v-card-text class="px-6 pb-2">
+          <tag-selector
+            v-if="props.libraryId && editingTagsItem"
+            v-model="singleItemTagIds"
+            :library-id="props.libraryId"
+            label="Tags"
+            hint="Select or deselect tags for this item"
+            :show-add-button="true"
+            @add-tag="$emit('add-tag')"
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-6">
+          <v-spacer />
+          <v-btn
+            variant="text"
+            @click="showSingleEditTagsDialog = false"
+            :disabled="isEditingSingleItemTags"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="confirmSingleEditTags"
+            :loading="isEditingSingleItemTags"
+          >
+            Save Tags
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Mass Delete Confirmation Dialog -->
     <v-dialog v-model="showMassDeleteDialog" max-width="600">
@@ -238,7 +326,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem } from '@/types/item.types'
+import type { LibraryItem, Tag } from '@/types/item.types'
 import LazyItemCard from './LazyItemCard.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
@@ -279,6 +367,7 @@ const emit = defineEmits<{
   edit: [item: LibraryItem]
   delete: [item: LibraryItem]
   'add-tag': []
+  refresh: []
 }>()
 
 const itemsStore = useItemsStore()
@@ -303,6 +392,17 @@ const showMassEditDialog = ref(false)
 const selectedTagIds = ref<number[]>([])
 const isMassEditing = ref(false)
 
+// Mass remove tags state
+const showMassRemoveTagsDialog = ref(false)
+const tagsToRemoveIds = ref<number[]>([])
+const isMassRemovingTags = ref(false)
+
+// Single item edit tags state
+const showSingleEditTagsDialog = ref(false)
+const editingTagsItem = ref<LibraryItem | null>(null)
+const singleItemTagIds = ref<number[]>([])
+const isEditingSingleItemTags = ref(false)
+
 // Mass delete state
 const showMassDeleteDialog = ref(false)
 const isMassDeleting = ref(false)
@@ -315,7 +415,8 @@ const isDeleting = ref(false)
 const skeletonCount = computed(() => props.skeletonCount)
 
 const masonryColumns = {
-  default: 6,
+  default: 5,
+  3840: 6,
   2560: 6,
   1920: 4,
   1600: 4,
@@ -325,9 +426,14 @@ const masonryColumns = {
 }
 
 const masonryGutter = {
-  default: '24px',
-  960: '20px',
-  600: '16px',
+  default: '20px',
+  3840: '24px',
+  2560: '20px',
+  1920: '16px',
+  1600: '16px',
+  1280: '12px',
+  960: '12px',
+  600: '12px',
 }
 
 const deleteDialogTitle = computed(() => {
@@ -416,6 +522,27 @@ function openMassEditDialog() {
   showMassEditDialog.value = true
 }
 
+function openMassRemoveTagsDialog() {
+  if (selectedItems.value.size === 0) return
+  showContextMenu.value = false
+  tagsToRemoveIds.value = []
+  showMassRemoveTagsDialog.value = true
+}
+
+function openSingleEditTagsDialog() {
+  if (selectedItems.value.size !== 1) return
+  
+  const itemId = Array.from(selectedItems.value)[0]
+  const item = props.items.find((i: LibraryItem) => i.id === itemId)
+  
+  if (!item) return
+  
+  editingTagsItem.value = item
+  singleItemTagIds.value = item.tags?.map((t: Tag) => t.id) || []
+  showContextMenu.value = false
+  showSingleEditTagsDialog.value = true
+}
+
 function openMassDeleteDialog() {
   if (selectedItems.value.size === 0) return
   showContextMenu.value = false
@@ -447,6 +574,72 @@ async function confirmMassEdit() {
     toast.error(error.message || 'Failed to add tags')
   } finally {
     isMassEditing.value = false
+  }
+}
+
+async function confirmMassRemoveTags() {
+  if (!props.libraryId || selectedItems.value.size === 0 || tagsToRemoveIds.value.length === 0) {
+    return
+  }
+
+  isMassRemovingTags.value = true
+  try {
+    const itemIds = Array.from(selectedItems.value)
+    const tagsToRemoveSet = new Set(tagsToRemoveIds.value)
+    
+    // Update each item to remove the selected tags
+    const updatePromises = itemIds.map(async (itemId) => {
+      const item = props.items.find((i: LibraryItem) => i.id === itemId)
+      if (!item) return null
+      
+      // Get current tag IDs and filter out the ones to remove
+      const currentTagIds = item.tags?.map((t: Tag) => t.id) || []
+      const newTagIds = currentTagIds.filter((tagId: number) => !tagsToRemoveSet.has(tagId))
+      
+      // Update the item
+      return itemsStore.updateItem(props.libraryId!, itemId, { tagIds: newTagIds })
+    })
+    
+    await Promise.all(updatePromises)
+    
+    toast.success(`Removed ${tagsToRemoveIds.value.length} tag(s) from ${itemIds.length} item(s)`)
+    clearSelection()
+    showMassRemoveTagsDialog.value = false
+    tagsToRemoveIds.value = []
+    
+    // Refresh items
+    emit('refresh')
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to remove tags')
+  } finally {
+    isMassRemovingTags.value = false
+  }
+}
+
+async function confirmSingleEditTags() {
+  if (!props.libraryId || !editingTagsItem.value) {
+    return
+  }
+
+  isEditingSingleItemTags.value = true
+  try {
+    await itemsStore.updateItem(
+      props.libraryId,
+      editingTagsItem.value.id,
+      { tagIds: singleItemTagIds.value }
+    )
+    
+    toast.success('Tags updated successfully')
+    showSingleEditTagsDialog.value = false
+    editingTagsItem.value = null
+    singleItemTagIds.value = []
+    
+    // Refresh items
+    emit('refresh')
+  } catch (error: any) {
+    toast.error(error.message || 'Failed to update tags')
+  } finally {
+    isEditingSingleItemTags.value = false
   }
 }
 
@@ -548,11 +741,11 @@ async function confirmDelete() {
 
 .items-grid {
   width: 100%;
-  padding-bottom: 1.5rem;
+  padding-bottom: 1rem;
 }
 
 .grid-item {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1rem;
 }
 
 .loading-grid .grid-item {

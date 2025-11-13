@@ -285,6 +285,116 @@ color: rgb(var(--v-theme-on-surface),0.78);
   margin: 0 0 1rem 0;
 }
 
+/* Table Styles - Make sure tables are visible! */
+.prose :deep(table),
+.prose :deep(.editor-table) {
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  table-layout: fixed;
+  width: 100%;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: table !important;
+  visibility: visible !important;
+}
+
+.prose :deep(table td),
+.prose :deep(table th),
+.prose :deep(.editor-table td),
+.prose :deep(.editor-table th) {
+  min-width: 1em;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  padding: 12px 16px !important;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  transition: background-color 0.2s ease;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  display: table-cell !important;
+  visibility: visible !important;
+}
+
+.prose :deep(table th),
+.prose :deep(.editor-table th) {
+  font-weight: 600 !important;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.2), rgba(var(--v-theme-primary), 0.1)) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+  border-bottom: 2px solid rgba(var(--v-theme-primary), 0.4) !important;
+}
+
+.prose :deep(table td:hover),
+.prose :deep(.editor-table td:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.1) !important;
+}
+
+.prose :deep(table .selectedCell),
+.prose :deep(.editor-table .selectedCell) {
+  background-color: rgba(var(--v-theme-primary), 0.15) !important;
+}
+
+.prose :deep(table .selectedCell:after),
+.prose :deep(.editor-table .selectedCell:after) {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  left: 0; right: 0; top: 0; bottom: 0;
+  border: 2px solid rgb(var(--v-theme-primary));
+  pointer-events: none;
+  border-radius: 2px;
+}
+
+.prose :deep(table .column-resize-handle),
+.prose :deep(.editor-table .column-resize-handle) {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: rgb(var(--v-theme-primary));
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.prose :deep(table:hover .column-resize-handle),
+.prose :deep(.editor-table:hover .column-resize-handle) {
+  opacity: 1;
+}
+
+.prose :deep(table tr:first-child th:first-child),
+.prose :deep(.editor-table tr:first-child th:first-child) {
+  border-top-left-radius: 8px;
+}
+
+.prose :deep(table tr:first-child th:last-child),
+.prose :deep(.editor-table tr:first-child th:last-child) {
+  border-top-right-radius: 8px;
+}
+
+.prose :deep(table tr:last-child td:first-child),
+.prose :deep(.editor-table tr:last-child td:first-child) {
+  border-bottom-left-radius: 8px;
+}
+
+.prose :deep(table tr:last-child td:last-child),
+.prose :deep(.editor-table tr:last-child td:last-child) {
+  border-bottom-right-radius: 8px;
+}
+
+/* Ensure table wrapper is visible */
+.prose :deep(.tableWrapper) {
+  margin: 1.5em 0;
+  overflow-x: auto;
+}
+
+.prose :deep(.tableWrapper table) {
+  margin: 0;
+}
+
 .detail-line {
   display: flex;
   flex-direction: column;

@@ -10,6 +10,7 @@
     
     <!-- Content -->
     <div class="card-content">
+      <div class="card-content-inner">
       <v-card-title class="card-title d-flex align-center pb-2" :style="{ color: textColor, opacity: 0.95 }">
         <v-icon icon="mdi-note-text" size="small" class="mr-2" :style="{ color: textColor, opacity: 0.95 }" />
         <span class="text-truncate font-weight-bold">{{ item.name }}</span>
@@ -22,16 +23,29 @@
         />
       </v-card-title>
 
-      <!-- Description -->
+      <!-- Description or Content Preview -->
       <v-card-text class="flex-grow-1">
         <div
-          v-if="item.description"
+          v-if="displayContent"
           class="description-wrapper mb-3"
           :style="{ color: textColor, opacity: 0.95 }"
         >
-          <div class="description-text" v-html="item.description" />
+          <div class="description-text" v-html="displayContent" />
         </div>
       </v-card-text>
+      </div>
+
+      <!-- Chapters List -->
+      <div v-if="noteData.chapters && noteData.chapters.length > 0" class="chapters-list">
+        <note-chapter-chip
+          v-for="chapter in sortedChapters"
+          :key="chapter.id || chapter.order"
+          :chapter="chapter"
+          size="small"
+          text-color="#FFFFFF"
+          class="chapter-chip-opacity"
+        />
+      </div>
 
       <!-- Tags (Absolute Positioned) -->
       <div v-if="item.tags && item.tags.length > 0" class="tags-absolute">
@@ -51,8 +65,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { LibraryItem, NoteData } from '@/types/item.types'
+import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
 import { getFileDownloadUrl } from '@/config/api'
+import NoteChapterChip from './NoteChapterChip.vue'
 
 interface Props {
   item: LibraryItem
@@ -73,6 +88,27 @@ defineEmits<{
 
 const noteData = computed<NoteData>(() => props.item.data as NoteData)
 
+// Display content: use description if available, otherwise first 500 chars of content
+const displayContent = computed(() => {
+  if (props.item.description) {
+    return props.item.description
+  }
+  if (noteData.value.content) {
+    // Strip HTML tags for preview, then take first 500 characters
+    const plainText = noteData.value.content.replace(/<[^>]*>/g, '').trim()
+    return plainText.substring(0, 500) + (plainText.length > 500 ? '...' : '')
+  }
+  return null
+})
+
+// Sort chapters by order
+const sortedChapters = computed(() => {
+  if (!noteData.value.chapters) return []
+  return [...noteData.value.chapters].sort((a: NoteChapter, b: NoteChapter) => 
+    (a.order || 0) - (b.order || 0)
+  )
+})
+
 // Get featured image URL directly from the file object
 const backgroundStyle = computed(() => {
   if (props.item.featuredImage?.downloadUrl) {
@@ -85,20 +121,12 @@ const backgroundStyle = computed(() => {
     background: 'linear-gradient(135deg, rgba(149, 165, 166, 0.3), rgba(127, 140, 141, 0.3))',
   }
 })
-
-const getContentPreview = (content: string): string => {
-  if (!content) return 'No content'
-  // Strip markdown/HTML and truncate
-  const plainText = content.replace(/[#*_`~\[\]()]/g, '').trim()
-  return plainText.substring(0, 200) + (plainText.length > 200 ? '...' : '')
-}
 </script>
 
 <style scoped>
 .note-card {
   position: relative;
   overflow: hidden;
-  min-height: 200px;
   cursor: pointer;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   background-color: rgba(var(--v-theme-card-background)) !important;
@@ -131,9 +159,12 @@ const getContentPreview = (content: string): string => {
 .card-content {
   position: relative;
   z-index: 1;
+  padding: 8px;
   min-height: 100%;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  min-height: 200px;
 }
 
 .card-title {
@@ -143,7 +174,6 @@ const getContentPreview = (content: string): string => {
 .description-wrapper {
   max-height: 180px;
   overflow-y: auto;
-  padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   opacity: 0.9;
@@ -169,7 +199,7 @@ const getContentPreview = (content: string): string => {
 .description-text {
   font-size: 0.75rem;
   line-height: 1.6;
-  opacity:0.95;
+  opacity:0.9 ;
   font-weight: 400;
 }
 
@@ -196,7 +226,6 @@ const getContentPreview = (content: string): string => {
 }
 
 .description-text :deep(li) {
-  margin-bottom: 0.25rem;
   font-size: 0.75rem;
 }
 
@@ -205,8 +234,43 @@ const getContentPreview = (content: string): string => {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
   display: -webkit-box;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.chapters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  padding: 4px;
+}
+
+.chapters-list::-webkit-scrollbar {
+  width: 1px;
+}
+
+.chapters-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chapters-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+
+.chapters-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.chapter-chip-opacity {
+  opacity: 0.9;
+  flex-shrink: 0;
 }
 
 .tags-absolute {

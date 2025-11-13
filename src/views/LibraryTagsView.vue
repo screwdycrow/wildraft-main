@@ -74,7 +74,13 @@
             md="4"
             lg="3"
           >
-            <v-card class="glass-card tag-card" elevation="0" hover>
+            <v-card 
+              class="glass-card tag-card" 
+              elevation="0" 
+              hover
+              @click="viewTagItems(tag)"
+              style="cursor: pointer;"
+            >
               <v-card-text class="pa-4">
                 <div class="d-flex align-items-start justify-space-between mb-3">
                   <v-chip :color="tag.color" size="large" class="font-weight-bold">
@@ -95,14 +101,14 @@
                       <v-list-item
                         prepend-icon="mdi-pencil"
                         title="Edit"
-                        @click="handleEdit(tag)"
+                        @click.stop="handleEdit(tag)"
                       />
                       <v-divider class="my-2" />
                       <v-list-item
                         prepend-icon="mdi-delete"
                         title="Delete"
                         class="text-error"
-                        @click="handleDelete(tag)"
+                        @click.stop="handleDelete(tag)"
                       />
                     </v-list>
                   </v-menu>
@@ -176,7 +182,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useTagsStore } from '@/stores/tags'
 import { useToast } from 'vue-toastification'
@@ -186,6 +192,7 @@ import type { Tag } from '@/types/tag.types'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const libraryStore = useLibraryStore()
 const tagsStore = useTagsStore()
 const toast = useToast()
@@ -237,6 +244,18 @@ function handleEdit(tag: Tag) {
 function handleDelete(tag: Tag) {
   deletingTag.value = tag
   showDeleteDialog.value = true
+}
+
+function viewTagItems(tag: Tag) {
+  if (libraryId.value) {
+    router.push({
+      name: 'TagLibraryItems',
+      params: {
+        id: libraryId.value,
+        tagId: tag.id,
+      },
+    })
+  }
 }
 
 async function handleCreateOrUpdate(data: { name: string; color: string; folder?: string | null }, callback?: (success: boolean) => void) {
