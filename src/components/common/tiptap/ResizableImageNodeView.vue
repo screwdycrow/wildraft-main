@@ -3,7 +3,7 @@
     <div class="resizable-image-container">
       <img
         ref="imageRef"
-        :src="node.attrs.src"
+        :src="imageSrc"
         :alt="node.attrs.alt || ''"
         :style="imageStyle"
         class="resizable-image"
@@ -36,10 +36,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, inject, watch } from 'vue'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
+import { getFileDownloadUrl } from '@/config/api'
+import type { UserFile } from '@/types/item.types'
 
 const props = defineProps(nodeViewProps)
+
+// Get userFiles from parent component
+const userFiles = inject<Array<{ id: number; downloadUrl?: string; fileUrl?: string }>>('userFiles', [])
 
 const imageRef = ref<HTMLImageElement | null>(null)
 const naturalWidth = ref<number>(0)
@@ -50,6 +55,30 @@ const startX = ref<number>(0)
 const startY = ref<number>(0)
 const startWidth = ref<number>(0)
 const startHeight = ref<number>(0)
+
+// Resolve image source from fileId or use existing src
+const imageSrc = computed(() => {
+  const fileId = props.node.attrs.fileId
+  const currentSrc = props.node.attrs.src
+  
+  // If we have a fileId, try to resolve from userFiles
+  if (fileId && userFiles?.length) {
+    const userFile = userFiles.find(f => f.id === fileId)
+    if (userFile) {
+      return getFileDownloadUrl(userFile as UserFile) || currentSrc
+    }
+  }
+  
+  // Fallback to current src (for base64 or external URLs)
+  return currentSrc
+})
+
+// Watch for changes in userFiles to update image src
+watch(() => [userFiles, props.node.attrs.fileId], () => {
+  if (imageRef.value && imageSrc.value && imageRef.value.src !== imageSrc.value) {
+    imageRef.value.src = imageSrc.value
+  }
+}, { deep: true, immediate: true })
 
 // Computed style for the image
 const imageStyle = computed(() => {

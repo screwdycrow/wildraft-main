@@ -240,6 +240,9 @@ import { useToast } from 'vue-toastification'
 import { useRoute } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { computed } from 'vue'
+import { getFileDownloadUrl } from '@/config/api'
+import type { UserFile } from '@/types/item.types'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   modelValue: string
@@ -249,6 +252,7 @@ interface Props {
   libraryId?: number | null
   libraryItemId?: number | null
   userFileIds?: number[]
+  userFiles?: Array<{ id: number; downloadUrl?: string; fileUrl?: string }>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -257,6 +261,7 @@ const props = withDefaults(defineProps<Props>(), {
   libraryId: null,
   libraryItemId: null,
   userFileIds: () => [],
+  userFiles: () => [],
 })
 
 const emit = defineEmits<{
@@ -332,6 +337,21 @@ const editor = useEditor({
       addAttributes() {
         return {
           ...this.parent?.(),
+          fileId: {
+            default: null,
+            parseHTML: element => {
+              const id = element.getAttribute('data-file-id')
+              return id ? Number(id) : null
+            },
+            renderHTML: attributes => {
+              if (!attributes.fileId) {
+                return {}
+              }
+              return {
+                'data-file-id': String(attributes.fileId),
+              }
+            },
+          },
           width: {
             default: null,
             renderHTML: attributes => {
@@ -403,8 +423,9 @@ const editor = useEditor({
   },
 })
 
-// Provide delete handler to node views
+// Provide delete handler and userFiles to node views
 provide('handleFileDelete', handleFileDelete)
+provide('userFiles', computed(() => props.userFiles || []))
 
 async function openFileManagerForImage() {
   imageManagerOpen.value = true
@@ -451,8 +472,12 @@ async function handleImagesSelected(fileIds: number | number[]) {
       const fileUrl = file.downloadUrl || file.fileUrl
       
       if (isImage && fileUrl) {
-        // Insert as resizable image
-        editor.value?.chain().focus().setImage({ src: fileUrl, alt: file.fileName }).run()
+        // Insert as resizable image with fileId reference
+        editor.value?.chain().focus().setImage({ 
+          src: fileUrl, // Temporary URL for immediate display
+          alt: file.fileName,
+          fileId: file.id // Store fileId for later resolution
+        }).run()
       } else {
         // Insert as file attachment
         editor.value?.chain().focus().setFileAttachment({
@@ -471,11 +496,25 @@ async function handleImagesSelected(fileIds: number | number[]) {
   }
 }
 
+
 watch(() => props.modelValue, (newValue) => {
   if (editor.value && editor.value.getHTML() !== newValue) {
-    editor.value.commands.setContent(newValue || '', false)
+    // Resolve image URLs before setting content
+    const resolvedContent = resolveImageUrlsInHtml(newValue || '', props.userFiles || [])
+    editor.value.commands.setContent(resolvedContent || '', false)
   }
 })
+
+// Watch userFiles to update image URLs when they change
+watch(() => props.userFiles, () => {
+  if (editor.value && props.userFiles?.length) {
+    const currentHtml = editor.value.getHTML()
+    const resolvedContent = resolveImageUrlsInHtml(currentHtml, props.userFiles)
+    if (resolvedContent !== currentHtml) {
+      editor.value.commands.setContent(resolvedContent, false)
+    }
+  }
+}, { deep: true })
 
 onBeforeUnmount(() => {
   editor.value?.destroy()

@@ -51,6 +51,11 @@
         v-model="formData.data.content"
         placeholder="Start writing your note..."
         min-height="400px"
+        :library-id="libraryId"
+        :library-item-id="item?.id || null"
+        :user-file-ids="formData.userFileIds"
+        :user-files="item?.userFiles || []"
+        @update:user-file-ids="formData.userFileIds = $event"
       />
 
       <v-divider class="my-6" />

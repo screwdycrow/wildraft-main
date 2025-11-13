@@ -161,6 +161,11 @@
         v-model="formData.description"
         placeholder="Describe this creature..."
         min-height="300px"
+        :library-id="libraryId"
+        :library-item-id="item?.id || null"
+        :user-file-ids="formData.userFileIds"
+        :user-files="item?.userFiles || []"
+        @update:user-file-ids="formData.userFileIds = $event"
       />
     </template>
   </item-form-layout>

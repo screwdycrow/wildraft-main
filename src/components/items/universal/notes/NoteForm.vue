@@ -117,6 +117,7 @@
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
+            :user-files="item?.userFiles || []"
             @update:user-file-ids="formData.userFileIds = $event"
           />
         </v-window-item>
@@ -143,6 +144,7 @@
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
+            :user-files="item?.userFiles || []"
             @update:user-file-ids="formData.userFileIds = $event"
           />
         </v-window-item>

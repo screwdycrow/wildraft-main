@@ -90,6 +90,7 @@ import { computed, ref, watch } from 'vue'
 import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import { useFilesStore } from '@/stores/files'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
@@ -155,12 +156,20 @@ const renderedMainContent = computed(() => {
   if (!noteData.value.content) {
     return '<p class="empty">Nothing here yet.</p>'
   }
+  // Resolve image URLs from userFiles
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(noteData.value.content, props.item.userFiles)
+  }
   return noteData.value.content
 })
 
 const activeChapterContent = computed(() => {
   if (!activeChapter.value?.content) {
     return '<p class="empty">This chapter has no content yet.</p>'
+  }
+  // Resolve image URLs from userFiles
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(activeChapter.value.content, props.item.userFiles)
   }
   return activeChapter.value.content
 })

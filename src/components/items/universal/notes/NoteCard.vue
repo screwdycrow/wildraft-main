@@ -68,6 +68,7 @@ import { computed } from 'vue'
 import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
 import { getFileDownloadUrl } from '@/config/api'
 import NoteChapterChip from './NoteChapterChip.vue'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
@@ -90,15 +91,26 @@ const noteData = computed<NoteData>(() => props.item.data as NoteData)
 
 // Display content: use description if available, otherwise first 500 chars of content
 const displayContent = computed(() => {
+  let content: string | null = null
+  
   if (props.item.description) {
-    return props.item.description
-  }
-  if (noteData.value.content) {
+    content = props.item.description
+  } else if (noteData.value.content) {
     // Strip HTML tags for preview, then take first 500 characters
     const plainText = noteData.value.content.replace(/<[^>]*>/g, '').trim()
-    return plainText.substring(0, 500) + (plainText.length > 500 ? '...' : '')
+    content = plainText.substring(0, 500) + (plainText.length > 500 ? '...' : '')
   }
-  return null
+  
+  // Resolve image URLs if we have content and userFiles
+  if (content && props.item.userFiles?.length) {
+    // For HTML content (description), resolve image URLs
+    if (props.item.description && props.item.description.includes('<img')) {
+      return resolveImageUrlsInHtml(content, props.item.userFiles)
+    }
+    // For plain text preview, no need to resolve
+  }
+  
+  return content
 })
 
 // Sort chapters by order

@@ -49,6 +49,15 @@
         </div>
       </div>
 
+      <!-- Description -->
+      <div
+        v-if="item.description"
+        class="description-wrapper mb-3"
+        :style="{ color: textColor, opacity: 0.95 }"
+      >
+        <div class="description-text" v-html="resolvedDescription" />
+      </div>
+
       <!-- Traits/Actions (if any) -->
       <div v-if="hasAbilities" class="features-list">
         <action-chip
@@ -82,6 +91,7 @@ import { computed } from 'vue'
 import type { LibraryItem, StatBlockData } from '@/types/item.types'
 import ActionChip from '../common/ActionChip.vue'
 import { getFileDownloadUrl } from '@/config/api'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
@@ -144,6 +154,15 @@ function getAbilityModifier(key: string): string {
   const modifier = Math.floor((score - 10) / 2)
   return modifier >= 0 ? `+${modifier}` : `${modifier}`
 }
+
+// Resolve image URLs in description
+const resolvedDescription = computed(() => {
+  if (!props.item.description) return ''
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(props.item.description, props.item.userFiles)
+  }
+  return props.item.description
+})
 </script>
 
 <style scoped>
@@ -255,6 +274,66 @@ function getAbilityModifier(key: string): string {
 .ability-modifier {
   font-size: 0.7rem;
   opacity: 0.9;
+}
+
+.description-wrapper {
+  max-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  opacity: 0.9;
+}
+
+.description-wrapper::-webkit-scrollbar {
+  width: 2px;
+}
+
+.description-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.description-text {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  opacity: 0.95;
+  font-weight: 400;
+}
+
+.description-text :deep(p) {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+}
+
+.description-text :deep(h1),
+.description-text :deep(h2),
+.description-text :deep(h3),
+.description-text :deep(h4),
+.description-text :deep(h5),
+.description-text :deep(h6) {
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0.25rem;
+  font-weight: 600;
+}
+
+.description-text :deep(ul),
+.description-text :deep(ol) {
+  padding-left: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.description-text :deep(li) {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
 }
 
 .features-list {

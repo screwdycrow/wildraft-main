@@ -46,8 +46,8 @@
           class="description-wrapper mb-3"
           :style="{ color: textColor, opacity: 0.95 }"
         >
-          <div v-if="item.description" class="description-text" v-html="item.description" />
-          <div v-else-if="itemData.effect" class="description-text" v-html="itemData.effect" />
+          <div v-if="item.description" class="description-text" v-html="resolvedDescription" />
+          <div v-else-if="itemData.effect" class="description-text" v-html="resolvedEffect" />
         </div>
 
         <!-- Properties -->
@@ -93,6 +93,7 @@
 import { computed } from 'vue'
 import type { LibraryItem, ItemData } from '@/types/item.types'
 import { getFileDownloadUrl } from '@/config/api'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
@@ -137,6 +138,24 @@ const getRarityColor = (rarity: string) => {
   }
   return colors[rarity] || 'grey'
 }
+
+// Resolve image URLs in description
+const resolvedDescription = computed(() => {
+  if (!props.item.description) return ''
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(props.item.description, props.item.userFiles)
+  }
+  return props.item.description
+})
+
+// Resolve image URLs in effect
+const resolvedEffect = computed(() => {
+  if (!itemData.value.effect) return ''
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(itemData.value.effect, props.item.userFiles)
+  }
+  return itemData.value.effect
+})
 </script>
 
 <style scoped>
