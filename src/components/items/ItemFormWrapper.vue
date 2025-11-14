@@ -5,6 +5,7 @@
     :item="item"
     :library-id="libraryId"
     :item-type="itemType"
+    :initial-tag-ids="initialTagIds"
     v-bind="$attrs"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
@@ -13,6 +14,7 @@
     v-else
     :item="item"
     :library-id="libraryId"
+    :initial-tag-ids="initialTagIds"
     v-bind="$attrs"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
@@ -32,6 +34,7 @@ interface Props {
   item?: LibraryItem | null
   libraryId: number
   itemType: ItemType // For create mode when item is null
+  initialTagIds?: number[]
 }
 
 const props = defineProps<Props>()

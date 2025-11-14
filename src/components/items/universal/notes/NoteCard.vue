@@ -43,6 +43,7 @@
           :chapter="chapter"
           size="small"
           text-color="#FFFFFF"
+          :user-files="item.userFiles || []"
           class="chapter-chip-opacity"
         />
       </div>

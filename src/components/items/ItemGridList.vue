@@ -41,18 +41,24 @@
     <MasonryGrid
       v-else
       class="items-grid"
+      :class="{ 'drag-over': isDragOver }"
       :columns="masonryColumns"
       :gutter="masonryGutter"
+      @dragover.prevent="handleDragOver"
+      @dragleave="handleDragLeave"
+      @drop="handleDrop"
     >
       <MasonryGridItem
         v-for="item in items"
         :key="item.id"
         class="grid-item"
+        :data-item-id="item.id"
       >
         <lazy-item-card
           :item="item"
           :selected="selectedItems.has(item.id)"
           :selection-mode="selectionMode"
+          :library-id="libraryId"
           @view="$emit('view', item)"
           @edit="$emit('edit', item)"
           @delete="handleDelete(item)"
@@ -372,6 +378,9 @@ const emit = defineEmits<{
 
 const itemsStore = useItemsStore()
 const toast = useToast()
+
+// Drag and drop state (for grid-level drops on selected items)
+const isDragOver = ref(false)
 
 // Selection state
 const selectedItems = ref<Set<number>>(new Set())
@@ -714,6 +723,69 @@ async function confirmDelete() {
   } finally {
     isDeleting.value = false
   }
+}
+
+// Drag and drop handlers (for grid-level drops on selected items)
+function handleDragOver(event: DragEvent) {
+  if (!event.dataTransfer) return
+  
+  // Check if dragging a tag by checking dataTransfer types
+  if (event.dataTransfer.types.includes('application/json') || event.dataTransfer.types.includes('text/plain')) {
+    event.dataTransfer.dropEffect = 'copy'
+    isDragOver.value = true
+  } else {
+    isDragOver.value = false
+  }
+}
+
+function handleDragLeave(event: DragEvent) {
+  // Only clear if we're leaving the grid entirely
+  const relatedTarget = event.relatedTarget as HTMLElement
+  if (!relatedTarget || !event.currentTarget?.contains(relatedTarget)) {
+    isDragOver.value = false
+  }
+}
+
+async function handleDrop(event: DragEvent) {
+  isDragOver.value = false
+  
+  if (!event.dataTransfer || !props.libraryId) return
+  
+  // If dropped on the grid but not on a specific item, add to selected items
+  if (selectedItems.value.size > 0) {
+    try {
+      let tagId: number | null = null
+      
+      // Try to get tag ID from application/json
+      try {
+        const data = event.dataTransfer.getData('application/json')
+        if (data) {
+          const parsed = JSON.parse(data)
+          if (parsed.type === 'tag' && parsed.tagId) {
+            tagId = parsed.tagId
+          }
+        }
+      } catch (e) {
+        // Fallback to text/plain
+        const textData = event.dataTransfer.getData('text/plain')
+        if (textData && textData.startsWith('tag:')) {
+          tagId = parseInt(textData.replace('tag:', ''))
+        }
+      }
+      
+      if (!tagId || isNaN(tagId)) {
+        return
+      }
+      
+      const itemIds = Array.from(selectedItems.value)
+      await itemsStore.batchAddTags(props.libraryId, itemIds, [tagId])
+      toast.success(`Tag added to ${itemIds.length} item(s)`)
+      emit('refresh')
+    } catch (error: any) {
+      console.error('Drop error:', error)
+      toast.error('Failed to add tag')
+    }
+  }
 }   
 </script>
 
@@ -770,6 +842,33 @@ async function confirmDelete() {
 
 .context-menu-card {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Drag and drop styles */
+.items-grid.drag-over {
+  position: relative;
+}
+
+.items-grid.drag-over::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed rgba(var(--v-theme-primary), 0.5);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+
+.draggable-tag {
+  cursor: grab;
+}
+
+.draggable-tag:active {
+  cursor: grabbing;
 }
 </style>
 

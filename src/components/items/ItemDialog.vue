@@ -11,6 +11,7 @@
       :item="item"  
       :library-id="libraryId"
       :item-type="itemType"
+      :initial-tag-ids="initialTagIds"
       @submit="handleSubmit"
       @cancel="close"
     />
@@ -28,6 +29,7 @@ interface Props {
   libraryId: number
   item?: LibraryItem | null
   itemType?: ItemType
+  initialTagIds?: number[]
 }
 
 const props = defineProps<Props>()

@@ -11,6 +11,7 @@
       :is="formComponent"
       :item="dialogState.item"
       :library-id="dialogState.libraryId"
+      :initial-tag-ids="dialogState.initialTagIds"
       @submit="handleSubmit"
       @cancel="handleCancel"
     />

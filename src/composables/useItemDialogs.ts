@@ -7,6 +7,7 @@ export interface ItemDialogState {
   itemType: ItemType | null
   item: LibraryItem | null
   libraryId: number | null
+  initialTagIds?: number[]
 }
 
 // Global state for item dialog
@@ -16,19 +17,21 @@ const dialogState = ref<ItemDialogState>({
   itemType: null,
   item: null,
   libraryId: null,
+  initialTagIds: undefined,
 })
 
 export function useItemDialogs() {
   /**
    * Open a dialog to create a new item
    */
-  function openCreateDialog(itemType: ItemType, libraryId: number) {
+  function openCreateDialog(itemType: ItemType, libraryId: number, initialTagIds?: number[]) {
     dialogState.value = {
       isOpen: true,
       mode: 'create',
       itemType,
       item: null,
       libraryId,
+      initialTagIds,
     }
   }
 
@@ -55,6 +58,7 @@ export function useItemDialogs() {
       itemType: null,
       item: null,
       libraryId: null,
+      initialTagIds: undefined,
     }
   }
 

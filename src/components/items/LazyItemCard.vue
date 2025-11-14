@@ -1,18 +1,24 @@
 <template>
   <div ref="target" class="lazy-item-card">
-    <item-card-wrapper
-      v-if="isVisible"
-      :item="item"
-      :selected="selected"
-      :selection-mode="selectionMode"
-      @view="$emit('view', $event)"
-      @edit="$emit('edit', $event)"
-      @delete="$emit('delete', $event)"
-      @select="(item, ctrlKey, metaKey) => $emit('select', item, ctrlKey, metaKey)"
-      @contextmenu="(event, item) => $emit('contextmenu', event, item)"
-    />
+    <transition
+      name="fade-in"
+      appear
+    >
+      <item-card-wrapper
+        v-if="isVisible"
+        :item="item"
+        :selected="selected"
+        :selection-mode="selectionMode"
+        :library-id="libraryId"
+        @view="$emit('view', $event)"
+        @edit="$emit('edit', $event)"
+        @delete="$emit('delete', $event)"
+        @select="(item, ctrlKey, metaKey) => $emit('select', item, ctrlKey, metaKey)"
+        @contextmenu="(event, item) => $emit('contextmenu', event, item)"
+      />
+    </transition>
     <v-skeleton-loader
-      v-else
+      v-if="!isVisible"
       class="skeleton-card glass-card"
       type="card"
     />
@@ -29,6 +35,7 @@ interface Props {
   item: LibraryItem
   selected?: boolean
   selectionMode?: boolean
+  libraryId?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -80,6 +87,35 @@ useIntersectionObserver(
 .skeleton-card :deep(.v-skeleton-loader__image) {
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
+}
+
+/* Fade-in entrance animation */
+.fade-in-enter-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.fade-in-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.fade-in-enter-to {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.fade-in-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.fade-in-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
 }
 </style>
 

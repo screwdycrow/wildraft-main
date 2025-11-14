@@ -12,8 +12,15 @@
       start
     />
     {{ chapter.title }}
-    <v-tooltip v-if="showTooltip" activator="parent" location="top" max-width="400">
-      <div class="chapter-tooltip">
+    <v-tooltip 
+      v-if="showTooltip" 
+      activator="parent" 
+      location="top" 
+      max-width="400"
+      :open-delay="300"
+      :close-delay="300"
+    >
+      <div class="chapter-tooltip" @mouseenter="onTooltipEnter" @mouseleave="onTooltipLeave">
         <div class="chapter-tooltip-header">
           <strong>{{ chapter.title }}</strong>
         </div>
@@ -26,8 +33,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { NoteChapter } from '@/types/item.types'
+import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   chapter: NoteChapter
@@ -35,6 +43,7 @@ interface Props {
   variant?: 'flat' | 'tonal' | 'outlined' | 'text' | 'elevated'
   showTooltip?: boolean
   textColor?: string
+  userFiles?: Array<{ id: number; downloadUrl?: string; fileUrl?: string }>
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
   variant: 'tonal',
   showTooltip: true,
   textColor: undefined,
+  userFiles: () => [],
 })
 
 const iconSize = computed(() => {
@@ -54,21 +64,95 @@ const chipClass = computed(() => {
   return props.showTooltip ? 'chapter-chip' : ''
 })
 
-// Get first 500 words of chapter content
+// Truncate HTML content to first 500 words while preserving HTML structure
+function truncateHtmlContent(html: string, maxWords: number = 500): string {
+  if (!html) return ''
+  
+  // Create a temporary DOM element to parse HTML
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const body = doc.body
+  
+  // Count words and truncate
+  let wordCount = 0
+  let truncated = false
+  
+  function truncateNode(node: Node): boolean {
+    if (truncated) return true
+    
+    if (node.nodeType === Node.TEXT_NODE) {
+      const textNode = node as Text
+      const text = textNode.textContent || ''
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0)
+      
+      if (wordCount + words.length > maxWords) {
+        // Truncate this text node
+        const remainingWords = maxWords - wordCount
+        const truncatedWords = words.slice(0, remainingWords)
+        // Create a new text node with truncated content
+        const newTextNode = doc.createTextNode(truncatedWords.join(' ') + '...')
+        if (textNode.parentNode) {
+          textNode.parentNode.replaceChild(newTextNode, textNode)
+        }
+        truncated = true
+        return true
+      }
+      
+      wordCount += words.length
+      return false
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element
+      // Create a copy of child nodes array to avoid modification during iteration
+      const children = Array.from(element.childNodes)
+      
+      for (const child of children) {
+        if (truncateNode(child)) {
+          // Remove remaining siblings
+          let nextSibling = child.nextSibling
+          while (nextSibling) {
+            const toRemove = nextSibling
+            nextSibling = nextSibling.nextSibling
+            element.removeChild(toRemove)
+          }
+          return true
+        }
+      }
+    }
+    
+    return false
+  }
+  
+  truncateNode(body)
+  return body.innerHTML
+}
+
+// Get first 500 words of chapter content with HTML formatting preserved
 const chapterContentPreview = computed(() => {
   if (!props.chapter.content) return null
   
-  // Strip HTML tags and get plain text
-  const plainText = props.chapter.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  // Truncate HTML content to 500 words
+  let truncated = truncateHtmlContent(props.chapter.content, 500)
   
-  // Split into words and take first 500
-  const words = plainText.split(' ')
-  const previewWords = words.slice(0, 500)
-  const preview = previewWords.join(' ')
+  // Resolve image URLs if userFiles are provided
+  if (props.userFiles?.length) {
+    truncated = resolveImageUrlsInHtml(truncated, props.userFiles)
+  }
   
-  // If we truncated, add ellipsis
-  return words.length > 500 ? preview + '...' : preview
+  return truncated
 })
+
+// Keep tooltip open when hovering over it
+const tooltipHovered = ref(false)
+
+function onTooltipEnter() {
+  tooltipHovered.value = true
+}
+
+function onTooltipLeave() {
+  tooltipHovered.value = false
+}
 </script>
 
 <style scoped>
@@ -88,11 +172,12 @@ const chapterContentPreview = computed(() => {
 }
 
 .chapter-tooltip {
-  padding: 4px;
+  padding: 8px;
   color: rgb(var(--v-theme-on-surface));
   max-height: 300px;
   display: flex;
   flex-direction: column;
+  pointer-events: auto;
 }
 
 .chapter-tooltip-header {
@@ -112,13 +197,114 @@ const chapterContentPreview = computed(() => {
   max-height: 250px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 4px;
+  padding-right: 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  pointer-events: auto;
+}
+
+/* Preserve HTML formatting */
+.chapter-tooltip-content :deep(p) {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.chapter-tooltip-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* Headings - bold and slightly larger */
+.chapter-tooltip-content :deep(h1),
+.chapter-tooltip-content :deep(h2),
+.chapter-tooltip-content :deep(h3),
+.chapter-tooltip-content :deep(h4),
+.chapter-tooltip-content :deep(h5),
+.chapter-tooltip-content :deep(h6) {
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin: 0.75rem 0 0.5rem;
+  line-height: 1.4;
+}
+
+.chapter-tooltip-content :deep(h1:first-child),
+.chapter-tooltip-content :deep(h2:first-child),
+.chapter-tooltip-content :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+/* Lists */
+.chapter-tooltip-content :deep(ul),
+.chapter-tooltip-content :deep(ol) {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+  list-style-position: outside;
+}
+
+.chapter-tooltip-content :deep(li) {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Bold and italic */
+.chapter-tooltip-content :deep(strong),
+.chapter-tooltip-content :deep(b) {
+  font-weight: 700;
+}
+
+.chapter-tooltip-content :deep(em),
+.chapter-tooltip-content :deep(i) {
+  font-style: italic;
+}
+
+/* Images */
+.chapter-tooltip-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: 4px;
+}
+
+/* Links */
+.chapter-tooltip-content :deep(a) {
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+}
+
+/* Blockquotes */
+.chapter-tooltip-content :deep(blockquote) {
+  border-left: 3px solid rgba(255, 255, 255, 0.3);
+  padding-left: 0.75rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* Code */
+.chapter-tooltip-content :deep(code) {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.3rem;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.7rem;
+}
+
+.chapter-tooltip-content :deep(pre) {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.chapter-tooltip-content :deep(pre code) {
+  background: none;
+  padding: 0;
 }
 
 .chapter-tooltip-content::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .chapter-tooltip-content::-webkit-scrollbar-track {
@@ -132,6 +318,21 @@ const chapterContentPreview = computed(() => {
 
 .chapter-tooltip-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Ensure tooltip overlay can be hovered */
+:deep(.v-overlay__content) {
+  pointer-events: auto !important;
+}
+
+/* Add a small gap bridge to help with hover */
+:deep(.v-tooltip) {
+  pointer-events: none;
+}
+
+:deep(.v-tooltip .v-overlay__content) {
+  pointer-events: auto;
+  margin-top: 4px; /* Small gap to help bridge hover */
 }
 </style>
 

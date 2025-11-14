@@ -6,6 +6,7 @@ import type {
   CreateLibraryItemPayload, 
   UpdateLibraryItemPayload 
 } from '@/types/item.types'
+import { useFilesStore } from './files'
 
 interface CacheMetadata {
   libraryId: number | null
@@ -49,12 +50,16 @@ export const useItemsStore = defineStore('items', () => {
     return items.value.find(item => item.id === id)
   })
 
-  // Helper: Check if items are already loaded for this library/params
-  function isAlreadyLoaded(libraryId: number, params?: Record<string, any>): boolean {
+  // Helper: Check if items are already loaded for this library
+  // We don't check params because all items are stored together and filtered client-side
+  function isAlreadyLoaded(libraryId: number, _params?: Record<string, any>): boolean {
+    // Check if we have items for this library
     if (cacheMetadata.value.libraryId !== libraryId) return false
+    if (items.value.length === 0) return false
     
-    const paramsKey = params ? JSON.stringify(params) : ''
-    return cacheMetadata.value.params === paramsKey && items.value.length > 0
+    // If we have items and the library matches, they're already loaded
+    // (params don't matter since we filter client-side)
+    return true
   }
 
   // Helper: Serialize params for comparison
@@ -93,6 +98,11 @@ export const useItemsStore = defineStore('items', () => {
       // Update cached items with API response
       items.value = response.items
       total.value = response.total
+      items.value.forEach(item => {
+        item.userFiles?.forEach(file => {
+          useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
+        })
+      })
       
       // Update cache metadata
       cacheMetadata.value = {
@@ -142,6 +152,9 @@ export const useItemsStore = defineStore('items', () => {
         items.value.push(response.item)
       }
       
+      response.item.userFiles?.forEach(file => {
+        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl,true)
+      })
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to fetch item'
@@ -166,7 +179,11 @@ export const useItemsStore = defineStore('items', () => {
         cacheMetadata.value.params = '' // Force reload on next fetch
       }
       
+      response.item.userFiles?.forEach(file => {
+        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
+      })
       return response.item
+      
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to create item'
       throw err
@@ -191,6 +208,9 @@ export const useItemsStore = defineStore('items', () => {
       }
       
       // Cache is still valid, just updated the item
+      response.item.userFiles?.forEach(file => {
+        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
+      })
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to update item'

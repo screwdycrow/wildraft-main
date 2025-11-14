@@ -145,6 +145,7 @@ interface Props {
   item?: LibraryItem | null
   libraryId: number
   itemType: ItemType
+  initialTagIds?: number[]
 }
 
 const props = defineProps<Props>()
@@ -179,7 +180,7 @@ const formData = ref<{
     damage: '',
     properties: [],
   },
-  tagIds: [],
+  tagIds: props.initialTagIds ? [...props.initialTagIds] : [],
   userFileIds: [],
   featuredImageId: null,
 })
@@ -194,6 +195,26 @@ const rarityOptions = [
 ]
 
 const isEditMode = computed(() => !!props.item)
+
+// Watch for initialTagIds changes (for when dialog opens with preselected tags)
+watch(() => props.initialTagIds, (newTagIds) => {
+  // Only set initialTagIds in create mode (when item is null)
+  if (!props.item) {
+    if (newTagIds && newTagIds.length > 0) {
+      // Update tagIds with initialTagIds
+      const sortedNew = [...newTagIds].sort()
+      const sortedCurrent = [...formData.value.tagIds].sort()
+      if (JSON.stringify(sortedCurrent) !== JSON.stringify(sortedNew)) {
+        formData.value.tagIds = [...newTagIds]
+      }
+    } else if (!newTagIds || newTagIds.length === 0) {
+      // Clear tagIds if initialTagIds is empty/undefined
+      if (formData.value.tagIds.length > 0) {
+        formData.value.tagIds = []
+      }
+    }
+  }
+}, { immediate: true })
 
 function handleTagCreated(tagId: number) {
   if (!formData.value.tagIds.includes(tagId)) {

@@ -228,22 +228,28 @@ const filteredItems = computed(() => {
   })
 })
 
-// Load items
+// Load items (only if not already cached)
 onMounted(async () => {
   if (libraryId.value) {
     try {
+      // Only fetch if items aren't already loaded for this library
+      if (!itemsStore.isAlreadyLoaded(libraryId.value)) {
       await itemsStore.fetchItems(libraryId.value)
+      }
     } catch (error) {
       toast.error('Failed to load characters')
     }
   }
 })
 
-// Reload items when library changes
+// Reload items when library changes (only if not already cached)
 watch(libraryId, async (newId) => {
   if (newId) {
     try {
+      // Only fetch if items aren't already loaded for this library
+      if (!itemsStore.isAlreadyLoaded(newId)) {
       await itemsStore.fetchItems(newId)
+      }
     } catch (error) {
       toast.error('Failed to load characters')
     }
@@ -285,7 +291,8 @@ function handleItemUpdated(item: LibraryItem) {
 async function handleRefresh() {
   if (libraryId.value) {
     try {
-      await itemsStore.fetchItems(libraryId.value, { type: ITEM_TYPE })
+      // Force refresh on manual refresh
+      await itemsStore.fetchItems(libraryId.value, undefined, true)
     } catch (error) {
       toast.error('Failed to refresh items')
     }

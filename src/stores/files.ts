@@ -4,8 +4,15 @@ import type { UserFile } from '@/api/files'
 import * as filesApi from '@/api/files'
 import { useAuthStore } from './auth'
 
+export interface CachedDownloadUrl {
+  fileId: number
+  downloadUrl: string
+  expiresAt: Date
+}
+
 export const useFilesStore = defineStore('files', () => {
   const files = ref<UserFile[]>([])
+  const cachedDownloadUrls = ref<Record<number, CachedDownloadUrl>>({})
   const loading = ref(false)
   const total = ref(0)
   const limit = ref(50)
@@ -121,7 +128,11 @@ export const useFilesStore = defineStore('files', () => {
 
   // Get download URL for a file
   const getDownloadUrl = async (fileId: number): Promise<string> => {
+    if (hasCachedDownloadUrl(fileId)) {
+      return cachedDownloadUrls.value[fileId].downloadUrl
+    }
     const response = await filesApi.getDownloadUrl(fileId)
+    cacheDownloadUrl(fileId, response.downloadUrl)
     return response.downloadUrl
   }
 
@@ -164,6 +175,22 @@ export const useFilesStore = defineStore('files', () => {
     offset.value = 0
     total.value = 0
   }
+  
+  const hasCachedDownloadUrl = (fileId: number): boolean => {
+    return cachedDownloadUrls.value[fileId] && cachedDownloadUrls.value[fileId].expiresAt > new Date()
+  }
+
+  const cacheDownloadUrl = (fileId: number, downloadUrl: string, force: boolean = false) => {
+    if (hasCachedDownloadUrl(fileId) && !force) {
+      return
+    } else {  
+      cachedDownloadUrls.value[fileId] = {
+        fileId,
+        downloadUrl,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      }
+    }
+  }
 
   // Add or update files in the store (used when receiving files from item responses)
   const addFiles = (newFiles: UserFile | UserFile[]) => {
@@ -183,6 +210,9 @@ export const useFilesStore = defineStore('files', () => {
 
   return {
     files,
+    cachedDownloadUrls,
+    hasCachedDownloadUrl,
+    cacheDownloadUrl,
     loading,
     total,
     limit,
