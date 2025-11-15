@@ -142,26 +142,28 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       chaSavingThrow: 'boolean (optional) - Proficiency in Charisma saves',
       // Skills (array of skill objects)
       skills: 'array (optional) - Character skills',
-      'skills[].name': 'string - Skill name (e.g., "Athletics")',
-      'skills[].proficient': 'boolean - Has proficiency in this skill',
-      'skills[].expertise': 'boolean (optional) - Has expertise in this skill',
+      'skills[].name': 'string - Skill name (e.g., "Athletics", "Stealth", "Perception")',
+      'skills[].ability': 'string (required) - Ability score: str, dex, con, int, wis, or cha',
+      'skills[].proficient': 'boolean (required) - Has proficiency in this skill',
+      'skills[].expertise': 'boolean (optional) - Has expertise in this skill (double proficiency)',
+      'skills[].bonus': 'number (optional) - Additional bonus modifier',
       // Proficiencies (array)
       proficiencies: 'array (optional) - Other proficiencies',
       'proficiencies[].name': 'string - Proficiency name',
-      'proficiencies[].type': 'string - Type: armor, weapon, tool, language, other',
+      'proficiencies[].type': 'string - Type: armor, weapon, tool, language, saving_throw, or other',
       // Traits & Features (array)
       traits: 'array (optional) - Racial/class features',
       'traits[].name': 'string - Feature name',
       'traits[].description': 'string - Feature description',
       // Actions (array)
       actions: 'array (optional) - Combat actions',
-      'actions[].name': 'string - Action name',
-      'actions[].actionType': 'string - Type: action, bonus, reaction, legendary',
-      'actions[].toHit': 'string (optional) - Attack bonus or to-hit value',
-      'actions[].dc': 'string (optional) - Saving throw DC',
-      'actions[].roll': 'string (optional) - Attack/damage roll',
-      'actions[].range': 'string (optional) - Attack range',
-      'actions[].description': 'string - Action description',
+      'actions[].name': 'string (required) - Action name',
+      'actions[].actionType': 'string (required) - Type: action, bonus, reaction, or legendary',
+      'actions[].description': 'string (required) - Action description',
+      'actions[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing". Do NOT include to-hit or DC here.',
+      'actions[].toHit': 'string (optional) - Attack bonus ONLY. Format: "+5", "+3", "-1". Only for attacks that require an attack roll.',
+      'actions[].dc': 'string (optional) - Saving throw DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for actions requiring a saving throw.',
+      'actions[].range': 'string (optional) - Attack range (e.g., "5 ft", "30/120 ft", "60 ft")',
       // Spells
       spellSlots: 'array (optional) - Spell slots by level',
       'spellSlots[].level': 'number (1-9) - Spell level',
@@ -176,19 +178,22 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'customCounters[].color': 'string (optional) - Hex or theme color name',
       'customCounters[].description': 'string (optional) - Helper text',
       spells: 'array (optional) - Known spells',
-      'spells[].name': 'string - Spell name',
-      'spells[].level': 'number (0-9) - Spell level (0 for cantrips)',
+      'spells[].name': 'string (required) - Spell name',
+      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips)',
+      'spells[].description': 'string (required) - Spell description',
       'spells[].school': 'string (optional) - Spell school',
       'spells[].castingTime': 'string (optional) - Casting time',
       'spells[].range': 'string (optional) - Spell range',
       'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Spell attack/save',
-      'spells[].toHit': 'string (optional) - Spell attack bonus',
-      'spells[].dc': 'string (optional) - Spell save DC',
+      'spells[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 cold", "1d4+1 healing". Do NOT include to-hit or DC here.',
+      'spells[].toHit': 'string (optional) - Spell attack bonus ONLY. Format: "+5", "+3". Only for spells that make attack rolls (like Fire Bolt).',
+      'spells[].dc': 'string (optional) - Spell save DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for spells requiring a saving throw.',
       'spells[].duration': 'string (optional) - Spell duration',
       'spells[].concentration': 'boolean (optional) - Requires concentration',
       'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
-      'spells[].description': 'string - Spell description',
+      // Character-specific fields
+      proficiencyBonus: 'number (optional) - Proficiency bonus (usually calculated from level)',
+      inspiration: 'boolean (optional) - Has inspiration',
       // Equipment
       gold: 'number (optional) - Gold pieces',
       inventory: 'array (optional) - Inventory items',
@@ -229,18 +234,20 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       wisSavingThrow: true,
       chaSavingThrow: false,
       skills: [
-        { name: "Animal Handling", proficient: true },
-        { name: "Medicine", proficient: true },
-        { name: "Nature", proficient: true },
-        { name: "Perception", proficient: false },
-        { name: "Religion", proficient: false },
-        { name: "Survival", proficient: true }
+        { name: "Animal Handling", ability: "wis", proficient: true },
+        { name: "Medicine", ability: "wis", proficient: true },
+        { name: "Nature", ability: "int", proficient: true },
+        { name: "Perception", ability: "wis", proficient: false },
+        { name: "Religion", ability: "int", proficient: false },
+        { name: "Survival", ability: "wis", proficient: true }
       ],
       traits: [
         { name: "Fey Ancestry", description: "Advantage on saves vs. charm, immune to sleep" }
       ],
       actions: [
-        { name: "Staff", actionType: "action", toHit: "+4", dc: "", roll: "1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff swing" }
+        { name: "Staff", actionType: "action", toHit: "+4", roll: "1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff swing" },
+        { name: "Fire Breath", actionType: "action", dc: "15 DEX", roll: "2d6 fire", range: "15 ft cone", description: "Breathes fire in a cone" },
+        { name: "Healing Word", actionType: "bonus", roll: "1d4+2 healing", range: "60 ft", description: "Heal an ally" }
       ],
       spellSlots: [
         { level: 1, max: 4, remaining: 4 },
@@ -253,7 +260,9 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       ],
       spells: [
         { name: "Druidcraft", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 ft", components: "V, S", duration: "Instantaneous", description: "Small nature trick" },
-        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, dc: "14 STR", description: "Grasping vines" }
+        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, dc: "14 STR", description: "Grasping vines restrain targets" },
+        { name: "Fire Bolt", level: 0, school: "Evocation", castingTime: "1 action", range: "120 ft", components: "V, S", toHit: "+5", roll: "1d10 fire", description: "Ranged spell attack" },
+        { name: "Cure Wounds", level: 1, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, S", roll: "1d8+3 healing", description: "Heal a creature" }
       ],
       gold: 125,
       inventory: [
@@ -305,13 +314,13 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'traits[].description': 'string - Trait description',
       // Actions (array)
       actions: 'array (optional) - Combat actions',
-      'actions[].name': 'string - Action name',
-      'actions[].actionType': 'string - Type: action, bonus, reaction, legendary',
-      'actions[].toHit': 'string (optional) - Attack bonus or to-hit value',
-      'actions[].dc': 'string (optional) - Saving throw DC',
-      'actions[].roll': 'string (optional) - Attack/damage roll',
-      'actions[].range': 'string (optional) - Attack range',
-      'actions[].description': 'string - Action description',
+      'actions[].name': 'string (required) - Action name',
+      'actions[].actionType': 'string (required) - Type: action, bonus, reaction, or legendary',
+      'actions[].description': 'string (required) - Action description',
+      'actions[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing". Do NOT include to-hit or DC here.',
+      'actions[].toHit': 'string (optional) - Attack bonus ONLY. Format: "+5", "+3", "-1". Only for attacks that require an attack roll.',
+      'actions[].dc': 'string (optional) - Saving throw DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for actions requiring a saving throw.',
+      'actions[].range': 'string (optional) - Attack range (e.g., "5 ft", "30/120 ft", "60 ft")',
       customCounters: 'array (optional) - Custom counters for recharge abilities or limited uses',
       'customCounters[].name': 'string - Counter name',
       'customCounters[].value': 'number - Current value',
@@ -328,13 +337,13 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'spells[].castingTime': 'string (optional) - Casting time',
       'spells[].range': 'string (optional) - Spell range',
       'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Spell attack/save',
-      'spells[].toHit': 'string (optional) - Spell attack bonus',
-      'spells[].dc': 'string (optional) - Spell save DC',
+      'spells[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 cold", "1d4+1 healing". Do NOT include to-hit or DC here.',
+      'spells[].toHit': 'string (optional) - Spell attack bonus ONLY. Format: "+5", "+3". Only for spells that make attack rolls (like Fire Bolt).',
+      'spells[].dc': 'string (optional) - Spell save DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for spells requiring a saving throw.',
       'spells[].duration': 'string (optional) - Spell duration',
       'spells[].concentration': 'boolean (optional) - Requires concentration',
       'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
-      'spells[].description': 'string - Spell description'
+      'spells[].description': 'string (required) - Spell description'
     },
     example: JSON.stringify({
       name: "Ancient Red Dragon",
@@ -379,12 +388,21 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
           actionType: "action",
           toHit: "+17",
           roll: "2d10+10 piercing, 4d6 fire",
+          range: "10 ft",
           description: "Bite with flame"
+        },
+        {
+          name: "Fire Breath",
+          actionType: "action",
+          dc: "24 DEX",
+          roll: "26d6 fire",
+          range: "60 ft cone",
+          description: "Breathes fire in a cone. Recharge 5-6."
         }
       ],
       spells: [
         {
-          name: "Detect",
+          name: "Detect Magic",
           level: 1,
           school: "Divination",
           castingTime: "1 action",
@@ -393,6 +411,18 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
           duration: "Concentration, 10 minutes",
           concentration: true,
           description: "Sense nearby magic"
+        },
+        {
+          name: "Fireball",
+          level: 3,
+          school: "Evocation",
+          castingTime: "1 action",
+          range: "150 ft",
+          components: "V, S, M",
+          dc: "18 DEX",
+          roll: "8d6 fire",
+          duration: "Instantaneous",
+          description: "Explosion of fire in a 20-foot radius"
         }
       ],
       customCounters: [
