@@ -49,7 +49,7 @@ Create a new combat encounter in a library.
       "value": 3,
       "max": 3,
       "color": "#FFD700"
-    },
+    },  
     {
       "id": "counter-2",
       "name": "Spell Slots (3rd Level)",

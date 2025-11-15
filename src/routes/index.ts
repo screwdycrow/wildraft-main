@@ -8,6 +8,8 @@ import { libraryItemRoutes } from './library-items';
 import { tagRoutes } from './tags';
 import { userFileRoutes } from './user-files';
 import { combatEncounterRoutes } from './combat-encounters';
+import { portalViewRoutes } from './portal-views';
+import { versionRoutes } from './versions';
 
 export const registerRoutes = (fastify: FastifyInstance) => {
   // Health check routes
@@ -34,7 +36,13 @@ export const registerRoutes = (fastify: FastifyInstance) => {
   // Combat encounter routes
   fastify.register(combatEncounterRoutes, { prefix: '/api/libraries' });
   
+  // Portal view routes
+  fastify.register(portalViewRoutes, { prefix: '/api/libraries' });
+  
   // User file routes
   fastify.register(userFileRoutes, { prefix: '/api/files' });
+  
+  // Version routes
+  fastify.register(versionRoutes, { prefix: '/api' });
 };
 

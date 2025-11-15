@@ -106,15 +106,26 @@ export const deleteFromS3 = async (filePath: string): Promise<void> => {
   await getS3Client().send(command);
 };
 
+// Default expiration times (in seconds)
+const DEFAULT_DOWNLOAD_EXPIRES_IN = parseInt(
+  process.env.FILE_DOWNLOAD_URL_EXPIRES_IN || '21600', // Default: 6 hours
+  10
+);
+
+const DEFAULT_UPLOAD_EXPIRES_IN = parseInt(
+  process.env.FILE_UPLOAD_URL_EXPIRES_IN || '3600', // Default: 1 hour
+  10
+);
+
 /**
  * Generate a presigned URL for downloading a file
  * @param filePath - The path/key of the file
- * @param expiresIn - How long the URL should be valid (in seconds), defaults to 1 hour
+ * @param expiresIn - How long the URL should be valid (in seconds), defaults to 6 hours
  * @returns A signed URL that can be used to download the file
  */
 export const getSignedDownloadUrl = async (
   filePath: string,
-  expiresIn: number = 3600
+  expiresIn: number = DEFAULT_DOWNLOAD_EXPIRES_IN
 ): Promise<string> => {
   try {
     const bucket = getBucketName();
@@ -147,7 +158,7 @@ export const getSignedDownloadUrl = async (
 export const getSignedUploadUrl = async (
   filePath: string,
   contentType: string,
-  expiresIn: number = 3600
+  expiresIn: number = DEFAULT_UPLOAD_EXPIRES_IN
 ): Promise<string> => {
   try {
     const bucket = getBucketName();

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess } from '../middleware/library-access';
 import { LibraryItemType } from '@prisma/client';
+import { incrementItemsVersion } from '../utils/library-version';
 import {
   createLibraryItemSchema,
   getLibraryItemsSchema,
@@ -71,6 +72,9 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
             userFiles: true,
           },
         });
+
+        // Increment items version
+        await incrementItemsVersion(libraryId);
 
         // Add download URLs to featuredImage and userFiles
         const enrichedItem = {
@@ -248,6 +252,9 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Increment items version
+        await incrementItemsVersion(libraryId);
+
         // Add download URLs to featuredImage and userFiles
         const enrichedItem = {
           ...item,
@@ -295,6 +302,9 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
         await prisma.libraryItem.delete({
           where: { id: itemId },
         });
+
+        // Increment items version
+        await incrementItemsVersion(libraryId);
 
         reply.code(204);
         return;

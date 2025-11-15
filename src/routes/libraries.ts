@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireViewerAccess, requireEditorAccess, requireOwnerAccess } from '../middleware/library-access';
 import { AccessRole, LibraryTemplate } from '@prisma/client';
+import { incrementLibraryVersion } from '../utils/library-version';
 import {
   getLibrariesSchema,
   createLibrarySchema,
@@ -147,6 +148,13 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
                 role: AccessRole.OWNER,
               },
             },
+            version: {
+              create: {
+                version: 1,
+                tagsVersion: 1,
+                itemsVersion: 1,
+              },
+            },
           },
           include: {
             access: {
@@ -213,6 +221,9 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
             ...(description !== undefined && { description: description.trim() || null }),
           },
         });
+
+        // Increment library version on update
+        await incrementLibraryVersion(id);
 
         return {
           message: 'Library updated successfully',

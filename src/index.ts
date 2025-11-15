@@ -7,8 +7,10 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import fastifySocketIO from 'fastify-socket.io';
 import { prisma } from './lib/prisma';
 import { registerRoutes } from './routes';
+import { registerPortalViewSocket } from './websocket/portal-view-socket';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -68,6 +70,7 @@ fastify.register(swagger, {
       { name: 'library-items', description: 'Library item endpoints (stat blocks, notes, items, characters)' },
       { name: 'tags', description: 'Tag management endpoints' },
       { name: 'combat-encounters', description: 'Combat encounter management endpoints' },
+      { name: 'portal-views', description: 'Portal view management endpoints for player-facing displays' },
       { name: 'files', description: 'File upload and management endpoints' },
     ],
     components: {
@@ -91,6 +94,19 @@ fastify.register(swaggerUi, {
   },
   staticCSP: true,
   transformStaticCSP: (header) => header,
+});
+
+// Register Socket.IO
+fastify.register(fastifySocketIO, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  },
+});
+
+// Socket.IO setup must happen after fastify.ready()
+fastify.ready().then(() => {
+  registerPortalViewSocket(fastify);
 });
 
 // Register routes
@@ -119,6 +135,7 @@ const start = async () => {
     fastify.log.info(`Server is running on http://${HOST}:${PORT}`);
     fastify.log.info(`API Documentation available at: http://${HOST}:${PORT}/docs`);
     fastify.log.info(`OpenAPI JSON available at: http://${HOST}:${PORT}/docs/json`);
+    fastify.log.info(`WebSocket endpoint available at: ws://${HOST}:${PORT}/ws/portal-view/:portalViewId`);
   } catch (err) {
     fastify.log.error(err);
     await prisma.$disconnect();

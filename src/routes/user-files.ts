@@ -21,13 +21,19 @@ import {
   getFileSchema,
 } from '../schemas/user-file.schemas';
 
+// Default expiration for cached files (6 hours)
+const DEFAULT_CACHE_EXPIRES_IN = parseInt(
+  process.env.FILE_DOWNLOAD_URL_EXPIRES_IN || '21600', // 6 hours
+  10
+);
+
 /**
  * Helper function to add download URL to a UserFile object
  * Exported for use in other route files
  */
 export async function enrichUserFileWithDownloadUrl(
   userFile: { fileUrl: string; [key: string]: any } | null,
-  expiresIn: number = 3600
+  expiresIn: number = DEFAULT_CACHE_EXPIRES_IN
 ): Promise<{ downloadUrl: string; [key: string]: any } | null> {
   if (!userFile) {
     return null;
@@ -54,7 +60,7 @@ export async function enrichUserFileWithDownloadUrl(
  */
 export async function enrichUserFilesWithDownloadUrls(
   userFiles: Array<{ fileUrl: string; [key: string]: any }>,
-  expiresIn: number = 3600
+  expiresIn: number = DEFAULT_CACHE_EXPIRES_IN
 ): Promise<Array<{ downloadUrl: string; [key: string]: any }>> {
   return Promise.all(
     userFiles.map((file) => enrichUserFileWithDownloadUrl(file, expiresIn))
@@ -262,20 +268,24 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
    * GET /api/files/:fileId/download-url
    * Get a presigned URL for downloading a file
    */
-  fastify.get(
+  fastify.get<{
+    Params: { fileId: string };
+    Querystring: { expiresIn?: string };
+  }>(
     '/:fileId/download-url',
     {
       preHandler: authenticateToken,
       schema: getDownloadUrlSchema,
     },
     async (request, reply) => {
-      const { fileId } = request.params as { fileId: number };
+      const { fileId } = request.params;
+      const { expiresIn: expiresInParam } = request.query;
       const userId = request.user!.userId;
 
       try {
         // Get file from database
         const file = await prisma.userFile.findUnique({
-          where: { id: fileId },
+          where: { id: parseInt(fileId, 10) },
         });
 
         if (!file) {
@@ -293,13 +303,22 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        // Generate presigned download URL (valid for 1 hour)
-        const downloadUrl = await getSignedDownloadUrl(file.fileUrl, 3600);
+        // Parse expiration from query param or use default (6 hours)
+        const expiresIn = expiresInParam
+          ? parseInt(expiresInParam, 10)
+          : DEFAULT_CACHE_EXPIRES_IN;
+
+        // Clamp between 1 hour and 7 days for security
+        const clampedExpiresIn = Math.max(3600, Math.min(expiresIn, 604800));
+
+        // Generate presigned download URL
+        const downloadUrl = await getSignedDownloadUrl(file.fileUrl, clampedExpiresIn);
 
         return reply.code(200).send({
           downloadUrl,
           fileName: file.fileName,
-          expiresIn: 3600,
+          expiresIn: clampedExpiresIn,
+          expiresAt: new Date(Date.now() + clampedExpiresIn * 1000).toISOString(),
         });
       } catch (error) {
         request.log.error({ error }, 'Failed to generate download URL');

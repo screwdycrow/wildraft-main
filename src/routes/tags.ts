@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess } from '../middleware/library-access';
+import { incrementTagsVersion } from '../utils/library-version';
 import {
   createTagSchema,
   getLibraryTagsSchema,
@@ -57,6 +58,9 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             ...(folder !== undefined && { folder: folder?.trim() || null }),
           },
         });
+
+        // Increment tags version
+        await incrementTagsVersion(libraryId);
 
         reply.code(201);
         return {
@@ -223,6 +227,9 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Increment tags version
+        await incrementTagsVersion(libraryId);
+
         return {
           message: 'Tag updated successfully',
           tag,
@@ -264,6 +271,9 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
         await prisma.tag.delete({
           where: { id: tagId },
         });
+
+        // Increment tags version
+        await incrementTagsVersion(libraryId);
 
         reply.code(204);
         return;
