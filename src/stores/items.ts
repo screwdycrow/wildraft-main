@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { itemsApi } from '@/api/items'
+import type { UserFile } from '@/api/files'
 import type { 
   LibraryItem, 
   CreateLibraryItemPayload, 
@@ -72,6 +73,39 @@ export const useItemsStore = defineStore('items', () => {
     return JSON.stringify(sorted)
   }
 
+  // Helper: Extract and cache UserFiles from items
+  const extractAndCacheUserFiles = (items: LibraryItem[]) => {
+    const filesStore = useFilesStore()
+    const filesToAdd: UserFile[] = []
+    
+    items.forEach(item => {
+      // Extract userFiles array if it exists
+      if (item.userFiles && Array.isArray(item.userFiles)) {
+        item.userFiles.forEach(file => {
+          filesToAdd.push(file)
+          // Cache download URL if it exists
+          if (file.downloadUrl) {
+            filesStore.cacheDownloadUrl(file.id, file.downloadUrl, true)
+          }
+        })
+      }
+      
+      // Extract featuredImage if it exists
+      if (item.featuredImage) {
+        filesToAdd.push(item.featuredImage)
+        // Cache download URL if it exists
+        if (item.featuredImage.downloadUrl) {
+          filesStore.cacheDownloadUrl(item.featuredImage.id, item.featuredImage.downloadUrl, true)
+        }
+      }
+    })
+    
+    // Add all files to the files store
+    if (filesToAdd.length > 0) {
+      filesStore.addFiles(filesToAdd)
+    }
+  }
+
   // Actions
   async function fetchItems(
     libraryId: number, 
@@ -98,11 +132,9 @@ export const useItemsStore = defineStore('items', () => {
       // Update cached items with API response
       items.value = response.items
       total.value = response.total
-      items.value.forEach(item => {
-        item.userFiles?.forEach(file => {
-          useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
-        })
-      })
+      
+      // Extract and cache UserFiles from items
+      extractAndCacheUserFiles(response.items)
       
       // Update cache metadata
       cacheMetadata.value = {
@@ -152,9 +184,9 @@ export const useItemsStore = defineStore('items', () => {
         items.value.push(response.item)
       }
       
-      response.item.userFiles?.forEach(file => {
-        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl,true)
-      })
+      // Extract and cache UserFiles from the item
+      extractAndCacheUserFiles([response.item])
+      
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to fetch item'
@@ -174,14 +206,14 @@ export const useItemsStore = defineStore('items', () => {
       items.value.unshift(response.item)
       total.value++
       
+      // Extract and cache UserFiles from the item
+      extractAndCacheUserFiles([response.item])
+      
       // Invalidate cache metadata (items changed, might need refresh)
       if (cacheMetadata.value.libraryId === libraryId) {
         cacheMetadata.value.params = '' // Force reload on next fetch
       }
       
-      response.item.userFiles?.forEach(file => {
-        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
-      })
       return response.item
       
     } catch (err: any) {
@@ -207,10 +239,9 @@ export const useItemsStore = defineStore('items', () => {
         currentItem.value = response.item
       }
       
-      // Cache is still valid, just updated the item
-      response.item.userFiles?.forEach(file => {
-        useFilesStore().cacheDownloadUrl(file.id, file.downloadUrl, true)
-      })
+      // Extract and cache UserFiles from the item
+      extractAndCacheUserFiles([response.item])
+      
       return response.item
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to update item'

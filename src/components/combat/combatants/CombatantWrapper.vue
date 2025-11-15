@@ -2,6 +2,10 @@
   <component 
     :is="combatantComponent" 
     :combatant="combatant"
+    :show-health="showHealth"
+    :show-ac="showAC"
+    :show-actions="showActions"
+    :portal-mode="portalMode"
   />
 </template>
 
@@ -13,9 +17,19 @@ import GenericCombatantItem from './GenericCombatantItem.vue'
 
 interface Props {
   combatant: Combatant
+  showHealth?: boolean
+  showAC?: boolean
+  showActions?: boolean
+  portalMode?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showHealth: true,
+  showAC: true,
+  showActions: true,
+  portalMode: false,
+})
+
 const { getCombatantComponent } = useItemComponents()
 
 const combatantComponent = computed(() => {

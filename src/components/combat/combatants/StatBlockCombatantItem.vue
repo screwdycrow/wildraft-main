@@ -3,6 +3,10 @@
     :combatant="combatant"
     :subtitle="subtitle"
     :actions="actions"
+    :show-health="showHealth"
+    :show-ac="showAC"
+    :show-actions="showActions"
+    :portal-mode="portalMode"
   />
 </template>
 
@@ -13,9 +17,18 @@ import GenericCombatantLayout from './GenericCombatantLayout.vue'
 
 interface Props {
   combatant: Combatant
+  showHealth?: boolean
+  showAC?: boolean
+  showActions?: boolean
+  portalMode?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showHealth: true,
+  showAC: true,
+  showActions: true,
+  portalMode: false,
+})
 
 const statBlockData = computed(() => props.combatant.libraryItem?.data || {})
 

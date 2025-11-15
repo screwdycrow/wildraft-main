@@ -38,6 +38,37 @@
           @click="next"
         />
 
+        <!-- Portal Actions -->
+        <v-menu v-if="hasActivePortal" location="bottom">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              icon="mdi-television"
+              v-bind="menuProps"
+              class="ml-2"
+              color="primary"
+            >
+              <v-icon />
+              <v-tooltip activator="parent" location="bottom">Portal Actions</v-tooltip>
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item
+              prepend-icon="mdi-plus-box"
+              title="Send to Portal"
+              subtitle="Add to portal items"
+              @click="handleSendToPortal"
+              :disabled="isSendingToPortal"
+            />
+            <v-list-item
+              prepend-icon="mdi-television-play"
+              title="Show On Top"
+              subtitle="Display immediately"
+              @click="handleShowOnTop"
+              :disabled="isSendingToPortal"
+            />
+          </v-list>
+        </v-menu>
+
         <v-btn
           v-if="onDelete && !hideDelete"
           icon="mdi-delete"
@@ -94,6 +125,9 @@
 import { ref, computed, watch } from 'vue'
 import type { UserFile } from '@/api/files'
 import { useFilesStore } from '@/stores/files'
+import { usePortalViewsStore } from '@/stores/portalViews'
+import { usePortalSocket } from '@/composables/usePortalSocket'
+import { useToast } from 'vue-toastification'
 import ImageViewer from './viewers/ImageViewer.vue'
 import VideoViewer from './viewers/VideoViewer.vue'
 import PdfViewer from './viewers/PdfViewer.vue'
@@ -123,6 +157,9 @@ const emit = defineEmits<{
 }>()
 
 const filesStore = useFilesStore()
+const portalViewsStore = usePortalViewsStore()
+const { sendPortalViewUpdate } = usePortalSocket()
+const toast = useToast()
 
 const isOpen = defineModel<boolean>('modelValue', { default: false })
 const currentIndex = ref(0)
@@ -130,6 +167,7 @@ const fileUrl = ref<string>('')
 const loading = ref(false)
 const showToolbar = ref(true)
 const hideToolbarTimer = ref<number | null>(null)
+const isSendingToPortal = ref(false)
 
 const currentFile = computed(() => {
   if (props.files && props.files.length > 0) {
@@ -145,6 +183,8 @@ const canNavigate = computed(() => {
 const isImage = computed(() => currentFile.value?.fileType.startsWith('image/'))
 const isVideo = computed(() => currentFile.value?.fileType.startsWith('video/'))
 const isPdf = computed(() => currentFile.value?.fileType.includes('pdf'))
+
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
 
 // Load file URL when file changes
 watch([isOpen, currentFile], async ([open, file]: [boolean, UserFile | null | undefined]) => {
@@ -204,6 +244,33 @@ const handleDelete = async () => {
       close()
     }
   }
+}
+
+const handleSendToPortal = async () => {
+  if (!currentFile.value) return
+  
+  isSendingToPortal.value = true
+  try {
+    await portalViewsStore.addItemToActivePortal(currentFile.value, true)
+    toast.success(`Sent "${currentFile.value.fileName}" to portal and set as current`)
+  } catch (error: any) {
+    console.error('[MediaViewer] Failed to send to portal:', error)
+    toast.error(error.message || 'Failed to send to portal')
+  } finally {
+    isSendingToPortal.value = false
+  }
+}
+
+const handleShowOnTop = () => {
+  if (!currentFile.value) return
+  
+  // Send show-on-top command with the UserFile
+  sendPortalViewUpdate({
+    command: 'show-on-top',
+    userFile: currentFile.value, // Send the UserFile directly
+  })
+  
+  toast.success(`Showing "${currentFile.value.fileName}" on portal`)
 }
 
 const close = () => {

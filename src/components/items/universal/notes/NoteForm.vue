@@ -477,7 +477,7 @@ watch(
       }
       // Don't clear tagIds if initialTagIds are provided (for preselected tags)
       if (!props.initialTagIds || props.initialTagIds.length === 0) {
-        formData.value.tagIds = []
+      formData.value.tagIds = []
       }
       formData.value.userFileIds = []
       formData.value.featuredImageId = null

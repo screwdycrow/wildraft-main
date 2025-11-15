@@ -2,6 +2,8 @@
   <v-app>
     <v-app-bar elevation="0" class="glass-header" height="70">
       <v-app-bar-nav-icon @click="mobile ? drawer = !drawer : toggleRail()" />
+
+
       
       <v-toolbar-title class="d-flex align-center">
         <div>
@@ -14,6 +16,8 @@
           >
             {{ currentLibrary.role || 'Owner' }}
           </v-chip>
+          <portal-control-menu class="mx-2" />
+
         </div>
       </v-toolbar-title>
 
@@ -21,6 +25,8 @@
 
       <!-- Dice Roller -->
       <dice-roller class="mx-2" />
+      
+      <!-- Portal Control Menu -->
 
       <v-btn
         icon="mdi-magnify"
@@ -199,6 +205,13 @@
               :value="'tags'"
             />
 
+            <v-list-item
+              :to="{ name: 'LibraryPortalViews', params: { id: libraryId } }"
+              prepend-icon="mdi-view-dashboard-variant"
+              :title="!effectiveRail ? 'Portal Views' : undefined"
+              :value="'portal-views'"
+            />
+
             <v-divider class="my-2" />
 
             <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
@@ -364,7 +377,9 @@ import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
 import CombatEncounter from '@/components/combat/CombatEncounter.vue'
 import DiceRoller from '@/components/dice/DiceRoller.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
+import PortalControlMenu from '@/components/portal/PortalControlMenu.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
+import { usePortalViewsStore } from '@/stores/portalViews'
 
 const { mobile } = useDisplay()
 const theme = useTheme()
@@ -378,6 +393,7 @@ const router = useRouter()
 const libraryStore = useLibraryStore()
 const tagsStore = useTagsStore()
 const combatEncountersStore = useCombatEncountersStore()
+const portalViewsStore = usePortalViewsStore()
 const toast = useToast()
 
 const libraryId = computed(() => {
@@ -406,6 +422,13 @@ const effectiveRail = computed(() => mobile.value ? false : rail.value)
 // Sorted folder names for consistent ordering
 const sortedFolderNames = computed(() => {
   return Object.keys(tagsStore.tagsByFolder).sort()
+})
+
+// Check if portal viewer is connected (placeholder - you might want to track this via socket)
+const isPortalViewerConnected = computed(() => {
+  // This would ideally be tracked via the portal socket
+  // For now, just show if portal is active
+  return !!portalViewsStore.activePortal
 })
 
 // Toggle rail (only works on desktop)
@@ -494,6 +517,14 @@ watch(libraryId, async (newId, oldId) => {
         console.error('Failed to load combat encounters:', encounterError)
         // Don't block library load if encounters fail
       }
+      
+      // Fetch portal views for the library (non-blocking)
+      try {
+        await portalViewsStore.fetchPortalViews(newId)
+      } catch (portalError) {
+        console.error('Failed to load portal views:', portalError)
+        // Don't block library load if portals fail
+      }
     } catch (error) {
       toast.error('Failed to load library')
       router.push({ name: 'Dashboard' })
@@ -525,6 +556,14 @@ onMounted(async () => {
       } catch (encounterError) {
         console.error('Failed to load combat encounters:', encounterError)
         // Don't block library load if encounters fail
+      }
+      
+      // Fetch portal views for the library (non-blocking)
+      try {
+        await portalViewsStore.fetchPortalViews(libraryId.value)
+      } catch (portalError) {
+        console.error('Failed to load portal views:', portalError)
+        // Don't block library load if portals fail
       }
     } catch (error) {
       toast.error('Failed to load library')

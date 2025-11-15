@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { UserFile } from '@/api/files'
 import * as filesApi from '@/api/files'
 import { useAuthStore } from './auth'
@@ -126,14 +126,37 @@ export const useFilesStore = defineStore('files', () => {
     }
   }
 
-  // Get download URL for a file
-  const getDownloadUrl = async (fileId: number): Promise<string> => {
+  // Get download URL for a file with retry on 401
+  const getDownloadUrl = async (fileId: number, retryCount = 0): Promise<string> => {
+    const maxRetries = 1
+    
+    // Check cache first
     if (hasCachedDownloadUrl(fileId)) {
+      console.log('[Files Store] Using cached download URL for file', fileId)
       return cachedDownloadUrls.value[fileId].downloadUrl
     }
-    const response = await filesApi.getDownloadUrl(fileId)
-    cacheDownloadUrl(fileId, response.downloadUrl)
-    return response.downloadUrl
+    
+    try {
+      const response = await filesApi.getDownloadUrl(fileId)
+      cacheDownloadUrl(fileId, response.downloadUrl)
+      return response.downloadUrl
+    } catch (error: any) {
+      // If 401 and haven't retried yet, refresh token and try again
+      if (error.response?.status === 401 && retryCount < maxRetries) {
+        console.log('[Files Store] Got 401 for file download, refreshing token and retrying...')
+        
+        const authStore = useAuthStore()
+        const refreshed = await authStore.refreshToken()
+        
+        if (refreshed) {
+          // Invalidate cache and retry
+          invalidateAllUrls()
+          return getDownloadUrl(fileId, retryCount + 1)
+        }
+      }
+      
+      throw error
+    }
   }
 
   // Delete file
@@ -187,7 +210,7 @@ export const useFilesStore = defineStore('files', () => {
       cachedDownloadUrls.value[fileId] = {
         fileId,
         downloadUrl,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 8), // 8 hours expiration
       }
     }
   }
@@ -207,6 +230,21 @@ export const useFilesStore = defineStore('files', () => {
       }
     })
   }
+  
+  // Invalidate all cached download URLs (call when token refreshes)
+  const invalidateAllUrls = () => {
+    console.log('[Files Store] Invalidating all cached download URLs due to token refresh')
+    cachedDownloadUrls.value = {}
+  }
+  
+  // Watch for token changes and invalidate URLs
+  const authStore = useAuthStore()
+  watch(() => authStore.accessToken, (newToken, oldToken) => {
+    if (newToken && oldToken && newToken !== oldToken) {
+      console.log('[Files Store] Token changed, invalidating cached URLs')
+      invalidateAllUrls()
+    }
+  })
 
   return {
     files,
@@ -226,6 +264,7 @@ export const useFilesStore = defineStore('files', () => {
     loadMore,
     reset,
     addFiles,
+    invalidateAllUrls,
   }
 })
 

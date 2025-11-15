@@ -253,7 +253,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 
 // State interface (exported for external use)
@@ -266,6 +266,7 @@ export interface ViewerState {
   gridSize: number
   gridColor: string
   gridOpacity: number
+  combatLock?: boolean // Optional for backwards compatibility
 }
 
 interface Props {
@@ -278,6 +279,8 @@ interface Props {
   gridOverlayColor?: string
   gridOverlayOpacity?: number
   initialState?: ViewerState | null
+  externalState?: ViewerState | null // For real-time updates from portal
+  shouldRestoreState?: boolean | number // Trigger to restore last saved state from history (boolean or counter)
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -287,7 +290,9 @@ const props = withDefaults(defineProps<Props>(), {
   gridOverlaySize: 50, // 50vh = good default for D&D grids
   gridOverlayColor: '#000000',
   gridOverlayOpacity: 0.2, // 20% opacity
-  initialState: null
+  initialState: null,
+  externalState: null,
+  shouldRestoreState: 0
 })
 
 const toast = useToast()
@@ -429,7 +434,7 @@ const saveStateToHistory = () => {
   }
 }
 
-const loadStateFromHistory = (state: ViewerState) => {
+const loadStateFromHistory = (state: ViewerState, showToast = false) => {
   scale.value = state.scale
   position.value = { ...state.position }
   rotation.value = state.rotation
@@ -438,14 +443,21 @@ const loadStateFromHistory = (state: ViewerState) => {
   gridColor.value = state.gridColor
   gridOpacity.value = state.gridOpacity
   
-  toast.info('Viewer state restored', {
-    timeout: 1500
-  })
+  // Apply combat lock if present in state
+  if (state.combatLock !== undefined) {
+    combatLock.value = state.combatLock
+  }
+  
+  if (showToast) {
+    toast.info('Viewer state restored', {
+      timeout: 1500
+    })
+  }
 }
 
 const loadLastState = () => {
   if (stateHistory.value.length > 0) {
-    loadStateFromHistory(stateHistory.value[0])
+    loadStateFromHistory(stateHistory.value[0], true) // Show toast when manually loading
   } else {
     toast.warning('No saved states found')
   }
@@ -720,6 +732,42 @@ const handleKeyPress = (e: KeyboardEvent) => {
       break
   }
 }
+
+// Track previous combat lock state to detect when it's enabled externally
+const previousCombatLock = ref(false)
+
+// Watch for external state updates from portal (no toast for these)
+watch(() => props.externalState, (newState, oldState) => {
+  if (newState && newState.timestamp) {
+    // Check if combat lock was just enabled (changed from false to true)
+    const wasLocked = oldState?.combatLock ?? previousCombatLock.value
+    const isNowLocked = newState.combatLock ?? false
+    
+    // If lock was just enabled externally, save current state BEFORE applying the lock
+    if (!wasLocked && isNowLocked && !combatLock.value) {
+      // Save current state before applying the lock
+      saveStateToHistory()
+    }
+    
+    // Update previous state
+    previousCombatLock.value = isNowLocked
+    
+    loadStateFromHistory(newState, false) // Don't show toast for portal updates
+  }
+}, { deep: true })
+
+// Watch local combat lock changes to keep tracking in sync
+watch(combatLock, (newValue) => {
+  previousCombatLock.value = newValue
+})
+
+// Watch for restore state trigger (can be boolean or number counter)
+watch(() => props.shouldRestoreState, (shouldRestore, oldValue) => {
+  // Trigger when value changes and is truthy (counter increments, or boolean becomes true)
+  if (shouldRestore && shouldRestore !== oldValue) {
+    loadLastState() // Restore last saved state from history
+  }
+})
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyPress)

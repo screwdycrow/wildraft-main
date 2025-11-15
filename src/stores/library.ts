@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { librariesApi } from '@/api/libraries'
+import { getLibraryVersions } from '@/api/versions'
 import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess, LibraryTemplates } from '@/types/library.types'
+import type { LibraryVersionsResponse } from '@/api/versions'
 
 export const useLibraryStore = defineStore('library', () => {
   // State
@@ -10,6 +12,9 @@ export const useLibraryStore = defineStore('library', () => {
   const currentLibrary = ref<Library | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  
+  // Cached versions per library (runtime only, not persisted)
+  const cachedVersions = ref<Map<number, LibraryVersionsResponse>>(new Map())
 
   // Getters
   const sortedLibraries = computed(() => {
@@ -64,6 +69,33 @@ export const useLibraryStore = defineStore('library', () => {
     } finally {
       isLoading.value = false
     }
+  }
+
+  // Fetch and cache library versions (single API call for both items and tags versions)
+  async function fetchLibraryVersions(libraryId: number, forceRefresh: boolean = false): Promise<LibraryVersionsResponse> {
+    // Return cached version if available and not forcing refresh
+    if (!forceRefresh && cachedVersions.value.has(libraryId)) {
+      return cachedVersions.value.get(libraryId)!
+    }
+    
+    try {
+      const versions = await getLibraryVersions(libraryId)
+      cachedVersions.value.set(libraryId, versions)
+      return versions
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to fetch library versions'
+      throw err
+    }
+  }
+
+  // Get cached versions (without fetching)
+  function getCachedVersions(libraryId: number): LibraryVersionsResponse | null {
+    return cachedVersions.value.get(libraryId) || null
+  }
+
+  // Clear cached versions for a library
+  function clearCachedVersions(libraryId: number) {
+    cachedVersions.value.delete(libraryId)
   }
 
   async function createLibrary(payload: CreateLibraryPayload) {
@@ -191,6 +223,9 @@ export const useLibraryStore = defineStore('library', () => {
     sharedLibraries,
     fetchLibraries,
     fetchLibrary,
+    fetchLibraryVersions,
+    getCachedVersions,
+    clearCachedVersions,
     createLibrary,
     updateLibrary,
     deleteLibrary,

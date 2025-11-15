@@ -116,14 +116,33 @@ export const useCombatEncountersStore = defineStore('combatEncounters', () => {
       libraryId: number,
       encounterId: number,
       data: UpdateCombatEncounterRequest,
-      originalEncounter: CombatEncounter
+      originalEncounter: CombatEncounter,
+      sendToPortal = true
     ) => {
       try {
-        console.log('[combatStore] Debounced backend sync:', encounterId)
         await combatEncountersApi.update(libraryId, encounterId, data)
         // Don't update UI - optimistic update already done
+        
+        // Send encounter update to active portal AFTER backend update succeeds
+        if (sendToPortal) {
+          try {
+            // Dynamic import to avoid circular dependency
+            const { usePortalViewsStore } = await import('@/stores/portalViews')
+            const { usePortalSocket } = await import('@/composables/usePortalSocket')
+            const portalStore = usePortalViewsStore()
+            
+            if (portalStore.activePortal && portalStore.activePortal.libraryId === libraryId) {
+              // Send refetch command to all viewers AFTER update is saved
+              const { sendPortalViewUpdate } = usePortalSocket()
+              sendPortalViewUpdate({
+                command: 'refetch-encounter',
+              })
+            }
+          } catch (error) {
+            // Silently fail portal notification
+          }
+        }
       } catch (err: any) {
-        console.error('[combatStore] Debounced backend sync failed:', err)
         // Revert to original on error
         encounters.value = encounters.value.map(e => 
           e.id === encounterId ? originalEncounter : e
@@ -141,14 +160,14 @@ export const useCombatEncountersStore = defineStore('combatEncounters', () => {
     libraryId: number,
     encounterId: number,
     data: UpdateCombatEncounterRequest,
-    debounceBackend = false
+    debounceBackend = false,
+    sendToPortal = true
   ) {
     error.value = null
     
     // Find the current encounter
     const currentEncounter = encounters.value.find(e => e.id === encounterId)
     if (!currentEncounter) {
-      console.warn('[combatStore] Encounter not found for optimistic update')
       return
     }
     
@@ -160,11 +179,6 @@ export const useCombatEncountersStore = defineStore('combatEncounters', () => {
       updatedAt: new Date().toISOString()
     }
     
-    console.log('[combatStore] Optimistic update:', {
-      id: optimisticEncounter.id,
-      combatantsCount: optimisticEncounter.combatants.length
-    })
-    
     // Update UI immediately
     encounters.value = encounters.value.map(e => 
       e.id === encounterId ? optimisticEncounter : e
@@ -172,19 +186,37 @@ export const useCombatEncountersStore = defineStore('combatEncounters', () => {
     
     // If debounceBackend is true, use debounced sync (for initiative/round changes)
     if (debounceBackend) {
-      debouncedBackendSync(libraryId, encounterId, data, currentEncounter)
+      debouncedBackendSync(libraryId, encounterId, data, currentEncounter, sendToPortal)
       return optimisticEncounter
     }
     
     // Otherwise, sync with backend immediately (but don't update UI with response)
     try {
-      console.log('[combatStore] Syncing with backend:', encounterId)
       await combatEncountersApi.update(libraryId, encounterId, data)
       // Don't update UI - optimistic update already done
       
+      // Send encounter update to active portal AFTER backend update succeeds
+      if (sendToPortal) {
+        try {
+          // Dynamic import to avoid circular dependency
+          const { usePortalViewsStore } = await import('@/stores/portalViews')
+          const { usePortalSocket } = await import('@/composables/usePortalSocket')
+          const portalStore = usePortalViewsStore()
+          
+          if (portalStore.activePortal && portalStore.activePortal.libraryId === libraryId) {
+            // Send refetch command to all viewers AFTER update is saved
+            const { sendPortalViewUpdate } = usePortalSocket()
+            sendPortalViewUpdate({
+              command: 'refetch-encounter',
+            })
+          }
+        } catch (error) {
+          // Silently fail portal notification
+        }
+      }
+      
       return optimisticEncounter
     } catch (err: any) {
-      console.error('[combatStore] Backend sync failed:', err)
       // Revert optimistic update on error
       encounters.value = encounters.value.map(e => 
         e.id === encounterId ? currentEncounter : e

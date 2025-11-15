@@ -64,7 +64,10 @@ export const useTagsStore = defineStore('tags', () => {
   })
 
   // Helper: Check if tags are already loaded for this library
+  // Tags should only be loaded once per library (unless force refresh)
   function isAlreadyLoaded(libraryId: number): boolean {
+    // If we have tags for this library, consider them loaded
+    // No timestamp check - tags are loaded once and stay loaded
     return cacheMetadata.value.libraryId === libraryId && tags.value.length > 0
   }
 

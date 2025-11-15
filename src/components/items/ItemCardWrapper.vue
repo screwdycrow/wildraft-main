@@ -20,9 +20,37 @@
     <transition name="fade">
       <div v-if="showActions" class="card-actions">
         <v-btn
+          v-if="canSendToPortal"
+          icon="mdi-television"
+          size="x-small"
+          color="purple"
+          variant="flat"
+          @click.stop="handleSendToPortal"
+          :disabled="isSendingToPortal"
+        >
+          <v-icon />
+          <v-tooltip activator="parent" location="bottom">
+            Send Featured Image to Portal
+          </v-tooltip>
+        </v-btn>
+        <v-btn
+          v-if="canShowOnTop"
+          icon="mdi-television-play"
+          size="x-small"
+          color="purple"
+          variant="flat"
+          @click.stop="handleShowOnTop"
+          :disabled="isSendingToPortal"
+        >
+          <v-icon />
+          <v-tooltip activator="parent" location="bottom">
+            Show Featured Image On Top
+          </v-tooltip>
+        </v-btn>
+        <v-btn
           v-if="canAddToCombat"
           icon="mdi-sword-cross"
-          size="small"
+          size="x-small"
           color="success"
           variant="flat"
           @click.stop="handleAddToCombat"
@@ -34,7 +62,7 @@
         </v-btn>
         <v-btn
           icon="mdi-pencil"
-          size="small"
+          size="x-small"
           color="primary"
           variant="flat"
           @click.stop="$emit('edit', item)"
@@ -46,7 +74,7 @@
         </v-btn>
         <v-btn
           icon="mdi-eye"
-          size="small"
+          size="x-small"
           color="info"
           variant="flat"
           @click.stop="$emit('view', item)"
@@ -58,7 +86,7 @@
         </v-btn>
         <v-btn
           icon="mdi-delete"
-          size="small"
+          size="x-small"
           color="error"
           variant="flat"
           @click.stop="$emit('delete', item)"
@@ -70,6 +98,7 @@
         </v-btn>
       </div>
     </transition>
+    
   </div>
 </template>
 
@@ -81,6 +110,8 @@ import { useQuickItemViewStore } from '@/stores/quickItemView'
 import { useCombat } from '@/composables/useCombat'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import { useItemsStore } from '@/stores/items'
+import { usePortalViewsStore } from '@/stores/portalViews'
+import { usePortalSocket } from '@/composables/usePortalSocket'
 import { useToast } from 'vue-toastification'
 
 interface Props {
@@ -112,7 +143,11 @@ const quickItemViewStore = useQuickItemViewStore()
 const { addToActiveEncounter, activeEncounter } = useCombat()
 const combatStore = useCombatEncountersStore()
 const itemsStore = useItemsStore()
+const portalViewsStore = usePortalViewsStore()
+const { sendPortalViewUpdate } = usePortalSocket()
 const toast = useToast()
+
+const isSendingToPortal = ref(false)
 
 const cardComponent = computed(() => {
   return getItemComponent(props.item.type, 'card')
@@ -121,6 +156,18 @@ const cardComponent = computed(() => {
 const canAddToCombat = computed(() => {
   // Only show if there's an active encounter
   return !!activeEncounter.value
+})
+
+const hasFeaturedImage = computed(() => {
+  return !!props.item.featuredImage
+})
+
+const canSendToPortal = computed(() => {
+  return hasFeaturedImage.value && !!portalViewsStore.activePortal
+})
+
+const canShowOnTop = computed(() => {
+  return hasFeaturedImage.value && !!portalViewsStore.activePortal
 })
 
 function handleCardClick(event: MouseEvent) {
@@ -165,6 +212,39 @@ async function handleAddToCombat() {
   } catch (error: any) {
     toast.error(error.message || 'Failed to add to combat')
   }
+}
+
+async function handleSendToPortal() {
+  if (!props.item.featuredImage) {
+    toast.warning('No featured image to send')
+    return
+  }
+
+  isSendingToPortal.value = true
+  try {
+    await portalViewsStore.addItemToActivePortal(props.item.featuredImage, true)
+    toast.success(`Sent "${props.item.featuredImage.fileName}" to portal and set as current`)
+  } catch (error: any) {
+    console.error('[ItemCardWrapper] Failed to send to portal:', error)
+    toast.error(error.message || 'Failed to send to portal')
+  } finally {
+    isSendingToPortal.value = false
+  }
+}
+
+function handleShowOnTop() {
+  if (!props.item.featuredImage) {
+    toast.warning('No featured image to show')
+    return
+  }
+
+  // Send show-on-top command with the UserFile
+  sendPortalViewUpdate({
+    command: 'show-on-top',
+    userFile: props.item.featuredImage, // Send the UserFile directly
+  })
+  
+  toast.success(`Showing "${props.item.featuredImage.fileName}" on portal`)
 }
 
 // Drag and drop handlers for tags

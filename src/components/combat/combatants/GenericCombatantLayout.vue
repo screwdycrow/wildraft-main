@@ -4,11 +4,12 @@
     <div 
       v-if="displayFeaturedImage" 
       class="combatant-background"
+      :class="{ 'portal-mode-image': portalMode }"
       :style="{ backgroundImage: `url(${displayFeaturedImage})` }"
     />
     
-    <!-- Hover Actions (Top Left) -->
-    <div class="hover-actions">
+    <!-- Hover Actions (Top Left) - Hidden in portal mode -->
+    <div v-if="!portalMode" class="hover-actions">
       <v-btn
         icon="mdi-pencil"
         size="x-small"
@@ -50,15 +51,15 @@
     <!-- Main Content Container with Flexbox -->
     <div class="combatant-main">
       <!-- Initiative Badge (Left Side) -->
-      <div class="initiative-badge clickable" @click="editInitiative">
+      <div class="initiative-badge" :class="{ 'clickable': !portalMode }" @click="!portalMode && editInitiative()">
         <span class="initiative-number">{{ combatant.initiative }}</span>
-        <v-icon icon="mdi-pencil" size="x-small" class="edit-icon" />
+        <v-icon v-if="!portalMode" icon="mdi-pencil" size="x-small" class="edit-icon" />
       </div>
       
       <div class="combatant-content">
       <!-- Row 1: Name -->
       <div class="row-1">
-        <div class="name-section clickable" @click="showDetailsDialog = true">
+        <div class="name-section" :class="{ 'clickable': !portalMode }" @click="!portalMode && (showDetailsDialog = true)">
           <h3 class="combatant-name">{{ combatant.name }}</h3>
           <div v-if="subtitle" class="combatant-subtitle">{{ subtitle }}</div>
         </div>
@@ -67,12 +68,12 @@
       <!-- Row 2: AC, HP Chip, and HP Bar -->
       <div class="row-2">
     
-        <div v-if="showHp" class="stat-chip hp-chip clickable" @click="editHp">
+        <div v-if="showHp && showHealth" class="stat-chip hp-chip" :class="{ 'clickable': !portalMode }" @click="!portalMode && editHp()">
           <v-icon icon="mdi-heart" size="small" />
           <span>{{ combatant.hp }}/{{ combatant.maxHp }}</span>
         </div>
         
-        <div v-if="showHp" class="hp-bar-container clickable" @click="editHp">
+        <div v-if="showHp && showHealth" class="hp-bar-container" :class="{ 'clickable': !portalMode }" @click="!portalMode && editHp()">
           <v-progress-linear
             :model-value="hpPercentage"
             :color="hpColor"
@@ -80,15 +81,15 @@
             rounded
           />
         </div>
-        <div class="stat-chip ac-chip">
+        <div v-if="showAC" class="stat-chip ac-chip">
           <v-icon icon="mdi-shield" size="small" />
           <span>{{ combatant.ac }}</span>
         </div>
         
       </div>
 
-      <!-- Row 3: Conditions and Counters -->
-      <div v-if="hasRow3Content" class="row-3">
+      <!-- Row 3: Conditions and Counters - Hidden in portal mode -->
+      <div v-if="hasRow3Content && !portalMode" class="row-3">
         <!-- Conditions -->
         <div v-if="combatant.conditions && combatant.conditions.length > 0" class="conditions-inline">
           <v-chip
@@ -116,7 +117,7 @@
       </div>
 
       <!-- Actions (if any) -->
-      <div v-if="displayActions && displayActions.length > 0" class="actions-row">
+      <div v-if="showActions && displayActions && displayActions.length > 0" class="actions-row">
         <action-chip
           v-for="(action, index) in displayActions"
           :key="index"
@@ -260,9 +261,18 @@ interface Props {
   combatant: Combatant
   subtitle?: string
   featuredImage?: string
+  showHealth?: boolean
+  showAC?: boolean
+  showActions?: boolean
+  portalMode?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showHealth: true,
+  showAC: true,
+  showActions: true,
+  portalMode: false,
+})
 const { rollInitiativeForCombatant, updateCombatant, removeFromActiveEncounter, duplicateCombatant } = useCombat()
 const filesStore = useFilesStore()
 const toast = useToast()
@@ -469,6 +479,14 @@ async function handleDuplicate() {
   -webkit-mask-image: linear-gradient(to left, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0.6) 70%, rgba(0, 0, 0, 0) 100%);
   /* Maintain 3:2 aspect ratio by constraining width */
   max-width: calc(100% * 2 / 4);
+}
+
+/* Portal Mode: 1:1 ratio right-aligned with fade to left (same style as normal, just square) */
+.combatant-background.portal-mode-image {
+  /* 1:1 aspect ratio (square) - width equals height of container */
+  aspect-ratio: 1 / 1;
+  width: auto;
+  height: 100%;
 }
 
 .hover-actions {

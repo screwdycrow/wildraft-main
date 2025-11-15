@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/auth'
 import AuthLayout from '@/layouts/AuthLayout.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import LibraryLayout from '@/layouts/LibraryLayout.vue'
+import PortalLayout from '@/layouts/PortalLayout.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -109,6 +110,33 @@ const routes: RouteRecordRaw[] = [
         name: 'LibraryJsonImport',
         component: () => import('@/views/LibraryJsonImportView.vue'),
       },
+      {
+        path: ':id/portal-views',
+        name: 'LibraryPortalViews',
+        component: () => import('@/views/LibraryPortalViewsView.vue'),
+      },
+      {
+        path: ':id/portal-views/:portalViewId',
+        name: 'PortalView',
+        component: () => import('@/views/PortalViewDetailView.vue'),
+      },
+      {
+        path: ':id/portal-views/:portalViewId/view',
+        name: 'PortalViewView',
+        component: () => import('@/views/PortalViewView.vue'),
+      },
+    ],
+  },
+  {
+    path: '/portal',
+    component: PortalLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'library/:id/portalview/:portalViewId',
+        name: 'PortalViewDisplay',
+        component: () => import('@/views/PortalViewView.vue'),
+      },
     ],
   },
 ]
@@ -119,7 +147,7 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
   // Initialize auth on first load
