@@ -892,6 +892,34 @@ export function useItemComponents() {
     return converter(libraryItem, combatantId, customName)
   }
 
+  // Alias for backward compatibility - use the existing getItemComponent function
+  function getCardComponent(type: string) {
+    try {
+      return getItemComponent(type as ItemType, 'card')
+    } catch (error) {
+      console.warn(`Card component not found for type: ${type}`)
+      return undefined
+    }
+  }
+
+  function getEditorComponent(type: string) {
+    try {
+      return getItemComponent(type as ItemType, 'form')
+    } catch (error) {
+      console.warn(`Editor component not found for type: ${type}`)
+      return undefined
+    }
+  }
+
+  function getDetailComponent(type: string) {
+    try {
+      return getItemComponent(type as ItemType, 'detail')
+    } catch (error) {
+      console.warn(`Detail component not found for type: ${type}`)
+      return undefined
+    }
+  }
+
   return {
     getItemComponent,
     hasItemComponent,
@@ -905,6 +933,10 @@ export function useItemComponents() {
     getCombatantDetailComponent,
     getItemToCombatantConverter,
     convertItemToCombatant,
+    // Add convenient aliases
+    getCardComponent,
+    getEditorComponent,
+    getDetailComponent,
   }
 }
 

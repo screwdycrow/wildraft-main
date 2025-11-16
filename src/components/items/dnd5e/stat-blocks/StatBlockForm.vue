@@ -197,9 +197,20 @@
         Track recharge abilities, legendary actions, or other limited resources with custom counters.
       </p>
       <custom-counters-display
+        ref="countersDisplayRef"
         :counters="formData.data.customCounters"
         @update:counters="formData.data.customCounters = $event"
       />
+      <div v-if="!formData.data.customCounters || formData.data.customCounters.length === 0" class="mt-4">
+        <v-btn
+          color="primary"
+          variant="outlined"
+          prepend-icon="mdi-plus"
+          @click="openCounterManager"
+        >
+          Add Custom Counter
+        </v-btn>
+      </div>
         </v-window-item>
 
         <!-- Traits Tab -->
@@ -283,6 +294,7 @@ const emit = defineEmits<{
 const filesStore = useFilesStore()
 
 const layoutRef = ref<InstanceType<typeof ItemFormLayout>>()
+const countersDisplayRef = ref<InstanceType<typeof CustomCountersDisplay>>()
 const isLoading = ref(false)
 const showTagDialog = ref(false)
 const activeTab = ref('stats')
@@ -370,10 +382,23 @@ function handleTagCreated(tagId: number) {
   }
 }
 
-function handleJsonImport(importData: CreateLibraryItemPayload) {
-  // Fill the form with imported data
+function openCounterManager() {
+  // Initialize customCounters array if it doesn't exist
+  if (!formData.value.data.customCounters) {
+    formData.value.data.customCounters = []
+  }
+  // Open the counter manager dialog
+  countersDisplayRef.value?.openManagerForCreate()
+}
+
+function handleJsonImport(importData: CreateLibraryItemPayload, options?: { importDescription?: boolean }) {
+  // Only import name, description (if option enabled), and data
+  // Do NOT change tags or attachments
   formData.value.name = importData.name
-  formData.value.description = importData.description || ''
+  
+  if (options?.importDescription !== false) {
+    formData.value.description = importData.description || ''
+  }
 
   // Handle data - could be wrapped in data property or direct
   const itemData = importData.data || importData
@@ -408,14 +433,11 @@ function handleJsonImport(importData: CreateLibraryItemPayload) {
       actions: itemData.actions || [],
       spells: itemData.spells || [],
       customCounters: itemData.customCounters || [],
-      customCounters: itemData.customCounters || [],
     })
   }
 
-  // Handle attachments
-  formData.value.tagIds = importData.tagIds || []
-  formData.value.userFileIds = importData.userFileIds || []
-  formData.value.featuredImageId = importData.featuredImageId || null
+  // Do NOT import tags or attachments - they stay as-is
+  // formData.value.tagIds, userFileIds, featuredImageId remain unchanged
 
   console.log('[StatBlockForm] JSON import applied:', formData.value)
 }
@@ -457,6 +479,7 @@ watch(() => props.item, (newItem) => {
       traits: itemData.traits || [],
       actions: itemData.actions || [],
       spells: itemData.spells || [],
+      customCounters: itemData.customCounters || [],
     }
     
     console.log('[StatBlockForm] Loaded data:', formData.value.data)

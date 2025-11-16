@@ -125,6 +125,16 @@ const routes: RouteRecordRaw[] = [
         name: 'PortalViewView',
         component: () => import('@/views/PortalViewView.vue'),
       },
+      {
+        path: ':id/dm-screens',
+        name: 'LibraryDmScreens',
+        component: () => import('@/views/LibraryDmScreensView.vue'),
+      },
+      {
+        path: ':id/dm-screens/:dmScreenId',
+        name: 'DmScreen',
+        component: () => import('@/views/DmScreenView.vue'),
+      },
     ],
   },
   {

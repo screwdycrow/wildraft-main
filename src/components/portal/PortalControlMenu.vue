@@ -2,6 +2,17 @@
   <v-menu location="bottom" :close-on-content-click="false" max-width="400">
     <template #activator="{ props: menuProps }">
       <v-btn
+        v-if="!hasLoadedPortals"
+        v-bind="menuProps"
+        variant="text"
+        size="small"
+        class="portal-control-button"
+      >
+        <v-icon icon="mdi-television" size="small" class="mr-1" />
+        <span class="portal-name">Connect Portal</span>
+      </v-btn>
+      <v-btn
+        v-else
         v-bind="menuProps"
         variant="text"
         class="portal-control-button"
@@ -28,6 +39,7 @@
         <span class="text-subtitle-2">Portal Controls</span>
         <v-spacer />
         <v-chip
+          v-if="hasLoadedPortals"
           :color="isConnected ? 'success' : 'error'"
           size="x-small"
           variant="flat"
@@ -40,29 +52,58 @@
 
       <!-- Active Portal Selection -->
       <v-card-text class="pa-3">
-        <v-select
-          :model-value="activePortal?.portalViewId"
-          :items="portalViewOptions"
-          item-title="name"
-          item-value="id"
-          variant="outlined"
-          density="compact"
-          placeholder="Select a portal..."
-          prepend-inner-icon="mdi-view-dashboard-variant"
-          @update:model-value="handlePortalChange"
-        >
-          <template #append>
-            <v-btn
-              v-if="activePortal"
-              icon="mdi-close"
-              size="x-small"
-              variant="text"
-              @click.stop="clearActivePortal"
-            />
-          </template>
-        </v-select>
+        <div v-if="!hasLoadedPortals" class="text-center py-4">
+          <v-icon icon="mdi-television" size="48" color="primary" class="mb-3" />
+          <p class="text-body-2 text-medium-emphasis mb-4">
+            Connect to a portal to manage and control player-facing displays
+          </p>
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-television"
+            :loading="isLoadingPortals"
+            @click="loadPortals"
+          >
+            Connect Portal
+          </v-btn>
+        </div>
+        <template v-else>
+          <v-select
+            :model-value="activePortal?.portalViewId"
+            :items="portalViewOptions"
+            item-title="name"
+            item-value="id"
+            variant="outlined"
+            density="compact"
+            placeholder="Select a portal..."
+            prepend-inner-icon="mdi-view-dashboard-variant"
+            :loading="isLoadingPortals"
+            @update:model-value="handlePortalChange"
+          >
+            <template #append>
+              <v-btn
+                v-if="activePortal"
+                icon="mdi-close"
+                size="x-small"
+                variant="text"
+                @click.stop="clearActivePortal"
+              />
+              <v-btn
+                v-else
+                icon="mdi-refresh"
+                size="x-small"
+                variant="text"
+                :loading="isLoadingPortals"
+                @click.stop="loadPortals"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="top">Refresh</v-tooltip>
+              </v-btn>
+            </template>
+          </v-select>
+        </template>
 
-        <template v-if="activePortal">
+        <template v-if="activePortal && hasLoadedPortals">
           <v-divider class="my-3" />
 
           <!-- Items Preview Row -->
@@ -196,6 +237,16 @@
                 <v-icon />
                 <v-tooltip activator="parent">Settings</v-tooltip>
               </v-btn>
+              <v-btn
+                icon="mdi-link-variant"
+                size="small"
+                variant="tonal"
+                @click="copyPortalUrl"
+                :disabled="!activePortal"
+              >
+                <v-icon />
+                <v-tooltip activator="parent">Copy Portal URL</v-tooltip>
+              </v-btn>
             </div>
           </div>
 
@@ -203,59 +254,84 @@
           <template v-if="isImageViewerActive">
             <v-divider class="my-3" />
             
-            <!-- Zoom & Pan -->
-            <div class="control-section mb-2">
-              <div class="d-flex gap-1 mb-2">
-                <v-btn
-                  icon="mdi-magnify-minus"
-                  size="x-small"
-                  variant="tonal"
-                  @click="zoomOut"
-                  :disabled="!isConnected || combatLock"
-                >
-                  <v-icon />
-                </v-btn>
-                <v-btn
-                  icon="mdi-magnify-plus"
-                  size="x-small"
-                  variant="tonal"
-                  @click="zoomIn"
-                  :disabled="!isConnected || combatLock"
-                >
-                  <v-icon />
-                </v-btn>
-                <v-btn
-                  icon="mdi-rotate-right"
-                  size="x-small"
-                  variant="tonal"
-                  @click="rotate"
-                  :disabled="!isConnected || combatLock"
-                >
-                  <v-icon />
-                </v-btn>
-                <v-btn
-                  icon="mdi-fit-to-screen"
-                  size="x-small"
-                  variant="tonal"
-                  @click="resetView"
-                  :disabled="!isConnected || combatLock"
-                >
-                  <v-icon />
-                  <v-tooltip activator="parent" location="bottom">Reset View</v-tooltip>
-                </v-btn>
-                <v-btn
-                  icon="mdi-restore"
-                  size="x-small"
-                  variant="tonal"
-                  @click="restoreState"
-                  :disabled="!isConnected || combatLock"
-                >
-                  <v-icon />
-                  <v-tooltip activator="parent" location="bottom">Restore Last State</v-tooltip>
-                </v-btn>
-              </div>
+            <!-- Control Items (centered) -->
+            <div class="control-items-row mb-3">
+              <v-btn
+                icon="mdi-magnify-minus"
+                size="x-small"
+                variant="tonal"
+                @click="zoomOut"
+                :disabled="!isConnected || combatLock"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Zoom Out</v-tooltip>
+              </v-btn>
+              <v-btn
+                icon="mdi-magnify-plus"
+                size="x-small"
+                variant="tonal"
+                @click="zoomIn"
+                :disabled="!isConnected || combatLock"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Zoom In</v-tooltip>
+              </v-btn>
+              <v-btn
+                icon="mdi-rotate-right"
+                size="x-small"
+                variant="tonal"
+                @click="rotate"
+                :disabled="!isConnected || combatLock"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Rotate</v-tooltip>
+              </v-btn>
+              <v-btn
+                icon="mdi-fit-to-screen"
+                size="x-small"
+                variant="tonal"
+                @click="resetView"
+                :disabled="!isConnected || combatLock"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Reset View</v-tooltip>
+              </v-btn>
+              <v-btn
+                icon="mdi-restore"
+                size="x-small"
+                variant="tonal"
+                @click="restoreState"
+                :disabled="!isConnected || combatLock"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Restore Last State</v-tooltip>
+              </v-btn>
+              <v-btn
+                :icon="combatLock ? 'mdi-lock' : 'mdi-lock-open'"
+                :color="combatLock ? 'error' : 'success'"
+                size="x-small"
+                variant="tonal"
+                @click="toggleCombatLock"
+                :disabled="!isConnected"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">{{ combatLock ? 'Locked' : 'Unlocked' }}</v-tooltip>
+              </v-btn>
+              <v-btn
+                :icon="showGrid ? 'mdi-grid' : 'mdi-grid-off'"
+                :color="showGrid ? 'primary' : undefined"
+                size="x-small"
+                variant="tonal"
+                @click="toggleGrid"
+                :disabled="!isConnected"
+              >
+                <v-icon />
+                <v-tooltip activator="parent" location="bottom">Grid {{ showGrid ? 'ON' : 'OFF' }}</v-tooltip>
+              </v-btn>
+            </div>
 
-              <!-- Pan Controls -->
+            <!-- Pan Controls -->
+            <div class="control-section mb-2">
               <div class="pan-controls">
                 <div class="pan-row">
                   <v-btn
@@ -299,36 +375,6 @@
                   />
                 </div>
               </div>
-            </div>
-
-            <!-- Combat Lock -->
-            <div class="mb-2">
-              <v-btn
-                :prepend-icon="combatLock ? 'mdi-lock' : 'mdi-lock-open'"
-                :color="combatLock ? 'error' : 'success'"
-                variant="tonal"
-                size="small"
-                block
-                @click="toggleCombatLock"
-                :disabled="!isConnected"
-              >
-                {{ combatLock ? 'Locked' : 'Unlocked' }}
-              </v-btn>
-            </div>
-
-            <!-- Grid Toggle -->
-            <div class="mb-2">
-              <v-btn
-                :prepend-icon="showGrid ? 'mdi-grid' : 'mdi-grid-off'"
-                :color="showGrid ? 'primary' : undefined"
-                variant="tonal"
-                size="small"
-                block
-                @click="toggleGrid"
-                :disabled="!isConnected"
-              >
-                Grid {{ showGrid ? 'ON' : 'OFF' }}
-              </v-btn>
             </div>
             
             <!-- Grid Settings (collapsed) -->
@@ -426,12 +472,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { usePortalSocket } from '@/composables/usePortalSocket'
 import { useFilesStore } from '@/stores/files'
+import { useToast } from 'vue-toastification'
 import type { ViewerState, PortalViewItem } from '@/types/portal.types'
 
 const router = useRouter()
@@ -441,10 +488,13 @@ const {
   isConnected,
   sendPortalViewUpdate,
 } = usePortalSocket()
+const toast = useToast()
 
 const activePortal = computed(() => portalViewsStore.activePortal)
 const currentPortal = computed(() => portalViewsStore.currentPortalView)
 const filesStore = useFilesStore()
+const isLoadingPortals = ref(false)
+const hasLoadedPortals = ref(false)
 
 const portalViewOptions = computed(() => {
   return portalViewsStore.portalViews.map(pv => ({
@@ -868,33 +918,63 @@ const hideOnTop = () => {
   })
 }
 
-// Fetch portals on mount
-onMounted(async () => {
+const copyPortalUrl = async () => {
+  if (!activePortal.value) return
+  
+  try {
+    const portalUrl = router.resolve({
+      name: 'PortalViewDisplay',
+      params: {
+        id: activePortal.value.libraryId,
+        portalViewId: activePortal.value.portalViewId,
+      },
+    })
+    
+    const fullUrl = `${window.location.origin}${portalUrl.href}`
+    
+    await navigator.clipboard.writeText(fullUrl)
+    toast.success('Portal URL copied to clipboard!')
+  } catch (error) {
+    console.error('[PortalControlMenu] Failed to copy URL:', error)
+    toast.error('Failed to copy URL')
+  }
+}
+
+// Load portals function
+const loadPortals = async () => {
   // Get library ID from route or active portal
   let libraryId = route.params.id ? Number(route.params.id) : null
   if (!libraryId && activePortal.value) {
     libraryId = activePortal.value.libraryId
   }
   
-  if (libraryId) {
-    try {
-      await portalViewsStore.fetchPortalViews(libraryId)
-      
-      // If we have an active portal, fetch its details
-      if (activePortal.value) {
-        await portalViewsStore.fetchPortalView(
-          activePortal.value.libraryId,
-          activePortal.value.portalViewId
-        )
-        
-        // Load item previews
-        loadItemPreviews()
-      }
-    } catch (error) {
-      console.error('[PortalControlMenu] Failed to fetch portals:', error)
-    }
+  if (!libraryId) {
+    toast.error('No library ID available')
+    return
   }
-})
+  
+  isLoadingPortals.value = true
+  try {
+    await portalViewsStore.fetchPortalViews(libraryId)
+    hasLoadedPortals.value = true
+    
+    // If we have an active portal, fetch its details
+    if (activePortal.value) {
+      await portalViewsStore.fetchPortalView(
+        activePortal.value.libraryId,
+        activePortal.value.portalViewId
+      )
+      
+      // Load item previews
+      loadItemPreviews()
+    }
+  } catch (error) {
+    console.error('[PortalControlMenu] Failed to fetch portals:', error)
+    toast.error('Failed to load portals')
+  } finally {
+    isLoadingPortals.value = false
+  }
+}
 
 // Watch for portal changes to reset state
 watch(activePortal, (newPortal, oldPortal) => {
@@ -957,6 +1037,14 @@ watch(() => currentPortal.value?.items, (newItems, oldItems) => {
   background: rgba(var(--v-theme-surface-variant), 0.3);
   border-radius: 8px;
   padding: 8px;
+}
+
+.control-items-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .pan-controls {

@@ -550,10 +550,14 @@ function handleTagCreated(tagId: number) {
   }
 }
 
-function handleJsonImport(importData: CreateLibraryItemPayload) {
-  // Fill the form with imported data
+function handleJsonImport(importData: CreateLibraryItemPayload, options?: { importDescription?: boolean }) {
+  // Only import name, description (if option enabled), and data
+  // Do NOT change tags or attachments
   formData.value.name = importData.name
-  formData.value.description = importData.description || ''
+  
+  if (options?.importDescription !== false) {
+    formData.value.description = importData.description || ''
+  }
 
   // Handle data - could be wrapped in data property or direct
   const itemData = importData.data || importData
@@ -599,16 +603,8 @@ function handleJsonImport(importData: CreateLibraryItemPayload) {
     })
   }
 
-  // Handle attachments
-  formData.value.tagIds = importData.tagIds || []
-  formData.value.userFileIds = importData.userFileIds || []
-  formData.value.featuredImageId = importData.featuredImageId || null
-
-  // Load files into store if available
-  if (importData.userFileIds && importData.userFileIds.length > 0) {
-    // Files would be loaded via API call in real implementation
-    // For now, just set the IDs
-  }
+  // Do NOT import tags or attachments - they stay as-is
+  // formData.value.tagIds, userFileIds, featuredImageId remain unchanged
 
   console.log('[CharacterForm] JSON import applied:', formData.value)
 }

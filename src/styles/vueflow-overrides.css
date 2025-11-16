@@ -1,0 +1,54 @@
+/* Vue Flow custom overrides for better UX */
+
+/* Make resize handles bigger and more visible */
+.vue-flow__resize-control.handle {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  border: 2px solid #6366f1 !important;
+  background: white !important;
+  opacity: 1 !important;
+  transition: all 0.2s ease !important;
+}
+
+.vue-flow__resize-control.handle:hover {
+  width: 20px !important;
+  height: 20px !important;
+  border-width: 3px !important;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.6) !important;
+}
+
+/* Corner handles even bigger */
+.vue-flow__resize-control.handle.top.left,
+.vue-flow__resize-control.handle.top.right,
+.vue-flow__resize-control.handle.bottom.left,
+.vue-flow__resize-control.handle.bottom.right {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.vue-flow__resize-control.handle.top.left:hover,
+.vue-flow__resize-control.handle.top.right:hover,
+.vue-flow__resize-control.handle.bottom.left:hover,
+.vue-flow__resize-control.handle.bottom.right:hover {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+/* Make the resize line more visible */
+.vue-flow__resize-control.line {
+  border-color: #6366f1 !important;
+  border-width: 2px !important;
+  opacity: 0.8 !important;
+}
+
+.vue-flow__resize-control.line:hover {
+  opacity: 1 !important;
+  border-width: 3px !important;
+}
+
+/* Better visibility on selected nodes */
+.vue-flow__node.selected .vue-flow__resize-control {
+  opacity: 1 !important;
+}
+

@@ -304,10 +304,14 @@ function addChapter() {
   activeTab.value = newChapter.id!
 }
 
-function handleJsonImport(importData: CreateLibraryItemPayload) {
-  // Fill the form with imported data
+function handleJsonImport(importData: CreateLibraryItemPayload, options?: { importDescription?: boolean }) {
+  // Only import name, description (if option enabled), and data
+  // Do NOT change tags or attachments
   formData.value.name = importData.name
-  formData.value.description = importData.description || ''
+  
+  if (options?.importDescription !== false) {
+    formData.value.description = importData.description || ''
+  }
 
   // Handle data - could be wrapped in data property or direct
   const itemData = importData.data || importData
@@ -330,10 +334,8 @@ function handleJsonImport(importData: CreateLibraryItemPayload) {
     }
   }
 
-  // Handle attachments
-  formData.value.tagIds = importData.tagIds || []
-  formData.value.userFileIds = importData.userFileIds || []
-  formData.value.featuredImageId = importData.featuredImageId || null
+  // Do NOT import tags or attachments - they stay as-is
+  // formData.value.tagIds, userFileIds, featuredImageId remain unchanged
 
   console.log('[NoteForm] JSON import applied:', formData.value)
 }

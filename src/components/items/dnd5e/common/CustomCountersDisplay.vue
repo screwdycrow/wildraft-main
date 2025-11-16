@@ -380,6 +380,12 @@ function toNumberOrUndefined(value: unknown): number | undefined {
   const numberValue = Number(value)
   return Number.isFinite(numberValue) ? numberValue : undefined
 }
+
+// Expose methods for parent components
+defineExpose({
+  openManagerForCreate,
+  openManager,
+})
 </script>
 
 <style scoped>

@@ -17,6 +17,7 @@
             {{ currentLibrary.role || 'Owner' }}
           </v-chip>
           <portal-control-menu class="mx-2" />
+          <dm-screen-control-menu class="mx-2" />
 
         </div>
       </v-toolbar-title>
@@ -212,6 +213,13 @@
               :value="'portal-views'"
             />
 
+            <v-list-item
+              :to="{ name: 'LibraryDmScreens', params: { id: libraryId } }"
+              prepend-icon="mdi-monitor-dashboard"
+              :title="!effectiveRail ? 'DM Screens' : undefined"
+              :value="'dm-screens'"
+            />
+
             <v-divider class="my-2" />
 
             <v-list-subheader v-if="!effectiveRail" class="text-overline font-weight-bold">
@@ -357,6 +365,8 @@
     <!-- Global Item Dialogs -->
     <global-quick-item-view />
     <global-item-dialog />
+    <global-item-viewer-dialog />
+    <global-file-viewer-dialog />
 
     <!-- 3D Dice Box -->
     <DiceBox3D />
@@ -378,8 +388,13 @@ import CombatEncounter from '@/components/combat/CombatEncounter.vue'
 import DiceRoller from '@/components/dice/DiceRoller.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 import PortalControlMenu from '@/components/portal/PortalControlMenu.vue'
+import DmScreenControlMenu from '@/components/dmScreen/DmScreenControlMenu.vue'
+import GlobalItemViewerDialog from '@/components/dialogs/GlobalItemViewerDialog.vue'
+import GlobalItemEditorDialog from '@/components/dialogs/GlobalItemEditorDialog.vue'
+import GlobalFileViewerDialog from '@/components/dialogs/GlobalFileViewerDialog.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import { usePortalViewsStore } from '@/stores/portalViews'
+import { useDmScreensStore } from '@/stores/dmScreens'
 
 const { mobile } = useDisplay()
 const theme = useTheme()
@@ -394,6 +409,7 @@ const libraryStore = useLibraryStore()
 const tagsStore = useTagsStore()
 const combatEncountersStore = useCombatEncountersStore()
 const portalViewsStore = usePortalViewsStore()
+const dmScreensStore = useDmScreensStore()
 const toast = useToast()
 
 const libraryId = computed(() => {
@@ -518,12 +534,15 @@ watch(libraryId, async (newId, oldId) => {
         // Don't block library load if encounters fail
       }
       
-      // Fetch portal views for the library (non-blocking)
+      // Portal views are now loaded on-demand via PortalControlMenu
+      // No longer auto-loading here
+      
+      // Fetch DM screens for the library (non-blocking)
       try {
-        await portalViewsStore.fetchPortalViews(newId)
-      } catch (portalError) {
-        console.error('Failed to load portal views:', portalError)
-        // Don't block library load if portals fail
+        await dmScreensStore.fetchDmScreens(newId)
+      } catch (dmScreenError) {
+        console.error('Failed to load DM screens:', dmScreenError)
+        // Don't block library load if DM screens fail
       }
     } catch (error) {
       toast.error('Failed to load library')
@@ -558,12 +577,15 @@ onMounted(async () => {
         // Don't block library load if encounters fail
       }
       
-      // Fetch portal views for the library (non-blocking)
+      // Portal views are now loaded on-demand via PortalControlMenu
+      // No longer auto-loading here
+      
+      // Fetch DM screens for the library (non-blocking)
       try {
-        await portalViewsStore.fetchPortalViews(libraryId.value)
-      } catch (portalError) {
-        console.error('Failed to load portal views:', portalError)
-        // Don't block library load if portals fail
+        await dmScreensStore.fetchDmScreens(libraryId.value)
+      } catch (dmScreenError) {
+        console.error('Failed to load DM screens:', dmScreenError)
+        // Don't block library load if DM screens fail
       }
     } catch (error) {
       toast.error('Failed to load library')

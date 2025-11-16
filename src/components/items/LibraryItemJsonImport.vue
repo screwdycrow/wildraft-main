@@ -283,6 +283,19 @@
         </v-container>
       </v-card-text>
 
+      <v-divider v-if="!isMultipleMode" />
+
+      <!-- Import Options (only for single item import) -->
+      <v-card-text v-if="!isMultipleMode" class="py-3 px-6">
+        <v-checkbox
+          v-model="importDescription"
+          label="Import description"
+          density="compact"
+          hide-details
+          color="primary"
+        />
+      </v-card-text>
+
       <v-card-actions class="px-6 py-4">
         <v-spacer />
         <v-btn variant="text" @click="close">
@@ -317,7 +330,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
-  (e: 'import', data: CreateLibraryItemPayload | CreateLibraryItemPayload[]): void
+  (e: 'import', data: CreateLibraryItemPayload | CreateLibraryItemPayload[], options?: { importDescription?: boolean }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -335,6 +348,7 @@ const isImporting = ref(false)
 const parseError = ref<string[]>([])
 const parseSuccess = ref(false)
 const promptCopied = ref(false)
+const importDescription = ref(true) // Default to importing description
 
 const hasCurrentItem = computed(() => !!props.currentItem)
 
@@ -417,6 +431,7 @@ function resetState() {
   parseError.value = []
   parseSuccess.value = false
   isValidating.value = false
+  importDescription.value = true // Reset to default (import description)
 }
 
 function loadExample() {
@@ -711,14 +726,15 @@ async function importData() {
       const importData: CreateLibraryItemPayload = {
         type: props.itemType!,
         name: parsed.name,
-        description: parsed.description || undefined,
+        description: importDescription.value ? (parsed.description || undefined) : undefined,
         data: parsed.data || parsed, // Handle both formats (with data wrapper or direct)
-        tagIds: parsed.tagIds || [],
-        userFileIds: parsed.userFileIds || [],
-        featuredImageId: parsed.featuredImageId || undefined,
+        // Do NOT import tags or attachments - they stay as-is
+        tagIds: [],
+        userFileIds: [],
+        featuredImageId: undefined,
       }
 
-      emit('import', importData)
+      emit('import', importData, { importDescription: importDescription.value })
     }
 
     close()

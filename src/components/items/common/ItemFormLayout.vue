@@ -93,7 +93,7 @@
     :item-type="itemType"
     :is-multiple-mode="false"
     :current-item="currentItem || undefined"
-    @import="(data) => handleJsonImport(data as CreateLibraryItemPayload)"
+    @import="(data, options) => handleJsonImport(data as CreateLibraryItemPayload, options)"
   />
 </template>
 
@@ -135,7 +135,7 @@ const emit = defineEmits<{
   'update:featuredImageId': [value: number | null]
   'update:tagIds': [value: number[]]
   'add-tag': []
-  'json-import': [data: CreateLibraryItemPayload]
+  'json-import': [data: CreateLibraryItemPayload, options?: { importDescription?: boolean }]
 }>()
 
 const formRef = ref<VForm>()
@@ -145,9 +145,9 @@ async function handleSubmit() {
   emit('submit')
 }
 
-function handleJsonImport(data: CreateLibraryItemPayload) {
+function handleJsonImport(data: CreateLibraryItemPayload, options?: { importDescription?: boolean }) {
   // Emit event to parent to handle the imported data
-  emit('json-import', data)
+  emit('json-import', data, options)
 }
 
 function updateFileIds(value: unknown) {

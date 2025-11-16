@@ -202,12 +202,14 @@ interface Props {
   selectMode?: boolean
   returnType?: 'id' | 'path'
   multiple?: boolean
+  filterType?: string | null // Filter by file type (e.g., 'image')
 }
 
 const props = withDefaults(defineProps<Props>(), {
   selectMode: false,
   returnType: 'id',
   multiple: false,
+  filterType: null,
 })
 
 const emit = defineEmits<{
@@ -246,6 +248,10 @@ const fileTypes = [
 watch(isOpen, (value) => {
   if (value) {
     filesStore.fetchFiles()
+    // Set filter type if provided
+    if (props.filterType) {
+      filterType.value = props.filterType
+    }
   }
 })
 
