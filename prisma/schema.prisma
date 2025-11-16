@@ -149,11 +149,12 @@ model DMScreen {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   libraryId Int
-  content   Json? //array of content, each content is a json object that contains the content data, and a type of the content.
+  items     Json? //array of items, each item is a json object that contains the item data, and a type of the item. items can be images, stat blocks, notes, tokens, custom widgets, etc.
   library   Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
-
+  settings  Json? //json object that contains the settings for the dm screen.
   @@index([libraryId])
 }
+
 
 model PortalView {
   id                  String           @id @default(uuid())

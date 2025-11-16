@@ -9,6 +9,7 @@ import { tagRoutes } from './tags';
 import { userFileRoutes } from './user-files';
 import { combatEncounterRoutes } from './combat-encounters';
 import { portalViewRoutes } from './portal-views';
+import { dmScreenRoutes } from './dm-screens';
 import { versionRoutes } from './versions';
 
 export const registerRoutes = (fastify: FastifyInstance) => {
@@ -38,6 +39,9 @@ export const registerRoutes = (fastify: FastifyInstance) => {
   
   // Portal view routes
   fastify.register(portalViewRoutes, { prefix: '/api/libraries' });
+  
+  // DM screen routes
+  fastify.register(dmScreenRoutes, { prefix: '/api/libraries' });
   
   // User file routes
   fastify.register(userFileRoutes, { prefix: '/api/files' });

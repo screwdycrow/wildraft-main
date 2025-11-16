@@ -71,6 +71,7 @@ fastify.register(swagger, {
       { name: 'tags', description: 'Tag management endpoints' },
       { name: 'combat-encounters', description: 'Combat encounter management endpoints' },
       { name: 'portal-views', description: 'Portal view management endpoints for player-facing displays' },
+      { name: 'dm-screens', description: 'DM screen management endpoints for organizing and displaying content for the Dungeon Master' },
       { name: 'files', description: 'File upload and management endpoints' },
     ],
     components: {

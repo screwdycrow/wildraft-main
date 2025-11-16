@@ -93,6 +93,39 @@ Authorization: Bearer <your-jwt-token>
 
 ---
 
+### Combat Encounters (`/api/libraries/:libraryId/encounters`)
+- **POST** `/:libraryId/encounters` - Create combat encounter
+- **GET** `/:libraryId/encounters` - Get all encounters
+- **GET** `/:libraryId/encounters/:encounterId` - Get single encounter
+- **PUT** `/:libraryId/encounters/:encounterId` - Update encounter
+- **DELETE** `/:libraryId/encounters/:encounterId` - Delete encounter
+
+[Full Documentation](COMBAT_ENCOUNTERS_API.md)
+
+---
+
+### Portal Views (`/api/libraries/:libraryId/portal-views`)
+- **POST** `/:libraryId/portal-views` - Create portal view
+- **GET** `/:libraryId/portal-views` - Get all portal views
+- **GET** `/:libraryId/portal-views/:portalViewId` - Get single portal view
+- **PUT** `/:libraryId/portal-views/:portalViewId` - Update portal view
+- **DELETE** `/:libraryId/portal-views/:portalViewId` - Delete portal view
+
+[Full Documentation](PORTAL_VIEWS_API.md)
+
+---
+
+### DM Screens (`/api/libraries/:libraryId/dm-screens`)
+- **POST** `/:libraryId/dm-screens` - Create DM screen
+- **GET** `/:libraryId/dm-screens` - Get all DM screens
+- **GET** `/:libraryId/dm-screens/:dmScreenId` - Get single DM screen
+- **PUT** `/:libraryId/dm-screens/:dmScreenId` - Update DM screen
+- **DELETE** `/:libraryId/dm-screens/:dmScreenId` - Delete DM screen
+
+[Full Documentation](DM_SCREENS_API.md)
+
+---
+
 ### Files (`/api/files`)
 - **POST** `/upload-url` - Get presigned URL for upload
 - **POST** `/confirm-upload` - Confirm file uploaded to S3
@@ -249,9 +282,30 @@ npm run export-openapi
 - Types: STAT_BLOCK_DND_5E, NOTE, ITEM_DND_5E, CHARACTER_DND_5E
 
 ### Tag
-- id, name, color, libraryId
+- id, name, color, folder, libraryId
 - createdAt, updatedAt
 - Relations: libraryItems[]
+
+### CombatEncounter
+- id, name, description, libraryId
+- round, initativeCount
+- counters (JSON), combatants (JSON)
+- createdAt, updatedAt
+- Relations: library, portalViews[]
+
+### PortalView
+- id (UUID), name, libraryId
+- showEncounter, showHealth, showAC, showActions
+- autoResetImageState, combatEncounterId
+- currentItem, items (JSON)
+- createdAt, updatedAt
+- Relations: library, combatEncounter
+
+### DMScreen
+- id (UUID), name, libraryId
+- items (JSON), settings (JSON)
+- createdAt, updatedAt
+- Relations: library
 
 ### UserFile
 - id, userId, fileUrl, fileName, fileType, fileSize

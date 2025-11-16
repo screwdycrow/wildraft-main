@@ -10,6 +10,7 @@ import {
   deletePortalViewSchema,
 } from '../schemas/portal-view.schemas';
 import { broadcastPortalViewUpdate } from '../websocket/portal-view-socket';
+import { validateFlexibleJson } from '../utils/json-validation';
 
 export const portalViewRoutes = async (fastify: FastifyInstance) => {
   // Create a portal view
@@ -51,6 +52,15 @@ export const portalViewRoutes = async (fastify: FastifyInstance) => {
         if (!name) {
           reply.code(400);
           return { error: 'Name is required' };
+        }
+
+        // Validate items JSON if provided
+        if (items !== undefined && items !== null) {
+          const itemsValidation = validateFlexibleJson(items, { mustBeArray: true });
+          if (!itemsValidation.valid) {
+            reply.code(400);
+            return { error: itemsValidation.error || 'Invalid items format' };
+          }
         }
 
         // Validate combatEncounterId if provided
@@ -233,6 +243,15 @@ export const portalViewRoutes = async (fastify: FastifyInstance) => {
         if (!existingPortalView) {
           reply.code(404);
           return { error: 'Portal view not found' };
+        }
+
+        // Validate items JSON if provided
+        if (items !== undefined && items !== null) {
+          const itemsValidation = validateFlexibleJson(items, { mustBeArray: true });
+          if (!itemsValidation.valid) {
+            reply.code(400);
+            return { error: itemsValidation.error || 'Invalid items format' };
+          }
         }
 
         // Validate combatEncounterId if provided
