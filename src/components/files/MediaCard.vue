@@ -88,6 +88,34 @@
           @click.stop="$emit('toggle-featured', file)"
         />
       </div>
+
+      <!-- Portal Actions (Send to Portal & Show On Top) -->
+      <div v-if="hasActivePortal" class="media-card__portal-actions">
+        <v-tooltip text="Send to Portal" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <v-btn
+              v-bind="tooltipProps"
+              icon="mdi-television"
+              size="x-small"
+              color="primary"
+              :loading="isSendingToPortal"
+              @click.stop="handleSendToPortal"
+            />
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Show On Top" location="top">
+          <template #activator="{ props: tooltipProps }">
+            <v-btn
+              v-bind="tooltipProps"
+              icon="mdi-television-play"
+              size="x-small"
+              color="primary"
+              :disabled="isSendingToPortal"
+              @click.stop="handleShowOnTop"
+            />
+          </template>
+        </v-tooltip>
+      </div>
     </div>
 
     <!-- File Info -->
@@ -111,9 +139,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { UserFile } from '@/api/files'
 import { formatFileSize, getFileIcon } from '@/api/files'
+import { usePortalViewsStore } from '@/stores/portalViews'
+import { usePortalSocket } from '@/composables/usePortalSocket'
+import { useToast } from 'vue-toastification'
 
 interface Props {
   file: UserFile
@@ -159,6 +190,37 @@ const thumbnailUrl = computed(() => {
   }
   return ''
 })
+
+// Portal integration
+const portalViewsStore = usePortalViewsStore()
+const { sendPortalViewUpdate } = usePortalSocket()
+const toast = useToast()
+const isSendingToPortal = ref(false)
+
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
+
+const handleSendToPortal = async () => {
+  isSendingToPortal.value = true
+  try {
+    await portalViewsStore.addItemToActivePortal(props.file, true)
+    toast.success(`Sent "${props.file.fileName}" to portal and set as current`)
+  } catch (error: any) {
+    console.error('[MediaCard] Failed to send to portal:', error)
+    toast.error(error.message || 'Failed to send to portal')
+  } finally {
+    isSendingToPortal.value = false
+  }
+}
+
+const handleShowOnTop = () => {
+  // Send show-on-top command with the UserFile
+  sendPortalViewUpdate({
+    command: 'show-on-top',
+    userFile: props.file, // Send the UserFile directly
+  })
+  
+  toast.success(`Showing "${props.file.fileName}" on portal`)
+}
 </script>
 
 <style scoped>
@@ -249,6 +311,21 @@ const thumbnailUrl = computed(() => {
   bottom: 8px;
   right: 8px;
   z-index: 2;
+}
+
+.media-card__portal-actions {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  gap: 4px;
+}
+
+.media-card:hover .media-card__portal-actions {
+  opacity: 1;
 }
 
 .media-card__title--transparent {

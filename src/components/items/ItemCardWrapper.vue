@@ -1,6 +1,6 @@
 <template>
   <div 
-    class="item-card-wrapper" 
+    class="item-card-wrapper"
     :class="{ 
       'selected': selected, 
       'selection-mode': selectionMode,
@@ -15,7 +15,7 @@
     @drop="handleDrop"
   >
     <component
-        :is="cardComponent"
+      :is="cardComponent"
       :item="item"
       v-bind="$attrs"
     />
@@ -138,6 +138,7 @@ import { usePortalSocket } from '@/composables/usePortalSocket'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useFilesStore } from '@/stores/files'
 import { useToast } from 'vue-toastification'
+import { useDialogsStore } from '@/stores/dialogs'
 
 interface Props {
   item: LibraryItem
@@ -175,6 +176,7 @@ const dmScreensStore = useDmScreensStore()
 const filesStore = useFilesStore()
 const { sendPortalViewUpdate } = usePortalSocket()
 const toast = useToast()
+const dialogsStore = useDialogsStore()
 
 const isSendingToPortal = ref(false)
 
@@ -292,8 +294,13 @@ function handleClick(event: MouseEvent) {
     // In selection mode or with Ctrl/Cmd key, emit select event
     emit('select', props.item, event.ctrlKey, event.metaKey)
   } else if (!props.disableClick) {
-    // Normal click - view item
-    emit('view', props.item)
+    // Normal click - open global item viewer dialog
+    if (props.libraryId) {
+      dialogsStore.openItemViewer(props.item, props.libraryId)
+    } else {
+      // Fallback to emitting view event if no libraryId
+      emit('view', props.item)
+    }
   }
 }
 

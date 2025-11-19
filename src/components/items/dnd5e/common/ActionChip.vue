@@ -63,7 +63,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const diceStore = useDiceRollerStore()
 
-function handleClick() {
+function handleClick(event: Event) {
+  // Stop event propagation to prevent triggering parent card click
+  event.stopPropagation()
+  
   // Build roll text from action properties
   const rollParts: string[] = []
   

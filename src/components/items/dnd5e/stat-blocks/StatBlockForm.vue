@@ -14,6 +14,7 @@
     @update:tag-ids="formData.tagIds = $event"
     :item-type="itemType"
     :item="item"
+    :hide-header="hideHeader"
     @submit="handleSubmit"
     @cancel="$emit('cancel')"
     @add-tag="showTagDialog = true"
@@ -282,9 +283,12 @@ interface Props {
   libraryId: number
   itemType: ItemType
   initialTagIds?: number[]
+  hideHeader?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  hideHeader: false,
+})
 
 const emit = defineEmits<{
   submit: [data: CreateLibraryItemPayload | UpdateLibraryItemPayload, callback?: (success: boolean) => void]

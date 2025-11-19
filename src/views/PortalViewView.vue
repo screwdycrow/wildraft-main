@@ -20,6 +20,7 @@
         <portal-view-item
           v-for="(item, index) in portalView.items"
           :key="item.id || index"
+          :ref="index === currentItemIndex ? (el: any) => { if (el && typeof el !== 'string') currentItemRef = el } : undefined"
           :item="item"
           :index="index"
           :viewer-state="index === currentItemIndex ? currentViewerState : null"
@@ -42,9 +43,8 @@
     <v-dialog
       :model-value="showOnTopVisible"
       @update:model-value="showOnTopVisible = false"
-      max-width="90vw"
-      width="auto"
-      fullscreen
+      max-width="80vw"
+      width="80vw"
     >
       <v-card class="show-on-top-dialog">
         <v-card-title class="d-flex align-center pa-2">
@@ -63,7 +63,6 @@
             v-if="showOnTopItem"
             :item="showOnTopItem"
             :index="0"
-            :viewer-state="currentViewerState"
             :fullscreen="true"
           />
         </v-card-text>
@@ -73,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch, onUnmounted, ref, inject } from 'vue'
+import { computed, onMounted, watch, onUnmounted, ref, inject, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
@@ -112,10 +111,23 @@ const showOnTopItem = ref<any>(null)
 // Restore state trigger (use counter to ensure watch fires)
 const shouldRestoreState = ref(0)
 
+// Ref to current PortalViewItem component
+const currentItemRef = ref<InstanceType<typeof PortalViewItem> | null>(null)
+
 // Current item index from portal view
 const currentItemIndex = computed(() => {
   return portalView.value?.currentItem || 0
 })
+
+// Helper function to save current item state if it's an image
+const saveCurrentItemState = () => {
+  if (currentItemRef.value && portalView.value?.items) {
+    const currentItem = portalView.value.items[currentItemIndex.value]
+    if (currentItem?.type === 'ImageViewer') {
+      currentItemRef.value.saveState()
+    }
+  }
+}
 
 // Set this portal as active when viewer loads
 const activatePortal = async () => {
@@ -173,6 +185,9 @@ const handlePortalViewUpdated = (payload: any) => {
   
   // Handle item navigation (next, previous, change)
   if (payload.command === 'next-item' || payload.command === 'previous-item' || payload.command === 'change-item') {
+    // Save current item state if it's an image before changing
+    saveCurrentItemState()
+    
     if (libraryId.value && portalViewId.value) {
       portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value)
     }
@@ -193,15 +208,47 @@ const handlePortalViewUpdated = (payload: any) => {
   
   // Handle Show On Top
   if (payload.command === 'show-on-top') {
-    // Can receive either item (PortalViewItem) or userFile (UserFile)
+    // Check if the same item is already being shown
+    let isSameItem = false
+    
     if (payload.item) {
-      // Already a PortalViewItem
-      showOnTopItem.value = payload.item
-      showOnTopVisible.value = true
+      // Already a PortalViewItem - compare by id
+      isSameItem = showOnTopVisible.value && 
+                   showOnTopItem.value?.id === payload.item.id
     } else if (payload.userFile) {
-      // Map UserFile to PortalViewItem
-      showOnTopItem.value = portalViewsStore.mapUserFileToPortalViewItem(payload.userFile)
-      showOnTopVisible.value = true
+      // UserFile - compare by object.id (the file ID)
+      isSameItem = showOnTopVisible.value && 
+                   showOnTopItem.value?.object?.id === payload.userFile.id
+    }
+    
+    // If same item is already shown, hide it (toggle off)
+    if (isSameItem) {
+      showOnTopVisible.value = false
+      showOnTopItem.value = null
+    } else {
+      // Show the new item
+      if (payload.item) {
+        // Already a PortalViewItem
+        showOnTopItem.value = payload.item
+        showOnTopVisible.value = true
+      } else if (payload.userFile) {
+        // Map UserFile to PortalViewItem
+        let type: 'VideoViewer' | 'PDFViewer' | 'ImageViewer' = 'ImageViewer'
+        if (payload.userFile.fileType.startsWith('video/')) {
+          type = 'VideoViewer'
+        } else if (payload.userFile.fileType.includes('pdf')) {
+          type = 'PDFViewer'
+        } else if (payload.userFile.fileType.startsWith('image/')) {
+          type = 'ImageViewer'
+        }
+        
+        showOnTopItem.value = {
+          id: `file-${payload.userFile.id}-${Date.now()}`,
+          type,
+          object: payload.userFile
+        }
+        showOnTopVisible.value = true
+      }
     }
   }
   
@@ -252,19 +299,28 @@ watch([() => route.params.id, () => route.params.portalViewId], async ([newLibra
   }
 })
 
-// Reset viewer state when active item changes
-watch(currentItemIndex, () => {
-  // Reset to default state when item changes
-  currentViewerState.value = {
-    timestamp: Date.now(),
-    scale: 1,
-    position: { x: 0, y: 0 },
-    rotation: 0,
-    showGrid: false,
-    gridSize: 50,
-    gridColor: '#000000',
-    gridOpacity: 0.2,
-    combatLock: false,
+// Handle item change - restore state if it's an ImageViewer
+watch(currentItemIndex, (newIndex) => {
+  // Reset ref - it will be set again by the ref callback when the new item renders
+  currentItemRef.value = null
+  
+  // Check if the new item is an ImageViewer
+  if (portalView.value?.items && newIndex !== null && newIndex !== undefined) {
+    const newItem = portalView.value.items[newIndex]
+    
+    if (newItem?.type === 'ImageViewer') {
+      // Trigger state restoration for ImageViewer
+      // Use nextTick + small delay to ensure the component is mounted and state history is loaded
+      nextTick(() => {
+        // Small delay to ensure ImageViewer's onMounted has loaded state history
+        setTimeout(() => {
+          shouldRestoreState.value++
+        }, 50)
+      })
+    } else {
+      // For non-ImageViewer items, reset viewer state to null
+      currentViewerState.value = null
+    }
   }
 })
 

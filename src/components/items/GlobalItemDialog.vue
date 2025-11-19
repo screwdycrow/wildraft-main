@@ -5,16 +5,32 @@
     scrollable
     fullscreen
     @click:outside="handleCancel"
+    hide-overlay
   >
-    <component
-      v-if="dialogState.isOpen && formComponent"
-      :is="formComponent"
-      :item="dialogState.item"
-      :library-id="dialogState.libraryId"
-      :initial-tag-ids="dialogState.initialTagIds"
-      @submit="handleSubmit"
-      @cancel="handleCancel"
-    />
+    <div class="global-item-dialog-container">
+      <!-- Fixed Close Button -->
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        size="large"
+        class="close-button"
+        @click="handleCancel"
+      >
+        <v-icon />
+      </v-btn>
+      
+      <!-- Form Component -->
+      <component
+        v-if="dialogState.isOpen && formComponent"
+        :is="formComponent"
+        :item="dialogState.item"
+        :library-id="dialogState.libraryId"
+        :initial-tag-ids="dialogState.initialTagIds"
+        :hide-header="true"
+        @submit="handleSubmit"
+        @cancel="handleCancel"
+      />
+    </div>
   </v-dialog>
 </template>
 
@@ -86,4 +102,31 @@ function handleCancel() {
   closeDialog()
 }
 </script>
+
+<style scoped>
+.global-item-dialog-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.close-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.close-button:hover {
+  background: rgba(var(--v-theme-surface), 1) !important;
+}
+
+/* Hide form header when inside GlobalItemDialog */
+.global-item-dialog-container :deep(.form-actions-sticky:first-child) {
+  display: none !important;
+}
+</style>
 

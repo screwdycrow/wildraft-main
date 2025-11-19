@@ -94,6 +94,7 @@ import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
+  initialChapterId?: string
 }
 
 const props = defineProps<Props>()
@@ -102,8 +103,15 @@ const emit = defineEmits(['edit'])
 const filesStore = useFilesStore()
 
 const noteData = computed<NoteData>(() => props.item.data as NoteData)
-const activeSection = ref<'main' | string>('main')
+
+// Initialize activeSection - if initialChapterId is provided, we'll set it in the watch
+const activeSection = ref<'main' | string>(props.initialChapterId || 'main')
 const featuredImageUrl = ref<string>('')
+
+// Log when component receives initialChapterId
+watch(() => props.initialChapterId, (chapterId) => {
+  console.log('[NoteDetail] Received initialChapterId prop:', chapterId)
+}, { immediate: true })
 
 // Background image style
 const backgroundImageStyle = computed(() => {
@@ -141,6 +149,31 @@ const orderedChapters = computed<NoteChapter[]>(() => {
       order: chapter.order ?? index + 1,
     }))
 })
+
+// Watch for initial chapter ID and set active section
+watch([() => props.initialChapterId, orderedChapters], ([chapterId, chapters]) => {
+  if (chapterId && chapters.length > 0) {
+    console.log('[NoteDetail] Setting active section for chapterId:', chapterId)
+    console.log('[NoteDetail] Available chapters:', chapters.map(ch => ({ id: ch.id, order: ch.order, title: ch.title })))
+    
+    // Check if the chapter exists in ordered chapters
+    // Try to match by ID first, then by order if ID doesn't match
+    const chapter = chapters.find(ch => ch.id === chapterId) || 
+                    chapters.find((ch, idx) => {
+                      const generatedId = `chapter-${ch.order ?? idx + 1}`
+                      return generatedId === chapterId
+                    })
+    
+    console.log('[NoteDetail] Found chapter:', chapter)
+    
+    if (chapter && chapter.id) {
+      console.log('[NoteDetail] Setting activeSection to:', chapter.id)
+      activeSection.value = chapter.id
+    } else {
+      console.warn('[NoteDetail] Chapter not found for ID:', chapterId)
+    }
+  }
+}, { immediate: true })
 
 const activeChapter = computed(() =>
   orderedChapters.value.find(chapter => chapter.id === activeSection.value)

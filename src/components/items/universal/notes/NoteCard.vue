@@ -38,9 +38,12 @@
       <!-- Chapters List -->
       <div v-if="noteData.chapters && noteData.chapters.length > 0" class="chapters-list">
         <note-chapter-chip
-          v-for="chapter in sortedChapters"
+          v-for="(chapter, index) in sortedChapters"
           :key="chapter.id || chapter.order"
           :chapter="chapter"
+          :chapter-index="index"
+          :item="item"
+          :library-id="item.libraryId"
           size="small"
           text-color="#FFFFFF"
           :user-files="item.userFiles || []"

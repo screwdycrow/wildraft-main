@@ -72,7 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const response = await authApi.refreshToken(refreshTokenValue.value)
-      setAuthData(response.user, response.accessToken, response.refreshToken)
+      setTokens(response.accessToken, response.refreshToken)
       return true
     } catch (error) {
       clearAuthData()
@@ -92,10 +92,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setAuthData(userData: User, token: string, refresh: string) {
     user.value = userData
+     setTokens(token, refresh)
+  } 
+
+  function setTokens(token: string, refresh: string) {
     accessToken.value = token
     refreshTokenValue.value = refresh
-    
-    // Decode JWT to get expiration time
+    localStorage.setItem('accessToken', token)
+    localStorage.setItem('refreshToken', refresh)
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
       const expiresAt = payload.exp * 1000 // Convert to milliseconds
@@ -109,9 +113,6 @@ export const useAuthStore = defineStore('auth', () => {
       tokenExpiresAt.value = expiresAt
       localStorage.setItem('tokenExpiresAt', expiresAt.toString())
     }
-    
-    localStorage.setItem('accessToken', token)
-    localStorage.setItem('refreshToken', refresh)
     
     // Start proactive refresh timer
     scheduleTokenRefresh()
@@ -186,6 +187,7 @@ export const useAuthStore = defineStore('auth', () => {
     scheduleTokenRefresh,
   }
 })
+
 
 
 

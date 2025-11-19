@@ -2,7 +2,7 @@
   <v-form ref="formRef" @submit.prevent="handleSubmit">
     <v-card class="glass-card  form-container" elevation="0">
       <!-- Header -->
-      <v-card-title class="text-h5 font-weight-bold d-flex align-center form-actions-sticky px-6">
+      <v-card-title v-if="!hideHeader" class="text-h5 font-weight-bold d-flex align-center form-actions-sticky px-6">
         <v-icon :icon="icon" :color="iconColor" size="32" class="mr-3" />
         {{ title }}
         <v-spacer />
@@ -119,11 +119,13 @@ interface Props {
   featuredImageId: number | null
   tagIds: number[]
   item?: LibraryItem | null
+  hideHeader?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   iconColor: 'primary',
   item: null,
+  hideHeader: false,
 })
 
 const currentItem = computed(() => props.item)

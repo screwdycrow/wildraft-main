@@ -4,6 +4,7 @@
     :variant="variant"
     :class="chipClass"
     :style="textColor ? { color: textColor } : undefined"
+    @click="handleClick"
   >
     <v-icon 
       icon="mdi-book-open-page-variant" 
@@ -34,17 +35,25 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { NoteChapter } from '@/types/item.types'
+import type { NoteChapter, LibraryItem } from '@/types/item.types'
 import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
+import { useDialogsStore } from '@/stores/dialogs'
 
 interface Props {
   chapter: NoteChapter
+  chapterIndex?: number
   size?: 'x-small' | 'small' | 'default'
   variant?: 'flat' | 'tonal' | 'outlined' | 'text' | 'elevated'
   showTooltip?: boolean
   textColor?: string
   userFiles?: Array<{ id: number; downloadUrl?: string; fileUrl?: string }>
+  item?: LibraryItem
+  libraryId?: number
 }
+
+const emit = defineEmits<{
+  click: [chapter: NoteChapter]
+}>()
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'small',
@@ -53,6 +62,8 @@ const props = withDefaults(defineProps<Props>(), {
   textColor: undefined,
   userFiles: () => [],
 })
+
+const dialogsStore = useDialogsStore()
 
 const iconSize = computed(() => {
   if (props.size === 'x-small') return 'x-small'
@@ -152,6 +163,32 @@ function onTooltipEnter() {
 
 function onTooltipLeave() {
   tooltipHovered.value = false
+}
+
+// Generate chapter ID the same way NoteDetail does
+function getChapterId(chapter: NoteChapter, index: number): string {
+  return chapter.id || `chapter-${chapter.order ?? index + 1}`
+}
+
+function handleClick(event: Event) {
+  // Stop event propagation to prevent triggering parent card click
+  event.stopPropagation()
+  
+  // If item and libraryId are provided, open the global item viewer dialog
+  if (props.item && props.libraryId) {
+    // Use provided index or calculate it
+    const index = props.chapterIndex !== undefined 
+      ? props.chapterIndex 
+      : 0
+    
+    // Generate ID the same way NoteDetail does
+    const chapterId = getChapterId(props.chapter, index)
+    console.log('[NoteChapterChip] Opening dialog with chapterId:', chapterId, 'chapter:', props.chapter, 'index:', index)
+    dialogsStore.openItemViewer(props.item, props.libraryId, chapterId)
+  } else {
+    // Otherwise, emit click event for parent to handle
+    emit('click', props.chapter)
+  }
 }
 </script>
 
@@ -335,4 +372,5 @@ function onTooltipLeave() {
   margin-top: 4px; /* Small gap to help bridge hover */
 }
 </style>
+
 

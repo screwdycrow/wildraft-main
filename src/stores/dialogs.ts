@@ -10,10 +10,10 @@ import type { UserFile } from '@/api/files'
 export const useDialogsStore = defineStore('dialogs', () => {
   // Item Viewer Dialog
   const itemViewerOpen = ref(false)
-  const itemViewerData = ref<{ item: LibraryItem; libraryId: number } | null>(null)
+  const itemViewerData = ref<{ item: LibraryItem; libraryId: number; chapterId?: string } | null>(null)
 
-  function openItemViewer(item: LibraryItem, libraryId: number) {
-    itemViewerData.value = { item, libraryId }
+  function openItemViewer(item: LibraryItem, libraryId: number, chapterId?: string) {
+    itemViewerData.value = { item, libraryId, chapterId }
     itemViewerOpen.value = true
   }
 

@@ -106,6 +106,16 @@
         <template v-if="activePortal && hasLoadedPortals">
           <v-divider class="my-3" />
 
+          <!-- Drag & Drop Upload (Compact) -->
+          <div class="mb-3">
+            <drag-drop-upload
+              compact
+              @uploaded="handleFileUploaded"
+              @upload-complete="handleUploadComplete"
+              @upload-error="handleUploadError"
+            />
+          </div>
+
           <!-- Items Preview Row -->
           <div class="mb-3">
             <div class="d-flex align-center gap-2 mb-2">
@@ -480,6 +490,8 @@ import { usePortalSocket } from '@/composables/usePortalSocket'
 import { useFilesStore } from '@/stores/files'
 import { useToast } from 'vue-toastification'
 import type { ViewerState, PortalViewItem } from '@/types/portal.types'
+import type { UserFile } from '@/api/files'
+import DragDropUpload from '@/components/files/DragDropUpload.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -1013,6 +1025,38 @@ watch(() => currentPortal.value?.items, (newItems, oldItems) => {
     }
   }
 }, { deep: true })
+
+// Handle file upload events
+const handleFileUploaded = async (file: UserFile) => {
+  if (!activePortal.value) {
+    toast.warning('No active portal selected')
+    return
+  }
+
+  try {
+    // Add file to active portal and set as current item
+    await portalViewsStore.addItemToActivePortal(file, true)
+    
+    // Reload previews to show the new item
+    loadItemPreviews(true)
+    
+    toast.success(`Added ${file.fileName} to portal`)
+  } catch (error) {
+    console.error('[PortalControlMenu] Failed to add file to portal:', error)
+    toast.error('Failed to add file to portal')
+  }
+}
+
+const handleUploadComplete = async (files: UserFile[]) => {
+  // Files are already added via handleFileUploaded
+  // Just reload previews to ensure everything is up to date
+  loadItemPreviews(true)
+}
+
+const handleUploadError = (error: Error) => {
+  // Error toast is already shown by DragDropUpload component
+  console.error('[PortalControlMenu] Upload error:', error)
+}
 </script>
 
 <style scoped>

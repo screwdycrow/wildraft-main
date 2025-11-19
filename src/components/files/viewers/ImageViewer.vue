@@ -455,10 +455,10 @@ const loadStateFromHistory = (state: ViewerState, showToast = false) => {
   }
 }
 
-const loadLastState = () => {
+const loadLastState = (showToast = true) => {
   if (stateHistory.value.length > 0) {
-    loadStateFromHistory(stateHistory.value[0], true) // Show toast when manually loading
-  } else {
+    loadStateFromHistory(stateHistory.value[0], showToast)
+  } else if (showToast) {
     toast.warning('No saved states found')
   }
 }
@@ -765,7 +765,9 @@ watch(combatLock, (newValue) => {
 watch(() => props.shouldRestoreState, (shouldRestore, oldValue) => {
   // Trigger when value changes and is truthy (counter increments, or boolean becomes true)
   if (shouldRestore && shouldRestore !== oldValue) {
-    loadLastState() // Restore last saved state from history
+    // For automatic restoration (when triggered by prop change), suppress toast
+    // Manual restoration (via button click) will show toast
+    loadLastState(false) // Restore last saved state from history without toast
   }
 })
 
@@ -793,6 +795,11 @@ onUnmounted(() => {
   if (hideControlsTimer.value !== null) {
     clearTimeout(hideControlsTimer.value)
   }
+})
+
+// Expose methods for parent components
+defineExpose({
+  saveStateToHistory
 })
 </script>
 

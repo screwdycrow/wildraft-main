@@ -12,6 +12,7 @@
     <!-- Image Viewer -->
     <ImageViewer
       v-else-if="item.type === 'ImageViewer' && downloadUrl"
+      ref="imageViewerRef"
       :url="downloadUrl"
       :file-name="item.object?.fileName || 'Portal Image'"
       :auto-hide-controls="fullscreen"
@@ -70,6 +71,7 @@ const props = withDefaults(defineProps<Props>(), {
 const filesStore = useFilesStore()
 const downloadUrl = ref<string | null>(null)
 const isLoadingUrl = ref(false)
+const imageViewerRef = ref<InstanceType<typeof ImageViewer> | null>(null)
 
 // Fetch download URL if item has a UserFile object
 const fetchDownloadUrl = async () => {
@@ -114,6 +116,17 @@ watch(() => props.item, () => {
 
 onMounted(() => {
   fetchDownloadUrl()
+})
+
+// Expose method to save state if this is an ImageViewer
+const saveState = () => {
+  if (props.item.type === 'ImageViewer' && imageViewerRef.value) {
+    imageViewerRef.value.saveStateToHistory()
+  }
+}
+
+defineExpose({
+  saveState
 })
 </script>
 

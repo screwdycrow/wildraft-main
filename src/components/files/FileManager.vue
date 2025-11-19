@@ -42,48 +42,13 @@
       <v-divider />
 
       <v-card-text style="height: 700px;">
-        <!-- Drag & Drop Upload Zone -->
-        <div
-          ref="dropZone"
-          class="upload-zone mb-4"
-          :class="{ 'upload-zone--active': isDragging }"
-          @click="triggerFileInput"
-          @dragover.prevent="isDragging = true"
-          @dragleave.prevent="isDragging = false"
-          @drop.prevent="handleDrop"
-        >
-          <v-icon
-            :icon="isDragging ? 'mdi-cloud-upload' : 'mdi-upload'"
-            size="48"
-            :color="isDragging ? 'primary' : 'grey'"
-            class="mb-2"
-          />
-          <p class="text-h6 mb-1">
-            {{ isDragging ? 'Drop files here' : 'Drag & drop files or click to upload' }}
-          </p>
-          <p class="text-caption text-medium-emphasis">
-            Files under 1MB use direct upload, larger files use presigned URLs
-          </p>
-          
-          <input
-            ref="fileInput"
-            type="file"
-            multiple
-            hidden
-            @change="handleFileInputChange"
-          />
-
-          <!-- Upload Progress -->
-          <div v-if="uploading" class="mt-4" style="max-width: 400px; width: 100%;">
-            <v-progress-linear
-              :model-value="uploadProgress"
-              color="primary"
-              height="8"
-              class="mb-2"
-            />
-            <p class="text-caption">Uploading {{ currentFileName }}...</p>
-          </div>
-        </div>
+        <!--  & Drop Upload Zone -->
+        <drag-drop-upload
+          class="mb-4"
+          @uploaded="handleFileUploaded"
+          @upload-complete="handleUploadComplete"
+          @upload-error="handleUploadError"
+        />
 
         <!-- Filters and Search -->
         <div class="d-flex ga-2 mb-4">
@@ -197,6 +162,7 @@ import type { UserFile } from '@/api/files'
 import { useToast } from 'vue-toastification'
 import MediaGrid from './MediaGrid.vue'
 import MediaViewer from './MediaViewer.vue'
+import DragDropUpload from './DragDropUpload.vue'
 
 interface Props {
   selectMode?: boolean
@@ -220,18 +186,12 @@ const filesStore = useFilesStore()
 const toast = useToast()
 
 const isOpen = defineModel<boolean>('modelValue', { default: false })
-const fileInput = ref<HTMLInputElement>()
-const dropZone = ref<HTMLElement>()
-const uploading = ref(false)
-const uploadProgress = ref(0)
-const currentFileName = ref('')
 const search = ref('')
 const filterType = ref<string | null>(null)
 const deleteDialog = ref(false)
 const fileToDelete = ref<UserFile | null>(null)
 const deleting = ref(false)
 const viewMode = ref<'grid' | 'list'>('grid')
-const isDragging = ref(false)
 const selectedFiles = ref<Set<number>>(new Set())
 const viewerOpen = ref(false)
 const selectedFile = ref<UserFile | null>(null)
@@ -277,49 +237,21 @@ const canLoadMore = computed(() => {
   return filesStore.files.length < filesStore.total
 })
 
-const triggerFileInput = () => {
-  fileInput.value?.click()
+// Handle file upload events from DragDropUpload component
+const handleFileUploaded = (_file: UserFile) => {
+  // File has been uploaded and added to the store
+  // The store already adds the file to the list, so no action needed here
 }
 
-const handleFileInputChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const files = Array.from(target.files || [])
-  await uploadFiles(files)
-  
-  // Reset file input
-  if (target) target.value = ''
+const handleUploadComplete = (_files: UserFile[]) => {
+  // All files have been uploaded successfully
+  // Refresh the file list to ensure everything is in sync
+  filesStore.fetchFiles()
 }
 
-const handleDrop = async (event: DragEvent) => {
-  isDragging.value = false
-  const files = Array.from(event.dataTransfer?.files || [])
-  await uploadFiles(files)
-}
-
-const uploadFiles = async (files: File[]) => {
-  if (files.length === 0) return
-
-  uploading.value = true
-  uploadProgress.value = 0
-
-  try {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      currentFileName.value = file.name
-      uploadProgress.value = ((i + 1) / files.length) * 100
-
-      await filesStore.uploadFile(file)
-    }
-
-    toast.success(`Successfully uploaded ${files.length} file(s)`)
-  } catch (error) {
-    console.error('Upload failed:', error)
-    toast.error('Failed to upload files')
-  } finally {
-    uploading.value = false
-    uploadProgress.value = 0
-    currentFileName.value = ''
-  }
+const handleUploadError = (error: Error) => {
+  // Handle upload error (toast is already shown by DragDropUpload)
+  console.error('Upload error:', error)
 }
 
 const openFileViewer = (file: UserFile) => {
@@ -407,25 +339,5 @@ const close = () => {
 </script>
 
 <style scoped>
-.upload-zone {
-  border: 2px dashed rgba(var(--v-theme-on-surface), 0.3);
-  border-radius: 8px;
-  padding: 48px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background: rgba(var(--v-theme-surface), 0.5);
-}
-
-.upload-zone:hover {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.05);
-}
-
-.upload-zone--active {
-  border-color: rgb(var(--v-theme-primary));
-  background: rgba(var(--v-theme-primary), 0.1);
-  transform: scale(1.02);
-}
 </style>
 

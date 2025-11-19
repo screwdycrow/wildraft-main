@@ -368,6 +368,12 @@
     <global-item-viewer-dialog />
     <global-file-viewer-dialog />
 
+    <!-- DM Screen Cards in Hand -->
+    <dm-screen-cards-in-hand
+      :left-sidebar-width="leftSidebarWidth"
+      :right-sidebar-width="rightSidebarWidth"
+    />
+
     <!-- 3D Dice Box -->
     <DiceBox3D />
   </v-app>
@@ -392,6 +398,7 @@ import DmScreenControlMenu from '@/components/dmScreen/DmScreenControlMenu.vue'
 import GlobalItemViewerDialog from '@/components/dialogs/GlobalItemViewerDialog.vue'
 import GlobalItemEditorDialog from '@/components/dialogs/GlobalItemEditorDialog.vue'
 import GlobalFileViewerDialog from '@/components/dialogs/GlobalFileViewerDialog.vue'
+import DmScreenCardsInHand from '@/components/dmScreen/DmScreenCardsInHand.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useDmScreensStore } from '@/stores/dmScreens'
@@ -434,6 +441,17 @@ const isPapyrusTheme = computed(() => theme.global.name.value === 'papyrusTheme'
 
 // Computed rail state - disable on mobile
 const effectiveRail = computed(() => mobile.value ? false : rail.value)
+
+// Computed sidebar widths for child components
+const leftSidebarWidth = computed(() => {
+  if (mobile.value || !drawer.value) return 0
+  return effectiveRail.value ? 56 : 200
+})
+
+const rightSidebarWidth = computed(() => {
+  if (mobile.value || !rightDrawer.value) return 0
+  return 350
+})
 
 // Sorted folder names for consistent ordering
 const sortedFolderNames = computed(() => {

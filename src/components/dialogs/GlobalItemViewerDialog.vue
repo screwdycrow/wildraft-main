@@ -37,6 +37,7 @@
           :is="detailComponent"
           :item="dialogsStore.itemViewerData.item"
           :can-edit="true"
+          :initial-chapter-id="dialogsStore.itemViewerData.chapterId"
           @edit="handleEdit(dialogsStore.itemViewerData.item)"
           @delete="handleDelete"
         />
@@ -64,6 +65,7 @@ const { getDetailComponent } = useItemComponents()
 
 const detailComponent = computed(() => {
   if (!dialogsStore.itemViewerData?.item) return null
+  console.log('[GlobalItemViewerDialog] Opening with chapterId:', dialogsStore.itemViewerData.chapterId)
   return getDetailComponent(dialogsStore.itemViewerData.item.type)
 })
 
