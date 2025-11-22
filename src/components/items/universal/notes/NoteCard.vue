@@ -1,6 +1,7 @@
 <template>
   <v-card
     class="note-card"
+    :class="{ 'compact': compact }"
     elevation="0"
     hover
     @click="$emit('click', item)"
@@ -78,6 +79,7 @@ interface Props {
   item: LibraryItem
   showActions?: boolean
   textColor?: string
+  compact?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -304,5 +306,57 @@ const backgroundStyle = computed(() => {
   font-size: 0.6rem !important;
   height: 16px !important;
   padding: 0 4px !important;
+}
+
+/* Compact Mode */
+.note-card.compact .card-content {
+  padding: 4px;
+  min-height: auto;
+}
+
+.note-card.compact .card-title {
+  font-size: 0.875rem !important;
+  padding-bottom: 4px !important;
+}
+
+.note-card.compact .card-title .v-icon {
+  font-size: 0.875rem !important;
+}
+
+.note-card.compact .description-wrapper {
+  max-height: 80px;
+  margin-bottom: 4px !important;
+}
+
+.note-card.compact .description-text {
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.note-card.compact .description-text :deep(p) {
+  font-size: 0.65rem;
+  margin: 0 0 0.25rem;
+}
+
+.note-card.compact .description-text :deep(h1),
+.note-card.compact .description-text :deep(h2),
+.note-card.compact .description-text :deep(h3),
+.note-card.compact .description-text :deep(h4),
+.note-card.compact .description-text :deep(h5),
+.note-card.compact .description-text :deep(h6) {
+  font-size: 0.7rem;
+  margin: 0.25rem 0 0.125rem;
+}
+
+.note-card.compact .chapters-list {
+  max-height: 60px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.note-card.compact .tag-chip {
+  font-size: 0.5rem !important;
+  height: 12px !important;
+  padding: 0 3px !important;
 }
 </style>

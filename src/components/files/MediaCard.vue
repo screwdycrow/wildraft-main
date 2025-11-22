@@ -1,8 +1,14 @@
 <template>
   <v-card
     class="media-card"
-    :class="{ 'media-card--selected': selected }"
+    :class="{ 
+      'media-card--selected': selected,
+      'media-card--dragging': isDragging
+    }"
+    :draggable="true"
     @click="$emit('click', file)"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
     hover
   >
     <!-- Thumbnail/Preview -->
@@ -116,6 +122,46 @@
           </template>
         </v-tooltip>
       </div>
+
+      <!-- Move Menu (Three Dots) -->
+      <div v-if="showMoveMenu" class="media-card__move-menu">
+        <v-menu location="bottom end" v-model="moveMenuOpen">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              v-bind="menuProps"
+              icon="mdi-dots-vertical"
+              size="x-small"
+              color="white"
+              variant="tonal"
+              @click.stop
+            />
+          </template>
+          <v-list>
+            <v-list-subheader>Move to</v-list-subheader>
+            <v-list-item
+              v-for="folder in availableFolders"
+              :key="folder.id"
+              :title="folder.name"
+              :subtitle="`${folder.fileCount || 0} files`"
+              @click.stop="handleMoveToFolder(folder.id)"
+            >
+              <template #prepend>
+                <v-icon icon="mdi-folder" class="mr-2" />
+              </template>
+            </v-list-item>
+            <v-list-item
+              v-if="file.categoryId !== null"
+              title="Uncategorized"
+              subtitle="Move out of folder"
+              @click.stop="handleMoveToFolder(null)"
+            >
+              <template #prepend>
+                <v-icon icon="mdi-folder-outline" class="mr-2" />
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+      </div>
     </div>
 
     <!-- File Info -->
@@ -140,7 +186,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { UserFile } from '@/api/files'
+import type { UserFile, FileCategory } from '@/api/files'
 import { formatFileSize, getFileIcon } from '@/api/files'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { usePortalSocket } from '@/composables/usePortalSocket'
@@ -157,6 +203,8 @@ interface Props {
   showFeaturedToggle?: boolean
   isFeatured?: boolean
   showViewAction?: boolean
+  showMoveMenu?: boolean
+  availableFolders?: FileCategory[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -166,14 +214,17 @@ const props = withDefaults(defineProps<Props>(), {
   showFeaturedToggle: false,
   isFeatured: false,
   showViewAction: false,
+  showMoveMenu: false,
+  availableFolders: () => [],
 })
 
-defineEmits<{
+const emit = defineEmits<{
   click: [file: UserFile]
   'toggle-select': [file: UserFile]
   delete: [file: UserFile]
   'toggle-featured': [file: UserFile]
   view: [file: UserFile]
+  'move-to-folder': [file: UserFile, categoryId: number | null]
 }>()
 
 const isImage = computed(() => props.file.fileType.startsWith('image/'))
@@ -196,8 +247,50 @@ const portalViewsStore = usePortalViewsStore()
 const { sendPortalViewUpdate } = usePortalSocket()
 const toast = useToast()
 const isSendingToPortal = ref(false)
+const isDragging = ref(false)
+const moveMenuOpen = ref(false)
 
 const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
+
+const handleDragStart = (event: DragEvent) => {
+  if (!event.dataTransfer) return
+  
+  isDragging.value = true
+  event.dataTransfer.effectAllowed = 'move'
+  
+  // Store file ID in dataTransfer
+  event.dataTransfer.setData('application/json', JSON.stringify({ 
+    type: 'user-file', 
+    fileId: props.file.id
+  }))
+  // Also store as text/plain for better browser compatibility
+  event.dataTransfer.setData('text/plain', `file:${props.file.id}`)
+  
+  // Set a custom drag image
+  if (event.target instanceof HTMLElement) {
+    const dragImage = event.target.cloneNode(true) as HTMLElement
+    dragImage.style.opacity = '0.8'
+    dragImage.style.position = 'absolute'
+    dragImage.style.top = '-1000px'
+    dragImage.style.pointerEvents = 'none'
+    document.body.appendChild(dragImage)
+    event.dataTransfer.setDragImage(dragImage, 0, 0)
+    setTimeout(() => {
+      if (document.body.contains(dragImage)) {
+        document.body.removeChild(dragImage)
+      }
+    }, 0)
+  }
+}
+
+const handleDragEnd = () => {
+  isDragging.value = false
+}
+
+const handleMoveToFolder = (categoryId: number | null) => {
+  moveMenuOpen.value = false
+  emit('move-to-folder', props.file, categoryId)
+}
 
 const handleSendToPortal = async () => {
   isSendingToPortal.value = true
@@ -228,6 +321,7 @@ const handleShowOnTop = () => {
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
+  user-select: none;
 }
 
 .media-card:hover {
@@ -236,6 +330,18 @@ const handleShowOnTop = () => {
 
 .media-card--selected {
   outline: 3px solid rgb(var(--v-theme-primary));
+}
+
+.media-card[draggable="true"] {
+  cursor: grab;
+}
+
+.media-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.media-card--dragging {
+  opacity: 0.5;
 }
 
 .media-card__preview {
@@ -286,7 +392,7 @@ const handleShowOnTop = () => {
   right: 48px;
   z-index: 2;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, right 0.2s;
 }
 
 .media-card:hover .media-card__view {
@@ -299,11 +405,33 @@ const handleShowOnTop = () => {
   right: 8px;
   z-index: 2;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, right 0.2s;
 }
 
 .media-card:hover .media-card__delete {
   opacity: 1;
+}
+
+.media-card__move-menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.media-card:hover .media-card__move-menu {
+  opacity: 1;
+}
+
+/* Adjust button positions when move menu is visible */
+.media-card:has(.media-card__move-menu) .media-card__delete {
+  right: 48px;
+}
+
+.media-card:has(.media-card__move-menu) .media-card__view {
+  right: 88px;
 }
 
 .media-card__featured {

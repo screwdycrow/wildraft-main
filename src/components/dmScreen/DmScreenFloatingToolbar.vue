@@ -5,13 +5,13 @@
       <div class="toolbar-section">
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="primary"
           class="toolbar-btn"
           @click="$emit('add-item')"
         >
-          <v-icon>mdi-plus-circle</v-icon>
+          <v-icon size="20">mdi-plus-circle</v-icon>
           <v-tooltip activator="parent" location="top">
             Add Library Item
           </v-tooltip>
@@ -19,13 +19,13 @@
 
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="secondary"
           class="toolbar-btn"
           @click="$emit('add-background')"
         >
-          <v-icon>mdi-image-plus</v-icon>
+          <v-icon size="20">mdi-image-plus</v-icon>
           <v-tooltip activator="parent" location="top">
             Add Background Image
           </v-tooltip>
@@ -33,13 +33,27 @@
 
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
+          color="accent"
+          class="toolbar-btn"
+          @click="$emit('add-file')"
+        >
+          <v-icon size="20">mdi-file-plus</v-icon>
+          <v-tooltip activator="parent" location="top">
+            Add File
+          </v-tooltip>
+        </v-btn>
+
+        <v-btn
+          icon
+          size="small"
+          variant="text"
           color="info"
           class="toolbar-btn"
           @click="$emit('add-text-node')"
         >
-          <v-icon>mdi-text-box-plus</v-icon>
+          <v-icon size="20">mdi-text-box-plus</v-icon>
           <v-tooltip activator="parent" location="top">
             Add Text
           </v-tooltip>
@@ -47,13 +61,13 @@
 
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="success"
           class="toolbar-btn"
           @click="$emit('add-shape-node')"
         >
-          <v-icon>mdi-shape-plus</v-icon>
+          <v-icon size="20">mdi-shape-plus</v-icon>
           <v-tooltip activator="parent" location="top">
             Add Shape
           </v-tooltip>
@@ -66,13 +80,13 @@
       <div class="toolbar-section">
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           :color="showGrid ? 'primary' : 'grey'"
           class="toolbar-btn"
           @click="$emit('toggle-grid')"
         >
-          <v-icon>{{ showGrid ? 'mdi-grid' : 'mdi-grid-off' }}</v-icon>
+          <v-icon size="20">{{ showGrid ? 'mdi-grid' : 'mdi-grid-off' }}</v-icon>
           <v-tooltip activator="parent" location="top">
             {{ showGrid ? 'Hide Grid' : 'Show Grid' }}
           </v-tooltip>
@@ -80,13 +94,13 @@
 
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           :color="lockBackgroundImages ? 'warning' : 'grey'"
           class="toolbar-btn"
           @click="$emit('toggle-lock-background')"
         >
-          <v-icon>{{ lockBackgroundImages ? 'mdi-lock' : 'mdi-lock-open' }}</v-icon>
+          <v-icon size="20">{{ lockBackgroundImages ? 'mdi-lock' : 'mdi-lock-open' }}</v-icon>
           <v-tooltip activator="parent" location="top">
             {{ lockBackgroundImages ? 'Unlock Backgrounds' : 'Lock Backgrounds' }}
           </v-tooltip>
@@ -100,13 +114,13 @@
         <!-- Duplicate button (all items) -->
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="secondary"
           class="toolbar-btn"
           @click="$emit('duplicate-item')"
         >
-          <v-icon>mdi-content-duplicate</v-icon>
+          <v-icon size="20">mdi-content-duplicate</v-icon>
           <v-tooltip activator="parent" location="top">
             Duplicate
           </v-tooltip>
@@ -115,13 +129,13 @@
         <!-- Send to back -->
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="warning"
           class="toolbar-btn"
           @click="$emit('send-to-back')"
         >
-          <v-icon>mdi-arrange-send-backward</v-icon>
+          <v-icon size="20">mdi-arrange-send-backward</v-icon>
           <v-tooltip activator="parent" location="top">
             Send to Back
           </v-tooltip>
@@ -130,15 +144,45 @@
         <!-- Send to front -->
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="warning"
           class="toolbar-btn"
           @click="$emit('send-to-front')"
         >
-          <v-icon>mdi-arrange-bring-forward</v-icon>
+          <v-icon size="20">mdi-arrange-bring-forward</v-icon>
           <v-tooltip activator="parent" location="top">
             Send to Front
+          </v-tooltip>
+        </v-btn>
+
+        <!-- Rotate Left -->
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          color="info"
+          class="toolbar-btn"
+          @click="$emit('rotate-left')"
+        >
+          <v-icon size="20">mdi-rotate-left</v-icon>
+          <v-tooltip activator="parent" location="top">
+            Rotate Left (-90°)
+          </v-tooltip>
+        </v-btn>
+
+        <!-- Rotate Right -->
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          color="info"
+          class="toolbar-btn"
+          @click="$emit('rotate-right')"
+        >
+          <v-icon size="20">mdi-rotate-right</v-icon>
+          <v-tooltip activator="parent" location="top">
+            Rotate Right (+90°)
           </v-tooltip>
         </v-btn>
 
@@ -146,13 +190,13 @@
         <v-btn
           v-if="selectedItem.type === 'TextNode'"
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="info"
           class="toolbar-btn"
           @click="$emit('edit-text')"
         >
-          <v-icon>mdi-pencil</v-icon>
+          <v-icon size="20">mdi-pencil</v-icon>
           <v-tooltip activator="parent" location="top">
             Edit Text
           </v-tooltip>
@@ -162,13 +206,13 @@
         <v-btn
           v-if="selectedItem.type === 'ShapeNode'"
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="info"
           class="toolbar-btn"
           @click="$emit('edit-shape-style')"
         >
-          <v-icon>mdi-palette</v-icon>
+          <v-icon size="20">mdi-palette</v-icon>
           <v-tooltip activator="parent" location="top">
             Edit Shape Style
           </v-tooltip>
@@ -177,13 +221,13 @@
         <!-- Delete button -->
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="error"
           class="toolbar-btn"
           @click="$emit('delete-selected')"
         >
-          <v-icon>mdi-trash-can</v-icon>
+          <v-icon size="20">mdi-trash-can</v-icon>
           <v-tooltip activator="parent" location="top">
             Delete
           </v-tooltip>
@@ -196,13 +240,13 @@
       <div class="toolbar-section">
         <v-btn
           icon
-          size="large"
-          variant="flat"
+          size="small"
+          variant="text"
           color="grey"
           class="toolbar-btn"
           @click="$emit('open-settings')"
         >
-          <v-icon>mdi-cog</v-icon>
+          <v-icon size="20">mdi-cog</v-icon>
           <v-tooltip activator="parent" location="top">
             Settings
           </v-tooltip>
@@ -230,6 +274,7 @@ withDefaults(defineProps<Props>(), {
 defineEmits<{
   'add-item': []
   'add-background': []
+  'add-file': []
   'add-text-node': []
   'add-shape-node': []
   'open-settings': []
@@ -238,6 +283,8 @@ defineEmits<{
   'duplicate-item': []
   'send-to-back': []
   'send-to-front': []
+  'rotate-left': []
+  'rotate-right': []
   'edit-text': []
   'edit-shape-style': []
   'delete-selected': []
@@ -247,7 +294,7 @@ defineEmits<{
 <style scoped>
 .floating-toolbar-container {
   position: fixed;
-  bottom: 24px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
@@ -257,37 +304,54 @@ defineEmits<{
 .floating-toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-  background: rgba(30, 30, 40, 0.95);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 16px;
+  gap: 3px;
+  padding: 6px 10px;
+  background: rgba(22, 22, 32, 0.8);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
-              0 2px 8px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35),
+              0 2px 6px rgba(0, 0, 0, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
   pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.floating-toolbar:hover {
+  background: rgba(28, 28, 38, 0.9);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .toolbar-section {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .toolbar-divider {
-  height: 32px;
-  margin: 0 8px;
-  opacity: 0.3;
+  height: 24px;
+  margin: 0 6px;
+  opacity: 0.25;
 }
 
 .toolbar-btn {
-  border-radius: 12px !important;
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 10px !important;
+  opacity: 0.85;
+  transition: all 0.15s ease;
 }
 
 .toolbar-btn:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12) !important;
+  transform: scale(1.08);
+}
+
+.toolbar-btn :deep(.v-icon) {
+  font-size: 20px;
 }
 </style>
 

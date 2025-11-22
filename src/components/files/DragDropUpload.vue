@@ -53,10 +53,12 @@ import type { UserFile } from '@/api/files'
 
 interface Props {
   compact?: boolean
+  categoryId?: number | null
 }
 
-withDefaults(defineProps<Props>(), {
-  compact: false
+const props = withDefaults(defineProps<Props>(), {
+  compact: false,
+  categoryId: null,
 })
 
 const emit = defineEmits<{
@@ -109,7 +111,7 @@ const uploadFiles = async (files: File[]) => {
       uploadProgress.value = ((i + 1) / files.length) * 100
 
       try {
-        const userFile = await filesStore.uploadFile(file)
+        const userFile = await filesStore.uploadFile(file, undefined, undefined, props.categoryId)
         uploadedFiles.push(userFile)
         emit('uploaded', userFile)
       } catch (error) {

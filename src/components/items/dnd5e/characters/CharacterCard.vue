@@ -1,6 +1,7 @@
 <template>
   <v-card
     class="character-card"
+    :class="{ 'compact': compact }"
     elevation="0"
     hover
     @click="$emit('click', item)"
@@ -14,7 +15,7 @@
         <span class="text-h6 font-weight-bold">{{ item.name }}</span>
       </v-card-title>
 
-      <v-card-subtitle class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
+      <v-card-subtitle v-if="!compact" class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
         {{ characterData.race }} {{ characterData.class }}
         <span v-if="characterData.subclass">({{ characterData.subclass }})</span>
         (CR: {{ characterData.level || 1 }})
@@ -51,7 +52,7 @@
 
       <!-- Description -->
       <div
-        v-if="item.description"
+        v-if="item.description && !compact"
         class="description-wrapper mb-3"
         :style="{ color: textColor, opacity: 0.95 }"
       >
@@ -97,6 +98,7 @@ interface Props {
   item: LibraryItem
   showActions?: boolean
   textColor?: string
+  compact?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -376,5 +378,57 @@ const resolvedDescription = computed(() => {
   font-size: 0.6rem !important;
   height: 16px !important;
   padding: 0 4px !important;
+}
+
+/* Compact Mode */
+.character-card.compact .card-content {
+  padding: 8px;
+}
+
+.character-card.compact .card-title {
+  font-size: 0.875rem !important;
+  padding-bottom: 2px !important;
+}
+
+.character-card.compact .stats-row {
+  padding: 4px 0;
+  margin-bottom: 4px;
+}
+
+.character-card.compact .stat-label {
+  font-size: 0.6rem;
+}
+
+.character-card.compact .stat-value {
+  font-size: 1rem;
+}
+
+.character-card.compact .abilities-row {
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.character-card.compact .ability-label {
+  font-size: 0.55rem;
+}
+
+.character-card.compact .ability-value {
+  font-size: 0.85rem;
+}
+
+.character-card.compact .ability-modifier {
+  font-size: 0.6rem;
+}
+
+.character-card.compact .features-list {
+  max-height: 60px;
+  gap: 2px;
+}
+
+.character-card.compact .tag-chip {
+  font-size: 0.5rem !important;
+  height: 12px !important;
+  padding: 0 3px !important;
 }
 </style>

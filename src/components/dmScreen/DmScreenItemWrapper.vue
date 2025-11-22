@@ -6,11 +6,11 @@
       'scaled': isScaled,
       'transparent': item.type === 'TextNode' || item.type === 'ShapeNode'
     }"
-    :style="wrapperStyle"
+    :style="item.isMinimized ? { width: '100%', height: '100%' } : wrapperStyle"
   >
-    <!-- Selection handle / toolbar for non-minimized items (not for text/shape nodes) -->
+    <!-- Selection handle / toolbar for non-minimized items (not for text/shape nodes and background nodes) -->
     <div 
-      v-if="!item.isMinimized && item.type !== 'TextNode' && item.type !== 'ShapeNode'" 
+      v-if="!item.isMinimized && item.type !== 'TextNode' && item.type !== 'ShapeNode' && !item.data.isBackground" 
       class="selection-handle"
       data-drag-handle
     >
@@ -18,37 +18,10 @@
         <v-icon size="x-small" color="rgba(255, 255, 255, 0.7)">mdi-drag</v-icon>
         <span class="handle-title">{{ itemTitle }}</span>
       </div>
-      <div class="handle-actions">
-        <v-btn
-          v-if="item.type !== 'CombatantItemToken' && !item.data.isBackground && item.type !== 'TextNode' && item.type !== 'ShapeNode'"
-          icon
-          size="x-small"
-          variant="text"
-          color="rgba(255, 255, 255, 0.8)"
-          @click.stop="toggleMinimize"
-        >
-          <v-icon size="x-small">mdi-window-minimize</v-icon>
-          <v-tooltip activator="parent" location="bottom">
-            Minimize
-          </v-tooltip>
-        </v-btn>
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          color="rgba(255, 100, 100, 0.9)"
-          @click.stop="handleDelete"
-        >
-          <v-icon size="x-small">mdi-close</v-icon>
-          <v-tooltip activator="parent" location="bottom">
-            Delete
-          </v-tooltip>
-        </v-btn>
-      </div>
     </div>
 
     <!-- Minimized View (Circle with featured image and title) -->
-    <div v-if="item.isMinimized" class="minimized-view" @click="toggleMinimize">
+    <div v-if="item.isMinimized" class="minimized-view" @dblclick="toggleMinimize">
       <div class="minimized-image-container">
         <div v-if="minimizedImageUrl" class="minimized-image-circle">
           <img :src="minimizedImageUrl" :alt="itemTitle" />
@@ -101,6 +74,33 @@
           :file="userFile"
           @click="handleFileClick"
         />
+        <!-- Portal Actions for Background Images -->
+        <div v-if="hasActivePortal" class="background-portal-actions">
+          <v-tooltip text="Send to Portal" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <v-btn
+                v-bind="tooltipProps"
+                icon="mdi-television"
+                size="x-small"
+                color="primary"
+                :loading="isSendingToPortal"
+                @click.stop="handleSendToPortal"
+              />
+            </template>
+          </v-tooltip>
+          <v-tooltip text="Show On Top" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <v-btn
+                v-bind="tooltipProps"
+                icon="mdi-television-play"
+                size="x-small"
+                color="primary"
+                :disabled="isSendingToPortal"
+                @click.stop="handleShowOnTop"
+              />
+            </template>
+          </v-tooltip>
+        </div>
       </div>
       <!-- UserFileId (Regular files) -->
       <div 
@@ -182,6 +182,9 @@ import { useItemsStore } from '@/stores/items'
 import { useFilesStore } from '@/stores/files'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useDialogsStore } from '@/stores/dialogs'
+import { usePortalViewsStore } from '@/stores/portalViews'
+import { usePortalSocket } from '@/composables/usePortalSocket'
+import { useToast } from 'vue-toastification'
 import * as filesApi from '@/api/files'
 import { itemsApi } from '@/api/items'
 
@@ -204,6 +207,10 @@ const itemsStore = useItemsStore()
 const filesStore = useFilesStore()
 const dmScreensStore = useDmScreensStore()
 const dialogsStore = useDialogsStore()
+const portalViewsStore = usePortalViewsStore()
+const { sendPortalViewUpdate } = usePortalSocket()
+const toast = useToast()
+const isSendingToPortal = ref(false)
 
 const libraryItem = ref<LibraryItem | null>(null)
 const userFile = ref<UserFile | null>(null)
@@ -366,6 +373,33 @@ function handleFileClick(file: UserFile) {
   dialogsStore.openFileViewer(file)
 }
 
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
+
+async function handleSendToPortal() {
+  if (!userFile.value) return
+  isSendingToPortal.value = true
+  try {
+    await portalViewsStore.addItemToActivePortal(userFile.value, true)
+    toast.success(`Sent "${userFile.value.fileName}" to portal and set as current`)
+  } catch (error: any) {
+    console.error('[DmScreenItemWrapper] Failed to send to portal:', error)
+    toast.error(error.message || 'Failed to send to portal')
+  } finally {
+    isSendingToPortal.value = false
+  }
+}
+
+function handleShowOnTop() {
+  if (!userFile.value) return
+  // Send show-on-top command with the UserFile
+  sendPortalViewUpdate({
+    command: 'show-on-top',
+    userFile: userFile.value,
+  })
+  
+  toast.success(`Showing "${userFile.value.fileName}" on portal`)
+}
+
 function handleContentClick() {
   // Open viewer when clicking on the content
   if (libraryItem.value) {
@@ -439,16 +473,15 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 <style scoped>
 .dm-screen-item-wrapper {
   width: 100%;
-  height: 100%;
-  min-width: 200px;
-  min-height: 150px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  height: 100%;;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.01);
   overflow: hidden;
   user-select: none;
   position: relative;
 }
+
 
 .dm-screen-item-wrapper:hover {
   border-color: rgba(255, 255, 255, 0.3);
@@ -466,20 +499,6 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   background: transparent;
 }
 
-.dm-screen-item-wrapper.minimized {
-  width: auto;
-  min-width: 80px;
-  max-width: 120px;
-  height: auto;
-  min-height: 100px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  background: rgba(20, 20, 30, 0.4);
-}
 
 /* Selection handle toolbar - More discrete */
 .selection-handle {
@@ -496,7 +515,7 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   align-items: center;
   justify-content: space-between;
   padding: 0 6px;
-  z-index: 20;
+  z-index:1000;
   cursor: move;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.7;
@@ -551,18 +570,20 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
+  justify-content: center;
+  gap: min(8px, 5%);
   cursor: pointer;
   width: 100%;
   height: 100%;
-  padding: 8px 0;
+  padding: 5%;
 }
 
 .minimized-image-container {
-  width: 70px;
-  height: 70px;
   flex-shrink: 0;
+
+  max-width: 70%;
+  max-height: 70%;
+  aspect-ratio: 1;
 }
 
 .minimized-image-circle,
@@ -580,10 +601,6 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 
 .minimized-image-circle {
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-              0 0 0 3px rgba(255, 255, 255, 0.1),
-              inset 0 0 0 2px rgba(255, 255, 255, 0.15);
 }
 
 .minimized-image-circle img {
@@ -613,14 +630,18 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.minimized-icon-circle .v-icon {
+  font-size: clamp(24px, 25%, 48px) !important;
+}
+
 .minimized-title {
-  font-size: 11px;
+  font-size: clamp(6px, 8%, 14px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.2;
   max-width: 90%;
-  padding: 4px 6px;
+  padding: clamp(1px, 2%, 6px) clamp(2px, 3%, 8px);
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
@@ -628,7 +649,7 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
                0 1px 2px rgba(0, 0, 0, 0.6);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
   background: rgba(30, 30, 40, 0.8);
-  border-radius: 6px;
+  border-radius: clamp(3px, 1%, 6px);
   backdrop-filter: blur(8px);
 }
 
@@ -700,6 +721,21 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.background-portal-actions {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  gap: 4px;
+}
+
+.background-image-container:hover .background-portal-actions {
+  opacity: 1;
 }
 
 .unknown-item-type {

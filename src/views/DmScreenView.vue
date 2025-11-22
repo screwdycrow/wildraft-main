@@ -36,6 +36,7 @@
       :selected-item="selectedItem"
       @add-item="handleAddItem"
       @add-background="handleAddBackground"
+      @add-file="handleAddFileFromToolbar"
       @add-text-node="handleAddTextNode"
       @add-shape-node="handleAddShapeNode"
       @open-settings="handleOpenSettings"
@@ -43,8 +44,25 @@
       @toggle-grid="handleToggleGrid"
       @send-to-back="handleSendToBack"
       @send-to-front="handleSendToFront"
+      @rotate-left="handleRotateLeft"
+      @rotate-right="handleRotateRight"
       @edit-shape-style="handleEditShapeStyle"
       @delete-selected="handleDeleteSelected"
+    />
+
+    <!-- File Manager Dialog for adding files -->
+    <file-manager
+      v-model="showFileManager"
+      select-mode
+      :multiple="true"
+      return-type="id"
+      @select="handleFilesSelected"
+    />
+
+    <!-- Kitbashing Drawers -->
+    <kitbashing-drawers
+      v-if="dmScreen"
+      @add-file="handleAddFile"
     />
   </div>
 </template>
@@ -56,6 +74,8 @@ import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import DmScreenFloatingToolbar from '@/components/dmScreen/DmScreenFloatingToolbar.vue'
+import KitbashingDrawers from '@/components/dmScreen/KitbashingDrawers.vue'
+import FileManager from '@/components/files/FileManager.vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 
 const route = useRoute()
@@ -67,6 +87,7 @@ const dmScreenWrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null
 const lockBackgroundImages = ref(false)
 const showGrid = ref(true)
 const selectedItem = ref<DmScreenItem | null>(null)
+const showFileManager = ref(false)
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -171,12 +192,102 @@ function handleDeleteSelected() {
     selectedItem.value = null
   }
 }
+
+function handleRotateLeft() {
+  if (selectedItem.value && dmScreenWrapperRef.value) {
+    dmScreenWrapperRef.value.rotateItem(selectedItem.value, -90)
+  }
+}
+
+function handleRotateRight() {
+  if (selectedItem.value && dmScreenWrapperRef.value) {
+    dmScreenWrapperRef.value.rotateItem(selectedItem.value, 90)
+  }
+}
+
+function handleAddFile(file: any) {
+  dmScreenWrapperRef.value?.addUserFile(file)
+}
+
+function handleAddFileFromToolbar() {
+  showFileManager.value = true
+}
+
+async function handleFilesSelected(fileIds: number | number[] | string | string[]) {
+  if (!dmScreen.value) return
+  
+  // Convert to number array
+  const idsArray: number[] = (Array.isArray(fileIds) ? fileIds : [fileIds])
+    .map(id => typeof id === 'string' ? parseInt(id, 10) : id)
+    .filter(id => !isNaN(id))
+  
+  if (idsArray.length === 0) return
+  
+  try {
+    const currentItems = dmScreen.value.items || []
+    const newItems: DmScreenItem[] = []
+    
+    // Default size for MediaCard nodes
+    const defaultWidth = 300
+    const defaultHeight = 400
+    
+    // Get viewport center from Vue Flow (approximate)
+    const centerX = 400
+    const centerY = 300
+    
+    // Add each selected file as a UserFile node
+    for (let i = 0; i < idsArray.length; i++) {
+      const fileId = idsArray[i]
+      
+      // Stagger positions slightly for multiple files
+      const offsetX = (i % 3) * 50 - 50 // -50, 0, 50
+      const offsetY = Math.floor(i / 3) * 50
+      
+      const userFileItem: DmScreenItem = {
+        id: `userfile-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'UserFileId',
+        data: {
+          id: fileId,
+          isBackground: false,
+        },
+        nodeOptions: {
+          x: centerX + offsetX - defaultWidth / 2,
+          y: centerY + offsetY - defaultHeight / 2,
+          position: { 
+            x: centerX + offsetX - defaultWidth / 2,
+            y: centerY + offsetY - defaultHeight / 2
+          },
+          width: defaultWidth,
+          height: defaultHeight,
+          resizable: true,
+        },
+        isMinimized: false,
+      }
+      
+      newItems.push(userFileItem)
+    }
+    
+    const updatedItems = [...currentItems, ...newItems]
+    
+    await dmScreensStore.updateDmScreen(
+      dmScreen.value.libraryId,
+      dmScreen.value.id,
+      { items: updatedItems }
+    )
+    
+    toast.success(`Added ${idsArray.length} file${idsArray.length > 1 ? 's' : ''} to DM screen`)
+    showFileManager.value = false
+  } catch (error: any) {
+    console.error('[DmScreenView] Failed to add files:', error)
+    toast.error('Failed to add files to DM screen')
+  }
+}
 </script>
 
 <style scoped>
 .dm-screen-view {
-  width: 100%;
-  height: 100vh;
+    width: 100%;
+  height:90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -201,14 +312,9 @@ function handleDeleteSelected() {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
-.dm-screen-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-  flex-shrink: 0;
-}
 
 .header-content {
   display: flex;

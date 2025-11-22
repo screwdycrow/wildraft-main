@@ -4,8 +4,10 @@
     :class="{ 
       'selected': selected, 
       'selection-mode': selectionMode,
-      'drag-over': isDragOver
+      'drag-over': isDragOver,
+      'draggable-item': !compact && !disableClick
     }"
+    :draggable="!compact && !disableClick"
     @mouseenter="showActions = true" 
     @mouseleave="showActions = false"
     @click="handleClick"
@@ -13,10 +15,13 @@
     @dragover.prevent="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
+    @dragstart="handleDragStart"
+    @dragend="handleDragEnd"
   >
     <component
       :is="cardComponent"
       :item="item"
+      :compact="compact"
       v-bind="$attrs"
     />
     
@@ -147,6 +152,7 @@ interface Props {
   selected?: boolean
   selectionMode?: boolean
   libraryId?: number
+  compact?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -165,6 +171,7 @@ const emit = defineEmits<{
 
 const showActions = ref(false)
 const isDragOver = ref(false)
+const isDragging = ref(false)
 
 const { getItemComponent } = useItemComponents()
 const quickItemViewStore = useQuickItemViewStore()
@@ -299,7 +306,7 @@ function handleClick(event: MouseEvent) {
       dialogsStore.openItemViewer(props.item, props.libraryId)
     } else {
       // Fallback to emitting view event if no libraryId
-      emit('view', props.item)
+    emit('view', props.item)
     }
   }
 }
@@ -339,28 +346,33 @@ async function handleDrop(event: DragEvent) {
   
   try {
     let tagId: number | null = null
+    let libraryItemId: number | null = null
     
-    // Try to get tag ID from application/json
+    // Try to get data from application/json
     try {
       const data = event.dataTransfer.getData('application/json')
       if (data) {
         const parsed = JSON.parse(data)
         if (parsed.type === 'tag' && parsed.tagId) {
           tagId = parsed.tagId
+        } else if (parsed.type === 'library-item' && parsed.itemId) {
+          libraryItemId = parsed.itemId
         }
       }
     } catch (e) {
       // Fallback to text/plain
       const textData = event.dataTransfer.getData('text/plain')
-      if (textData && textData.startsWith('tag:')) {
+      if (textData) {
+        if (textData.startsWith('tag:')) {
         tagId = parseInt(textData.replace('tag:', ''))
+        } else if (textData.startsWith('item:')) {
+          libraryItemId = parseInt(textData.replace('item:', ''))
+        }
       }
     }
     
-    if (!tagId || isNaN(tagId)) {
-      return
-    }
-    
+    // Handle tag drop
+    if (tagId && !isNaN(tagId)) {
     // Get current tag IDs
     const currentTagIds = props.item.tags?.map(t => t.id) || []
     
@@ -376,10 +388,47 @@ async function handleDrop(event: DragEvent) {
     })
     
     toast.success('Tag added to item')
+    }
+    // Library item drops are handled by DmScreenCardsInHand, not here
   } catch (error: any) {
     console.error('Drop error:', error)
     toast.error('Failed to add tag')
   }
+}
+
+function handleDragStart(event: DragEvent) {
+  if (props.compact || props.disableClick) return
+  
+  if (event.dataTransfer && event.target instanceof HTMLElement) {
+    isDragging.value = true
+    event.dataTransfer.effectAllowed = 'move'
+    // Store library item ID in dataTransfer
+    event.dataTransfer.setData('application/json', JSON.stringify({ 
+      type: 'library-item', 
+      itemId: props.item.id,
+      libraryId: props.libraryId
+    }))
+    // Also store as text/plain for better browser compatibility
+    event.dataTransfer.setData('text/plain', `item:${props.item.id}`)
+    
+    // Set a custom drag image
+    const dragImage = event.target.cloneNode(true) as HTMLElement
+    dragImage.style.opacity = '0.8'
+    dragImage.style.position = 'absolute'
+    dragImage.style.top = '-1000px'
+    dragImage.style.pointerEvents = 'none'
+    document.body.appendChild(dragImage)
+    event.dataTransfer.setDragImage(dragImage, 0, 0)
+    setTimeout(() => {
+      if (document.body.contains(dragImage)) {
+        document.body.removeChild(dragImage)
+      }
+    }, 0)
+  }
+}
+
+function handleDragEnd() {
+  isDragging.value = false
 }
 </script>
 
@@ -410,6 +459,23 @@ async function handleDrop(event: DragEvent) {
 
 .item-card-wrapper:hover {
   transform: translateY(-2px);
+}
+
+.item-card-wrapper.draggable-item {
+  cursor: grab;
+  user-select: none;
+}
+
+.item-card-wrapper.draggable-item:active {
+  cursor: grabbing;
+}
+
+.item-card-wrapper.draggable-item:hover {
+  opacity: 0.9;
+}
+
+.item-card-wrapper.draggable-item.dragging {
+  opacity: 0.5;
 }
 
 .item-card-wrapper.drag-over:hover {

@@ -23,6 +23,7 @@ export interface VueFlowNodeOptions {
   class?: string
   data?: Record<string, any>
   resizable?: boolean
+  rotation?: number // Rotation in degrees (0-360)
   [key: string]: any // Allow additional Vue Flow properties
 }
 
@@ -30,6 +31,7 @@ export interface VueFlowNodeOptions {
 export interface DmScreenItem {
   id: string
   type: DmScreenItemType
+  order?: number // Order for cards in hand
   data: {
     // For LibraryItemId: just the id number
     id?: number
@@ -69,6 +71,7 @@ export interface DmScreenItem {
   nodeOptions?: VueFlowNodeOptions
   // Additional properties
   isMinimized?: boolean
+  minimizedDimensions?: { width: number; height: number } // Store minimized dimensions separately
   [key: string]: any
 }
 
@@ -94,8 +97,11 @@ export interface DmScreenSettings {
   lockBackgroundImages?: boolean // Lock all background image nodes
   backgroundOpacity?: number // Opacity for background image nodes (0-1, default: 1.0)
   canvasBackgroundImageId?: number // UserFile ID for fixed canvas background (non-scaling)
+  pinnedCategories?: Array<{ id: number; name: string; libraryId: number; fileCount?: number; createdAt: string; updatedAt: string }> // Pinned file categories for kitbashing drawers
   [key: string]: any
 }
+
+
 
 // DM Screen
 export interface DmScreen {

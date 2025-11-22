@@ -40,7 +40,8 @@ export const useFilesStore = defineStore('files', () => {
   const uploadFilePresigned = async (
     file: File,
     folder?: string,
-    onProgress?: (progress: number) => void
+    _onProgress?: (progress: number) => void,
+    categoryId?: number | null
   ): Promise<UserFile> => {
     const authStore = useAuthStore()
     if (!authStore.user) throw new Error('User not authenticated')
@@ -64,6 +65,7 @@ export const useFilesStore = defineStore('files', () => {
       fileType: file.type,
       fileSize: file.size,
       filePath,
+      categoryId,
     })
 
     // Add to local list
@@ -76,7 +78,8 @@ export const useFilesStore = defineStore('files', () => {
   // Direct upload (for small files < 1MB)
   const uploadFileDirect = async (
     file: File,
-    folder?: string
+    folder?: string,
+    categoryId?: number | null
   ): Promise<UserFile> => {
     const authStore = useAuthStore()
     if (!authStore.user) throw new Error('User not authenticated')
@@ -102,6 +105,7 @@ export const useFilesStore = defineStore('files', () => {
       fileSize: file.size,
       filePath,
       fileBuffer: base64Content,
+      categoryId,
     })
 
     // Add to local list
@@ -115,14 +119,50 @@ export const useFilesStore = defineStore('files', () => {
   const uploadFile = async (
     file: File,
     folder?: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    categoryId?: number | null
   ): Promise<UserFile> => {
     const ONE_MB = 1024 * 1024
 
     if (file.size > ONE_MB) {
-      return uploadFilePresigned(file, folder, onProgress)
+      return uploadFilePresigned(file, folder, onProgress, categoryId)
     } else {
-      return uploadFileDirect(file, folder)
+      return uploadFileDirect(file, folder, categoryId)
+    }
+  }
+
+  // Fetch uncategorized files
+  const fetchUncategorizedFiles = async () => {
+    loading.value = true
+    try {
+      const response = await filesApi.listUncategorizedFiles({
+        limit: limit.value,
+        offset: offset.value,
+      })
+      files.value = response.files
+      total.value = response.total
+    } catch (error) {
+      console.error('Failed to fetch uncategorized files:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+
+  // Update file category
+  const updateFileCategory = async (fileId: number, categoryId: number | null) => {
+    try {
+      const response = await filesApi.updateFile(fileId, { categoryId })
+      // Update local file
+      const index = files.value.findIndex(f => f.id === fileId)
+      if (index !== -1) {
+        files.value[index] = response.file
+      }
+      return response.file
+    } catch (error) {
+      console.error('Failed to update file category:', error)
+      throw error
     }
   }
 
@@ -256,11 +296,13 @@ export const useFilesStore = defineStore('files', () => {
     limit,
     offset,
     fetchFiles,
+    fetchUncategorizedFiles,
     uploadFile,
     uploadFilePresigned,
     uploadFileDirect,
     getDownloadUrl,
     deleteFile,
+    updateFileCategory,
     loadMore,
     reset,
     addFiles,

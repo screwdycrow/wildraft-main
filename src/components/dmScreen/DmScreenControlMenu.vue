@@ -61,6 +61,36 @@
 
           <v-divider class="my-3" />
 
+          <!-- Cards in Hand Toggle -->
+          <div class="d-flex align-center justify-space-between mb-3">
+            <div class="d-flex flex-column">
+              <span class="text-caption font-weight-medium">Cards in Hand</span>
+              <span class="text-caption text-medium-emphasis">Show cards at bottom</span>
+            </div>
+            <v-switch
+              :model-value="cardsInHandEnabled"
+              density="compact"
+              hide-details
+              @update:model-value="handleCardsInHandToggle"
+            />
+          </div>
+
+          <v-divider class="my-3" />
+
+          <!-- Add Files Button -->
+          <v-btn
+            size="small"
+            variant="tonal"
+            prepend-icon="mdi-file-plus"
+            block
+            class="mb-3"
+            @click="showFileManager = true"
+          >
+            Add Files
+          </v-btn>
+
+          <v-divider class="my-3" />
+
           <!-- Actions -->
           <div class="d-flex gap-2">
             <v-btn
@@ -85,19 +115,38 @@
         </template>
       </v-card-text>
     </v-card>
+
+    <!-- File Manager Dialog -->
+    <file-manager
+      v-model="showFileManager"
+      select-mode
+      :multiple="true"
+      return-type="id"
+      @select="handleFilesSelected"
+    />
   </v-menu>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { useFilesStore } from '@/stores/files'
+import { useToast } from 'vue-toastification'
+import FileManager from '@/components/files/FileManager.vue'
+import * as filesApi from '@/api/files'
 import type { DmScreen } from '@/types/dmScreen.types'
+import type { DmScreenItem } from '@/types/dmScreen.types'
 
 const router = useRouter()
 const dmScreensStore = useDmScreensStore()
+const filesStore = useFilesStore()
+const toast = useToast()
+
+const showFileManager = ref(false)
 
 const activeDmScreen = computed(() => dmScreensStore.activeDmScreen)
+const cardsInHandEnabled = computed(() => dmScreensStore.cardsInHandEnabled)
 
 const dmScreenOptions = computed(() => {
   return dmScreensStore.dmScreens.map(ds => ({
@@ -138,6 +187,76 @@ const openDmScreenSettings = () => {
         id: activeDmScreen.value.libraryId,
       },
     })
+  }
+}
+
+const handleCardsInHandToggle = (enabled: boolean) => {
+  dmScreensStore.setCardsInHandEnabled(enabled)
+}
+
+async function handleFilesSelected(fileIds: number | number[]) {
+  if (!activeDmScreen.value) return
+  
+  const idsArray = Array.isArray(fileIds) ? fileIds : [fileIds]
+  if (idsArray.length === 0) return
+  
+  try {
+    const currentItems = activeDmScreen.value.items || []
+    const newItems: DmScreenItem[] = []
+    
+    // Default size for MediaCard nodes
+    const defaultWidth = 300
+    const defaultHeight = 400
+    
+    // Calculate center position (approximate, will be adjusted when DM screen is opened)
+    const centerX = 400
+    const centerY = 300
+    
+    // Add each selected file as a UserFile node
+    for (let i = 0; i < idsArray.length; i++) {
+      const fileId = idsArray[i]
+      
+      // Stagger positions slightly for multiple files
+      const offsetX = (i % 3) * 50 - 50 // -50, 0, 50
+      const offsetY = Math.floor(i / 3) * 50
+      
+      const userFileItem: DmScreenItem = {
+        id: `userfile-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'UserFileId',
+        data: {
+          id: fileId,
+          isBackground: false,
+        },
+        nodeOptions: {
+          x: centerX + offsetX - defaultWidth / 2,
+          y: centerY + offsetY - defaultHeight / 2,
+          position: { 
+            x: centerX + offsetX - defaultWidth / 2,
+            y: centerY + offsetY - defaultHeight / 2
+          },
+          width: defaultWidth,
+          height: defaultHeight,
+          resizable: true,
+        },
+        isMinimized: false,
+      }
+      
+      newItems.push(userFileItem)
+    }
+    
+    const updatedItems = [...currentItems, ...newItems]
+    
+    await dmScreensStore.updateDmScreen(
+      activeDmScreen.value.libraryId,
+      activeDmScreen.value.id,
+      { items: updatedItems }
+    )
+    
+    toast.success(`Added ${idsArray.length} file${idsArray.length > 1 ? 's' : ''} to DM screen`)
+    showFileManager.value = false
+  } catch (error: any) {
+    console.error('[DmScreenControlMenu] Failed to add files:', error)
+    toast.error('Failed to add files to DM screen')
   }
 }
 </script>

@@ -1,6 +1,7 @@
 <template>
   <v-card
     class="library-card glass-card"
+    :class="{ 'compact': compact }"
     elevation="0"
     hover
     @click="handleClick"
@@ -37,7 +38,7 @@
         {{ library.name }}
       </v-card-title>
 
-      <v-card-subtitle class="px-0 pb-4 text-grey-lighten-1">
+      <v-card-subtitle v-if="!compact" class="px-0 pb-4 text-grey-lighten-1">
         {{ library.description || 'No description' }}
       </v-card-subtitle>
 
@@ -111,6 +112,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 const props = defineProps<{
   library: Library
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -247,6 +249,48 @@ function handleShare() {
 
 .library-card:hover .card-glow {
   opacity: 1;
+}
+
+/* Compact Mode */
+.library-card.compact .library-card-content {
+  padding: 8px;
+}
+
+.library-card.compact .library-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+.library-card.compact .library-icon .v-icon {
+  font-size: 24px !important;
+}
+
+.library-card.compact .text-h5 {
+  font-size: 0.875rem !important;
+  padding-bottom: 4px !important;
+}
+
+.library-card.compact .library-stats {
+  padding: 4px 0;
+  margin-bottom: 8px;
+}
+
+.library-card.compact .stat-item {
+  font-size: 0.65rem;
+}
+
+.library-card.compact .library-actions .v-btn {
+  font-size: 0.75rem;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.library-card.compact .role-badge {
+  top: 4px;
+  right: 4px;
+  font-size: 0.65rem !important;
+  height: 20px !important;
 }
 </style>
 

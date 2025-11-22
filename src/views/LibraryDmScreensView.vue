@@ -70,6 +70,7 @@
         <dm-screen-card
           :dm-screen="dmScreen"
           :library-id="libraryId!"
+          :can-edit="canEdit"
           @edit="handleEdit"
           @delete="handleDelete"
           @set-active="handleSetActive"
@@ -268,14 +269,22 @@ async function handleCreateOrUpdate() {
 async function confirmDelete() {
   if (!deletingDmScreen.value || !libraryId.value) return
 
+  // Check if this is the active DM screen
+  if (dmScreensStore.activeDmScreen?.id === deletingDmScreen.value.id) {
+    toast.warning('Cannot delete the active DM screen. Please set another screen as active first.')
+    showDeleteDialog.value = false
+    deletingDmScreen.value = null
+    return
+  }
+
   isDeleting.value = true
   try {
     await dmScreensStore.deleteDmScreen(libraryId.value, deletingDmScreen.value.id)
     toast.success('DM screen deleted successfully')
     showDeleteDialog.value = false
     deletingDmScreen.value = null
-  } catch (error) {
-    toast.error('Failed to delete DM screen')
+  } catch (error: any) {
+    toast.error(error?.response?.data?.error || 'Failed to delete DM screen')
   } finally {
     isDeleting.value = false
   }

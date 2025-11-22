@@ -39,12 +39,16 @@ const imageStyle = computed(() => {
   height: 100%;
   pointer-events: none;
   user-select: none;
+  border: none;
+  outline: none;
 }
 
 .dm-screen-background-node img {
   width: 100%;
   height: auto;
   display: block;
+  border: none;
+  outline: none;
 }
 </style>
 

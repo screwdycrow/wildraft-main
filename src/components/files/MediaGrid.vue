@@ -10,10 +10,13 @@
         :selectable="selectable"
         :deletable="deletable"
         :show-view-action="showViewAction"
+        :show-move-menu="showMoveMenu"
+        :available-folders="availableFolders"
         @click="$emit('file-click', file)"
         @toggle-select="$emit('toggle-select', file)"
         @delete="$emit('delete', file)"
         @view="$emit('view', file)"
+        @move-to-folder="(file, categoryId) => $emit('move-to-folder', file, categoryId)"
       />
     </div>
 
@@ -75,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import type { UserFile } from '@/api/files'
+import type { UserFile, FileCategory } from '@/api/files'
 import { formatFileSize, getFileIcon } from '@/api/files'
 import MediaCard from './MediaCard.vue'
 
@@ -86,6 +89,8 @@ interface Props {
   deletable?: boolean
   selectedFiles?: Set<number>
   showViewAction?: boolean
+  showMoveMenu?: boolean
+  availableFolders?: FileCategory[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -94,6 +99,8 @@ const props = withDefaults(defineProps<Props>(), {
   deletable: false,
   selectedFiles: () => new Set(),
   showViewAction: false,
+  showMoveMenu: false,
+  availableFolders: () => [],
 })
 
 defineEmits<{
@@ -101,6 +108,7 @@ defineEmits<{
   'toggle-select': [file: UserFile]
   delete: [file: UserFile]
   view: [file: UserFile]
+  'move-to-folder': [file: UserFile, categoryId: number | null]
 }>()
 
 const isSelected = (fileId: number) => props.selectedFiles.has(fileId)

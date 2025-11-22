@@ -54,15 +54,18 @@
         </v-btn>
 
         <v-menu location="bottom">
-          <template #activator="{ props }">
+          <template #activator="{ props: menuProps }">
             <v-btn
-              v-bind="props"
+              v-bind="menuProps"
               icon="mdi-dots-vertical"
               variant="text"
-              size="small"
+              size="default"
               class="action-menu-btn"
+              color="grey-lighten-1"
               @click.stop
-            />
+            >
+              <v-icon>mdi-dots-vertical</v-icon>
+            </v-btn>
           </template>
           <v-list class="glass-menu">
             <v-list-item
@@ -71,18 +74,20 @@
               :disabled="isActive"
               @click="handleSetActive"
             />
-            <v-list-item
-              prepend-icon="mdi-pencil"
-              title="Edit"
-              @click="handleEdit"
-            />
-            <v-divider class="my-2" />
-            <v-list-item
-              prepend-icon="mdi-delete"
-              title="Delete"
-              class="text-error"
-              @click="handleDelete"
-            />
+            <template v-if="props.canEdit">
+              <v-divider class="my-2" />
+              <v-list-item
+                prepend-icon="mdi-pencil"
+                title="Edit"
+                @click="handleEdit"
+              />
+              <v-list-item
+                prepend-icon="mdi-delete"
+                title="Delete"
+                class="text-error"
+                @click="handleDelete"
+              />
+            </template>
           </v-list>
         </v-menu>
       </div>
@@ -100,10 +105,13 @@ import type { DmScreen } from '@/types/dmScreen.types'
 import { formatDistanceToNow } from 'date-fns'
 import { useDmScreensStore } from '@/stores/dmScreens'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   dmScreen: DmScreen
   libraryId: number
-}>()
+  canEdit?: boolean
+}>(), {
+  canEdit: true
+})
 
 const emit = defineEmits<{
   edit: [dmScreen: DmScreen]
@@ -210,14 +218,26 @@ function handleSetActive() {
   display: flex;
   gap: 8px;
   align-items: center;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .dm-screen-actions .v-btn:first-child {
   flex: 1;
+  min-width: 0;
 }
 
 .action-menu-btn {
   flex-shrink: 0;
+  min-width: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  opacity: 0.8;
+}
+
+.action-menu-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .card-glow {

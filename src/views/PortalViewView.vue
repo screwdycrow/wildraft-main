@@ -227,12 +227,12 @@ const handlePortalViewUpdated = (payload: any) => {
       showOnTopItem.value = null
     } else {
       // Show the new item
-      if (payload.item) {
-        // Already a PortalViewItem
-        showOnTopItem.value = payload.item
-        showOnTopVisible.value = true
-      } else if (payload.userFile) {
-        // Map UserFile to PortalViewItem
+    if (payload.item) {
+      // Already a PortalViewItem
+      showOnTopItem.value = payload.item
+      showOnTopVisible.value = true
+    } else if (payload.userFile) {
+      // Map UserFile to PortalViewItem
         let type: 'VideoViewer' | 'PDFViewer' | 'ImageViewer' = 'ImageViewer'
         if (payload.userFile.fileType.startsWith('video/')) {
           type = 'VideoViewer'
@@ -247,7 +247,7 @@ const handlePortalViewUpdated = (payload: any) => {
           type,
           object: payload.userFile
         }
-        showOnTopVisible.value = true
+      showOnTopVisible.value = true
       }
     }
   }

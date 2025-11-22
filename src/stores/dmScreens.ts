@@ -16,6 +16,7 @@ interface CacheMetadata {
 }
 
 const ACTIVE_DM_SCREEN_KEY = 'wildraft-active-dm-screen'
+const CARDS_IN_HAND_ENABLED_KEY = 'wildraft-cards-in-hand-enabled'
 
 export const useDmScreensStore = defineStore('dmScreens', () => {
   // State
@@ -24,6 +25,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
   const activeDmScreen = ref<DmScreen | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const cardsInHandEnabled = ref<boolean>(true)
 
   // Cache metadata
   const cacheMetadata = ref<CacheMetadata>({
@@ -50,6 +52,33 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
       activeDmScreen.value = null
     }
   }
+
+  // Load cards in hand enabled state from localStorage
+  const loadCardsInHandEnabled = () => {
+    try {
+      const stored = localStorage.getItem(CARDS_IN_HAND_ENABLED_KEY)
+      if (stored !== null) {
+        cardsInHandEnabled.value = JSON.parse(stored)
+      } else {
+        cardsInHandEnabled.value = true // Default to enabled
+      }
+    } catch (error) {
+      console.error('Failed to load cards in hand enabled state:', error)
+      cardsInHandEnabled.value = true
+    }
+  }
+
+  // Watch cards in hand enabled and save to localStorage
+  watch(cardsInHandEnabled, (newValue) => {
+    try {
+      localStorage.setItem(CARDS_IN_HAND_ENABLED_KEY, JSON.stringify(newValue))
+    } catch (error) {
+      console.error('Failed to save cards in hand enabled state:', error)
+    }
+  })
+
+  // Initialize cards in hand enabled state
+  loadCardsInHandEnabled()
   
   // Watch active DM screen and save to localStorage
   watch(activeDmScreen, (newValue) => {
@@ -263,11 +292,24 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
    */
   function convertLibraryItemToDmScreenItem(
     libraryItem: LibraryItem,
-    featuredImageUrl?: string | null
+    featuredImageUrl?: string | null,
+    order?: number
   ): DmScreenItem {
+    // If no order provided, get the next order value
+    if (order === undefined && activeDmScreen.value?.items) {
+      const libraryItems = activeDmScreen.value.items.filter(item => item.type === 'LibraryItemId')
+      const maxOrder = libraryItems.reduce((max, item) => {
+        return Math.max(max, item.order ?? -1)
+      }, -1)
+      order = maxOrder + 1
+    } else if (order === undefined) {
+      order = 0
+    }
+
     return {
       id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'LibraryItemId',
+      order,
       data: {
         id: libraryItem.id,
         featuredImageUrl: featuredImageUrl || undefined,
@@ -319,6 +361,14 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     }
   }
 
+  function setCardsInHandEnabled(enabled: boolean) {
+    cardsInHandEnabled.value = enabled
+  }
+
+  function toggleCardsInHand() {
+    cardsInHandEnabled.value = !cardsInHandEnabled.value
+  }
+
   return {
     // State
     dmScreens,
@@ -326,6 +376,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     activeDmScreen,
     isLoading,
     error,
+    cardsInHandEnabled,
     // Getters
     sortedDmScreens,
     getDmScreenById,
@@ -339,6 +390,8 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     convertLibraryItemToDmScreenItem,
     convertUserFileToDmScreenItem,
     clearCache,
+    setCardsInHandEnabled,
+    toggleCardsInHand,
   }
 })
 

@@ -17,6 +17,7 @@ export interface FileConfirmRequest {
   fileType: string
   fileSize: number
   filePath: string
+  categoryId?: number | null
 }
 
 export interface UserFile {
@@ -26,9 +27,27 @@ export interface UserFile {
   fileName: string
   fileType: string
   fileSize: number
+  categoryId: number | null
   downloadUrl: string
   createdAt: string
   updatedAt: string
+}
+
+export interface FileCategory {
+  id: number
+  name: string
+  libraryId: number
+  fileCount?: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateFileCategoryPayload {
+  name: string
+}
+
+export interface UpdateFileCategoryPayload {
+  name: string
 }
 
 export interface FilesListResponse {
@@ -48,6 +67,12 @@ export const confirmUpload = async (data: FileConfirmRequest): Promise<UserFile>
   return response.data
 }
 
+// Update file (e.g., category)
+export const updateFile = async (fileId: number, data: { categoryId?: number | null }): Promise<{ message: string; file: UserFile }> => {
+  const response = await apiClient.put(`/files/${fileId}`, data)
+  return response.data
+}
+
 // Direct upload (for small files)
 export const uploadFile = async (data: {
   fileName: string
@@ -55,6 +80,7 @@ export const uploadFile = async (data: {
   fileSize: number
   filePath: string
   fileBuffer: string // base64
+  categoryId?: number | null
 }): Promise<UserFile> => {
   const response = await apiClient.post('/files/upload', data)
   return response.data
@@ -66,6 +92,15 @@ export const listFiles = async (params: {
   offset?: number
 }): Promise<FilesListResponse> => {
   const response = await apiClient.get('/files', { params })
+  return response.data
+}
+
+// List uncategorized files
+export const listUncategorizedFiles = async (params: {
+  limit?: number
+  offset?: number
+}): Promise<FilesListResponse> => {
+  const response = await apiClient.get('/files/uncategorized', { params })
   return response.data
 }
 

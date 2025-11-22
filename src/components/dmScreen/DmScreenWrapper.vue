@@ -1,8 +1,15 @@
 <template>
   <div class="dm-screen-wrapper">
-    <div class="dm-screen-flow-container" :style="canvasBackgroundStyle">
+    <div 
+      class="dm-screen-flow-container" 
+      :style="canvasBackgroundStyle"
+      @dragover="handleDragOver"
+      @drop="handleDrop"
+    >
       <VueFlow
         v-if="dmScreen"
+        :key="dmScreen.id"
+        ref="vueFlowRef"
         :nodes="allNodes"
         :edges="edges"
         :node-types="nodeTypes"
@@ -398,6 +405,7 @@ import { debounce } from '@/utils/helpers'
 
 // Get Vue Flow instance for viewport calculations
 const { project, viewport, getNode } = useVueFlow()
+const vueFlowRef = ref<any>(null)
 
 // Register custom node types
 const nodeTypes = {
@@ -530,10 +538,51 @@ async function addShapeNode() {
   }
 }
 
+// Handle adding a UserFile to the DM screen
+async function addUserFile(userFile: any) {
+  if (!props.dmScreen.items) return
+
+  try {
+    const fileItem: DmScreenItem = dmScreensStore.convertUserFileToDmScreenItem(userFile)
+    
+    // Center the item in the viewport
+    const center = getViewportCenter(300, 200)
+    fileItem.nodeOptions = {
+      ...fileItem.nodeOptions,
+      x: center.x,
+      y: center.y,
+      position: center,
+    }
+
+    const updatedItems = [...(props.dmScreen.items || []), fileItem]
+
+    // Update local state immediately
+    const currentScreen = dmScreensStore.dmScreens.find(
+      (ds: DmScreen) => ds.id === props.dmScreen.id
+    )
+    if (currentScreen) {
+      currentScreen.items = updatedItems
+    }
+
+    // Save to API
+    await dmScreensStore.updateDmScreen(
+      props.dmScreen.libraryId,
+      props.dmScreen.id,
+      { items: updatedItems }
+    )
+
+    toast.success('File added to DM screen')
+  } catch (error: any) {
+    console.error('[DmScreenWrapper] Failed to add file:', error)
+    toast.error('Failed to add file')
+  }
+}
+
 // Expose methods for parent component
 defineExpose({
   addItem: () => { showItemSelector.value = true },
   addBackground: () => { showFileManager.value = true },
+  addUserFile,
   openSettings: () => { showSettingsDialog.value = true },
   toggleLockBackground: () => {
     localLockBackgroundImages.value = !localLockBackgroundImages.value
@@ -585,6 +634,66 @@ defineExpose({
     }
   },
   deleteItem: (itemId: string) => handleItemDelete(itemId),
+  rotateItem: (item: DmScreenItem | null, degrees: number) => {
+    if (!item || !props.dmScreen.items) return
+    
+    const currentRotation = item.nodeOptions?.rotation || 0
+    const newRotation = (currentRotation + degrees) % 360
+    
+    const updatedItems = props.dmScreen.items.map((i: DmScreenItem) => {
+      if (i.id === item.id) {
+        return {
+          ...i,
+          nodeOptions: {
+            ...i.nodeOptions,
+            rotation: newRotation,
+          },
+        }
+      }
+      return i
+    })
+    
+    // Update local state immediately
+    const currentScreen = dmScreensStore.dmScreens.find(
+      (ds: DmScreen) => ds.id === props.dmScreen.id
+    )
+    if (currentScreen) {
+      currentScreen.items = updatedItems
+    }
+    
+    // Debounced update
+    debouncedUpdate(updatedItems)
+  },
+  setItemRotation: (item: DmScreenItem | null, rotation: number) => {
+    if (!item || !props.dmScreen.items) return
+    
+    // Normalize rotation to 0-360
+    const normalizedRotation = ((rotation % 360) + 360) % 360
+    
+    const updatedItems = props.dmScreen.items.map((i: DmScreenItem) => {
+      if (i.id === item.id) {
+        return {
+          ...i,
+          nodeOptions: {
+            ...i.nodeOptions,
+            rotation: normalizedRotation,
+          },
+        }
+      }
+      return i
+    })
+    
+    // Update local state immediately
+    const currentScreen = dmScreensStore.dmScreens.find(
+      (ds: DmScreen) => ds.id === props.dmScreen.id
+    )
+    if (currentScreen) {
+      currentScreen.items = updatedItems
+    }
+    
+    // Debounced update
+    debouncedUpdate(updatedItems)
+  },
 })
 
 const dmScreensStore = useDmScreensStore()
@@ -801,8 +910,6 @@ const itemNodes = computed<Node[]>(() => {
   const nodes = props.dmScreen.items.map((item: DmScreenItem) => {
     const nodeOptions = item.nodeOptions || {}
     const position = nodeOptions.position || { x: 0, y: 0 }
-    const defaultWidth = 300
-    const defaultHeight = item.isMinimized ? 100 : 200
     
     // Check if this is a background image
     const isBackground = item.data.isBackground === true
@@ -813,6 +920,24 @@ const itemNodes = computed<Node[]>(() => {
     
     if (isBackground) {
       console.log('[DmScreenWrapper] Creating background node with opacity:', backgroundOpacity, 'for item:', item.id)
+    }
+    
+    const rotation = nodeOptions.rotation || 0
+    
+    // Determine dimensions based on minimized state
+    let nodeWidth: number
+    let nodeHeight: number
+    
+    if (item.isMinimized) {
+      // Use stored minimized dimensions if resized, otherwise default to 150x150
+      nodeWidth = nodeOptions.width || item.minimizedDimensions?.width || 150
+      nodeHeight = nodeOptions.height || item.minimizedDimensions?.height || 150
+    } else {
+      // Full size dimensions - use fullWidth/fullHeight if available (from minimize), otherwise use current dimensions
+      const defaultWidth = 300
+      const defaultHeight = 200
+      nodeWidth = nodeOptions.fullWidth || nodeOptions.width || (isBackground ? localBackgroundImageWidth.value : defaultWidth)
+      nodeHeight = nodeOptions.fullHeight || nodeOptions.height || (isBackground ? Math.round((nodeOptions.width || localBackgroundImageWidth.value) * 0.75) : defaultHeight)
     }
     
     return {
@@ -831,20 +956,28 @@ const itemNodes = computed<Node[]>(() => {
         onUpdate: handleItemUpdate,
         onDelete: handleItemDelete,
         backgroundOpacity,
+        rotation,
       },
       draggable: !isLocked,
       selectable: !isLocked,
-      resizable: !item.isMinimized && !isLocked,
+      resizable: true, // Always allow resizing (NodeResizer handles it)
       style: {
-        width: `${nodeOptions.width || (isBackground ? localBackgroundImageWidth.value : defaultWidth)}px`,
-        minWidth: isBackground ? '200px' : '200px',
+        // Don't set width/height in style - let Vue Flow handle it via width/height props
+        minWidth: item.isMinimized ? '20px' : (isBackground ? '100px' : '100px'),
+        minHeight: item.isMinimized ? '20px' : (isBackground ? '100px' : '100px'),
         opacity: backgroundOpacity,
         ...nodeOptions.style,
+        // Don't apply rotation here - it's handled in DmScreenFlowNode
       },
-      width: nodeOptions.width || (isBackground ? localBackgroundImageWidth.value : defaultWidth),
-      height: nodeOptions.height || (isBackground ? Math.round((nodeOptions.width || localBackgroundImageWidth.value) * 0.75) : defaultHeight),
+      width: nodeWidth,
+      height: nodeHeight,
+      dimensions: {
+        width: nodeWidth,
+        height: nodeHeight,
+      },
       class: nodeOptions.class || '',
       zIndex: isBackground ? -1 : 1, // Background images stay at the back
+      rotation,
       ...nodeOptions,
     }
   })
@@ -956,6 +1089,19 @@ function onNodesChange(changes: NodeChange[]) {
       newOptions.width = dimChange.dimensions.width
       newOptions.height = dimChange.dimensions.height
       updated = true
+      
+      // If item is minimized, update minimizedDimensions too
+      if (item.isMinimized) {
+        const newItem = {
+          ...item,
+          nodeOptions: newOptions,
+          minimizedDimensions: {
+            width: dimChange.dimensions.width,
+            height: dimChange.dimensions.height,
+          }
+        }
+        return newItem
+      }
     }
     
     if (updated) {
@@ -1170,6 +1316,25 @@ async function handleAddLibraryItem(libraryItem: LibraryItem) {
   }
 }
 
+// Helper function to get image dimensions and calculate height
+async function getImageDimensions(fileId: number): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    filesStore.getDownloadUrl(fileId).then(url => {
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => {
+        // Fallback to default aspect ratio (4:3)
+        resolve({ width: 500, height: 375 })
+      }
+      img.src = url
+    }).catch(() => {
+      resolve({ width: 500, height: 375 })
+    })
+  })
+}
+
 // Handle background image selection (supports multiple backgrounds)
 async function handleBackgroundImageSelect(fileId: number | number[] | string | string[]) {
   // Convert to number if needed
@@ -1181,6 +1346,12 @@ async function handleBackgroundImageSelect(fileId: number | number[] | string | 
   }
 
   try {
+    // Get image dimensions to calculate correct aspect ratio
+    const { width: imgWidth, height: imgHeight } = await getImageDimensions(id)
+    const aspectRatio = imgHeight / imgWidth
+    const fixedWidth = 500
+    const calculatedHeight = Math.round(fixedWidth * aspectRatio)
+
     // Create new background image item (allow multiple backgrounds)
     const existingBackgroundCount = props.dmScreen.items?.filter((item: DmScreenItem) => 
       item.type === 'UserFileId' && item.data.isBackground === true
@@ -1189,7 +1360,8 @@ async function handleBackgroundImageSelect(fileId: number | number[] | string | 
     console.log('[DmScreenWrapper] Adding background image:', {
       fileId: id,
       existingBackgroundCount,
-      currentItemsCount: props.dmScreen.items?.length || 0
+      currentItemsCount: props.dmScreen.items?.length || 0,
+      dimensions: { width: fixedWidth, height: calculatedHeight, aspectRatio }
     })
 
     const backgroundItem: DmScreenItem = {
@@ -1206,8 +1378,8 @@ async function handleBackgroundImageSelect(fileId: number | number[] | string | 
           x: 100 + (existingBackgroundCount * 50), 
           y: 100 + (existingBackgroundCount * 50)
         },
-        width: localBackgroundImageWidth.value,
-        height: Math.round(localBackgroundImageWidth.value * 0.75),
+        width: fixedWidth,
+        height: calculatedHeight,
         resizable: true,
       },
       isMinimized: false,
@@ -1320,6 +1492,171 @@ function removeCanvasBackground() {
   toast.success('Canvas background removed')
 }
 
+// Handle drag over
+function handleDragOver(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+// Handle drop from kitbashing drawers
+async function handleDrop(event: DragEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  console.log('[DmScreenWrapper] Drop event received', event)
+  
+  if (!event.dataTransfer) {
+    console.warn('[DmScreenWrapper] No dataTransfer in drop event')
+    return
+  }
+  
+  try {
+    // Try to get data from application/json first
+    let data = event.dataTransfer.getData('application/json')
+    let parsed: any = null
+    
+    if (data) {
+      try {
+        parsed = JSON.parse(data)
+        console.log('[DmScreenWrapper] Parsed JSON data:', parsed)
+      } catch (e) {
+        console.warn('[DmScreenWrapper] Failed to parse JSON data:', e)
+      }
+    }
+    
+    // Fallback to text/plain format (file:123)
+    if (!parsed || !parsed.fileId) {
+      const textData = event.dataTransfer.getData('text/plain')
+      console.log('[DmScreenWrapper] Text data:', textData)
+      if (textData && textData.startsWith('file:')) {
+        const fileId = parseInt(textData.replace('file:', ''), 10)
+        if (!isNaN(fileId)) {
+          parsed = { type: 'user-file-background', fileId }
+          console.log('[DmScreenWrapper] Parsed from text data:', parsed)
+        }
+      }
+    }
+    
+    // Accept both 'user-file-background' and 'user-file' types
+    // (LazyFilePreview might override the type, but we can still process it)
+    if (!parsed || !parsed.fileId) {
+      console.warn('[DmScreenWrapper] Invalid drop data:', parsed)
+      return
+    }
+    
+    // Check if it's a user file (either type)
+    const isUserFile = parsed.type === 'user-file-background' || parsed.type === 'user-file'
+    if (!isUserFile) {
+      console.warn('[DmScreenWrapper] Drop data is not a user file:', parsed)
+      return
+    }
+    
+    const isBackground = parsed.type === 'user-file-background'
+    console.log('[DmScreenWrapper] Processing user file drop:', parsed.fileId, 'type:', parsed.type, 'isBackground:', isBackground)
+    
+    // Get drop position in flow coordinates
+    const dropPosition = project({ x: event.clientX, y: event.clientY })
+    console.log('[DmScreenWrapper] Drop position:', { clientX: event.clientX, clientY: event.clientY, flow: dropPosition })
+    
+    let newItem: DmScreenItem
+    
+    if (isBackground) {
+      // Background image: fixed width with aspect ratio
+      // Get image dimensions to calculate correct aspect ratio
+      let imgWidth = 500
+      let imgHeight = 375
+      let aspectRatio = 0.75
+      
+      try {
+        const dimensions = await getImageDimensions(parsed.fileId)
+        imgWidth = dimensions.width
+        imgHeight = dimensions.height
+        aspectRatio = imgHeight / imgWidth
+      } catch (error) {
+        console.warn('[DmScreenWrapper] Failed to get image dimensions, using default aspect ratio:', error)
+        // Continue with default 4:3 aspect ratio
+      }
+      
+      const fixedWidth = 500
+      const calculatedHeight = Math.round(fixedWidth * aspectRatio)
+      
+      console.log('[DmScreenWrapper] Image dimensions:', { imgWidth, imgHeight, aspectRatio, calculatedHeight })
+      
+      newItem = {
+        id: `background-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'UserFileId',
+        data: {
+          id: parsed.fileId,
+          isBackground: true,
+        },
+        nodeOptions: {
+          x: dropPosition.x - fixedWidth / 2,
+          y: dropPosition.y - calculatedHeight / 2,
+          position: { 
+            x: dropPosition.x - fixedWidth / 2,
+            y: dropPosition.y - calculatedHeight / 2
+          },
+          width: fixedWidth,
+          height: calculatedHeight,
+          resizable: true,
+        },
+        isMinimized: false,
+      }
+    } else {
+      // Regular UserFile node: default size for MediaCard
+      const defaultWidth = 300
+      const defaultHeight = 400
+      
+      newItem = {
+        id: `userfile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'UserFileId',
+        data: {
+          id: parsed.fileId,
+          isBackground: false,
+        },
+        nodeOptions: {
+          x: dropPosition.x - defaultWidth / 2,
+          y: dropPosition.y - defaultHeight / 2,
+          position: { 
+            x: dropPosition.x - defaultWidth / 2,
+            y: dropPosition.y - defaultHeight / 2
+          },
+          width: defaultWidth,
+          height: defaultHeight,
+          resizable: true,
+        },
+        isMinimized: false,
+      }
+    }
+    
+    console.log('[DmScreenWrapper] Created user file item:', newItem)
+    
+    const updatedItems = [...(props.dmScreen.items || []), newItem]
+    
+    const currentScreen = dmScreensStore.dmScreens.find(
+      (ds: DmScreen) => ds.id === props.dmScreen.id
+    )
+    if (currentScreen) {
+      currentScreen.items = updatedItems
+    }
+    
+    await dmScreensStore.updateDmScreen(
+      props.dmScreen.libraryId,
+      props.dmScreen.id,
+      { items: updatedItems }
+    )
+    
+    console.log('[DmScreenWrapper] User file added successfully')
+    toast.success(isBackground ? 'Background image added' : 'File added to DM screen')
+  } catch (error) {
+    console.error('[DmScreenWrapper] Failed to handle drop:', error)
+    toast.error('Failed to add image')
+  }
+}
+
 // Save settings
 function saveSettings() {
   const updatedSettings: DmScreenSettings = {
@@ -1355,7 +1692,6 @@ function saveSettings() {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding-bottom: 80px; /* Space for floating toolbar */
 }
 
 .dm-screen-flow-container {
