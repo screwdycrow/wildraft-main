@@ -60,6 +60,18 @@
               <v-col cols="12" md="8">
                 <div class="import-section">
                   <h3 class="text-h6 mb-3">Paste JSON Data</h3>
+                  
+                  <!-- Note Customization -->
+                  <v-expand-transition>
+                    <note-prompt-customization
+                      v-if="isNoteType && !isMultipleMode"
+                      v-model:note-type="noteCustomization.noteType"
+                      v-model:theme="noteCustomization.theme"
+                      v-model:additional-context="noteCustomization.additionalContext"
+                      v-model:num-chapters="noteCustomization.numChapters"
+                    />
+                  </v-expand-transition>
+
                   <v-textarea
                     v-model="jsonInput"
                     :placeholder="`Paste your ${schema!.title.toLowerCase()} JSON here...`"
@@ -320,6 +332,7 @@
 import { ref, computed, watch } from 'vue'
 import type { ItemType, CreateLibraryItemPayload, LibraryItem } from '@/types/item.types'
 import { useItemComponents, type JsonImportSchema } from '@/composables/useItemComponents'
+import NotePromptCustomization from './NotePromptCustomization.vue'
 
 interface Props {
   modelValue: boolean
@@ -350,7 +363,16 @@ const parseSuccess = ref(false)
 const promptCopied = ref(false)
 const importDescription = ref(true) // Default to importing description
 
+// Note customization
+const noteCustomization = ref({
+  noteType: 'general',
+  theme: '',
+  additionalContext: '',
+  numChapters: 0
+})
+
 const hasCurrentItem = computed(() => !!props.currentItem)
+const isNoteType = computed(() => props.itemType === 'NOTE')
 
 const schema = computed(() => {
   if (!props.itemType) return null
@@ -432,6 +454,13 @@ function resetState() {
   parseSuccess.value = false
   isValidating.value = false
   importDescription.value = true // Reset to default (import description)
+  // Reset note customization
+  noteCustomization.value = {
+    noteType: 'general',
+    theme: '',
+    additionalContext: '',
+    numChapters: 0
+  }
 }
 
 function loadExample() {
@@ -470,7 +499,14 @@ function loadBulkExample() {
 async function copyPrompt() {
   if (!schema.value) return
 
-  const prompt = generateAIPrompt(schema.value)
+  const customParams = props.itemType === 'NOTE' ? {
+    noteType: noteCustomization.value.noteType,
+    theme: noteCustomization.value.theme,
+    additionalContext: noteCustomization.value.additionalContext,
+    numChapters: noteCustomization.value.numChapters
+  } : undefined
+
+  const prompt = generateAIPrompt(schema.value, customParams)
   await copyToClipboard(prompt)
 }
 
@@ -502,7 +538,7 @@ async function copyToClipboard(text: string) {
   }
 }
 
-function generateAIPrompt(schema: JsonImportSchema): string {
+function generateAIPrompt(schema: JsonImportSchema, customParams?: Record<string, any>): string {
   const schemaMap = schema.schema as Record<string, string>
   const requiredFields = Object.entries(schemaMap)
     .filter(([, desc]) => desc.includes('(required)'))
@@ -511,6 +547,34 @@ function generateAIPrompt(schema: JsonImportSchema): string {
   const optionalFields = Object.entries(schemaMap)
     .filter(([, desc]) => !desc.includes('(required)'))
     .map(([field]) => field)
+
+  // Special handling for NOTE type with customization
+  if (schema.title === 'Note' && customParams) {
+    return generateNotePrompt(schema, customParams)
+  }
+
+  // Enhanced prompts for stat blocks and characters
+  const isStatBlock = schema.title.includes('Stat Block')
+  const isCharacter = schema.title.includes('Character')
+  
+  let instructions = `- Generate a complete, valid JSON object
+- Use realistic values appropriate for the item type
+- Follow the exact field naming and structure shown above
+- Include arrays where specified (even if empty)
+- Use proper data types (strings, numbers, booleans, arrays, objects)
+- Do not include any fields not listed in the specifications above`
+
+  if (isStatBlock || isCharacter) {
+    instructions += `
+
+CRITICAL FOR ACTIONS AND SPELLS:
+- For actions with attack rolls: Include "toHit" with the attack bonus (e.g., "+5", "+3"). Calculate from ability modifier + proficiency bonus.
+- For actions/spells with damage: Include "roll" with damage dice and type (e.g., "1d6 fire", "2d8+3 slashing"). Do NOT include to-hit bonuses here.
+- For actions/spells requiring saving throws: Include "dc" with ability (e.g., "15 DEX", "18 CON"). Calculate from 8 + ability modifier + proficiency bonus.
+- Always include detailed "description" fields with full mechanical text, including hit/miss effects, range, area of effect, and flavor text.
+- For spells: Include all spell details (school, casting time, range, components, duration, concentration, ritual) as specified.
+- Make descriptions playable and complete - include all information a player/DM needs to use the action or spell.`
+  }
 
   return `Please generate a JSON object for a ${schema.title} with the following specifications:
 
@@ -521,12 +585,109 @@ OPTIONAL FIELDS:
 ${optionalFields.map(field => `- ${field}: ${schemaMap[field]}`).join('\n')}
 
 INSTRUCTIONS:
-- Generate a complete, valid JSON object
-- Use realistic values appropriate for the item type
+${instructions}
+
+EXAMPLE OUTPUT FORMAT:
+${schema.example}
+
+Please provide only the JSON object, no additional text or explanations.`
+}
+
+function generateNotePrompt(schema: JsonImportSchema, customParams: Record<string, any>): string {
+  const noteType = customParams.noteType || 'general'
+  const theme = customParams.theme || ''
+  const additionalContext = customParams.additionalContext || ''
+  const numChapters = customParams.numChapters || 0
+
+  const noteTypeTemplates: Record<string, string> = {
+    dungeon: `Generate a detailed dungeon note with:
+- Main content: Overview of the dungeon, its history, purpose, and general layout
+- Chapters should include: Entrance/Overview, Key Rooms/Areas, Traps and Hazards, Encounters, Treasure/Loot, Boss/Climax
+- Include specific room descriptions, trap mechanics, monster placements, and treasure locations
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it playable and detailed enough for a DM to run the dungeon`,
+    
+    npc: `Generate a detailed NPC note with:
+- Main content: Overview of the NPC, their role in the story, and general personality
+- Chapters should include: Background/History, Personality & Traits, Goals & Motivations, Relationships, Secrets/Information, Plot Hooks
+- Include specific dialogue examples, mannerisms, and how they interact with the party
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it detailed enough for a DM to roleplay the NPC convincingly`,
+    
+    shop: `Generate a detailed shop/merchant note with:
+- Main content: Overview of the shop, its location, owner, and general atmosphere
+- Chapters should include: Shop Description, Inventory/Items for Sale, Prices, Special Services, Owner Details, Plot Hooks
+- Include specific items with prices, rarity, and descriptions
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it playable with ready-to-use items and prices`,
+    
+    loot: `Generate a detailed loot/treasure note with:
+- Main content: Overview of the treasure hoard, its location, and how it was obtained
+- Chapters should include: Treasure Overview, Magic Items, Gold & Gems, Mundane Items, Distribution Notes, Plot Significance
+- Include specific items with descriptions, values, and any magical properties
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it detailed with specific items ready to give to players`,
+    
+    location: `Generate a detailed location note with:
+- Main content: Overview of the location, its history, and significance
+- Chapters should include: Description, History, Notable Features, Inhabitants, Points of Interest, Plot Hooks
+- Include specific details about the environment, atmosphere, and what makes it unique
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it immersive and detailed enough for a DM to describe the location`,
+    
+    town: `Generate a detailed town/city note with:
+- Main content: Overview of the town, its location, size, population, and general atmosphere
+- Chapters should include: Town Overview & History, Districts/Neighborhoods, Key Locations (shops, inns, temples, etc.), Notable NPCs, Government & Law, Economy & Trade, Culture & Customs, Plot Hooks & Events
+- Include specific locations with descriptions, NPCs with brief backgrounds, services available, prices, and notable features
+- Describe the town's layout, architecture, and what makes it unique or memorable
+- Include information about local laws, customs, festivals, and how the town interacts with adventurers
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it detailed and playable enough for a DM to run the town as a living, breathing location`,
+    
+    quest: `Generate a detailed quest note with:
+- Main content: Overview of the quest, its objectives, and importance
+- Chapters should include: Quest Overview, Objectives, Rewards, NPCs Involved, Locations, Complications
+- Include specific objectives, rewards, and how the quest progresses
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it playable with clear objectives and progression`,
+    
+    session: `Generate a detailed session notes with:
+- Main content: Overview of the session, what happened, and key events
+- Chapters should include: Session Summary, Key Events, NPCs Met, Locations Visited, Combat Encounters, Loot Gained, Plot Developments
+- Include specific details about what happened, decisions made, and consequences
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it a comprehensive record of the session`,
+    
+    general: `Generate a detailed note with:
+- Main content: Overview of the topic
+- Chapters: Organize content into logical sections
+- Use HTML formatting: <p> for paragraphs, <ul>/<ol> for lists, <strong> for emphasis
+- Make it detailed and useful`
+  }
+
+  const template = noteTypeTemplates[noteType] || noteTypeTemplates.general
+  const chaptersInstruction = numChapters > 0 
+    ? `\n- Generate exactly ${numChapters} chapter${numChapters > 1 ? 's' : ''} with meaningful titles and content`
+    : '\n- Include 2-4 chapters to organize the content logically'
+
+  return `Please generate a JSON object for a ${schema.title} (${noteType} type) with the following specifications:
+
+REQUIRED FIELDS:
+- name: string (required) - Note title
+- content: string (required) - Main note content (use HTML: <p> for paragraphs, <ul>/<ol> for lists, <strong>/<em> for emphasis)
+
+OPTIONAL FIELDS:
+- chapters: array (optional) - Additional chapters for organizing content
+  - chapters[].order: number (optional) - Chapter order (auto-assigned if not provided)
+  - chapters[].title: string (required) - Chapter title
+  - chapters[].content: string (required) - Chapter content (use HTML formatting)
+- isPinned: boolean (optional) - Whether the note is pinned (default: false)
+
+INSTRUCTIONS:
+${template}${chaptersInstruction}${theme ? `\n- Theme/Style: ${theme}` : ''}${additionalContext ? `\n- Additional Context: ${additionalContext}` : ''}
+- Use HTML formatting for rich text content
+- Make content detailed, playable, and useful for D&D gameplay
 - Follow the exact field naming and structure shown above
-- Include arrays where specified (even if empty)
-- Use proper data types (strings, numbers, booleans, arrays, objects)
-- Do not include any fields not listed in the specifications above
 
 EXAMPLE OUTPUT FORMAT:
 ${schema.example}
@@ -681,8 +842,40 @@ function validateJson() {
 
       // Check required fields for this item type
       for (const [field] of Object.entries(requiredFields.value)) {
-        if (!(field in parsed) || parsed[field] === null || parsed[field] === undefined || parsed[field] === '') {
-          parseError.value.push(`Missing required field: "${field}"`)
+        // Handle nested array fields like "spells[].name" or "actions[].name"
+        if (field.includes('[]')) {
+          const [arrayField, nestedField] = field.split('[]')
+          const arrayFieldName = arrayField.replace(/\[$/, '')
+          
+          // Check if the array exists and is actually an array
+          if (parsed[arrayFieldName]) {
+            if (!Array.isArray(parsed[arrayFieldName])) {
+              parseError.value.push(`Field "${arrayFieldName}" must be an array`)
+              continue
+            }
+            
+            // Validate each item in the array
+            const arrayItems = parsed[arrayFieldName]
+            for (let i = 0; i < arrayItems.length; i++) {
+              const item = arrayItems[i]
+              if (!item || typeof item !== 'object') {
+                parseError.value.push(`${arrayFieldName}[${i}]: Must be an object`)
+                continue
+              }
+              
+              // Check if the nested field exists in this array item
+              const fieldName = nestedField.replace(/^\./, '') // Remove leading dot
+              if (!(fieldName in item) || item[fieldName] === null || item[fieldName] === undefined || item[fieldName] === '') {
+                parseError.value.push(`Missing required field: "${field}" in ${arrayFieldName}[${i}]`)
+              }
+            }
+          }
+          // If array field is optional and doesn't exist, that's fine - skip validation
+        } else {
+          // Regular top-level field validation
+          if (!(field in parsed) || parsed[field] === null || parsed[field] === undefined || parsed[field] === '') {
+            parseError.value.push(`Missing required field: "${field}"`)
+          }
         }
       }
     }

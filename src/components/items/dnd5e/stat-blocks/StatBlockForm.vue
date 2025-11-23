@@ -229,7 +229,10 @@
         <!-- Spells Tab -->
         <v-window-item value="spells">
           <h3 class="text-h6 mb-4">Spells & Spellcasting</h3>
-          <spell-list-editor v-model="formData.data.spells" />
+          <spell-list-editor 
+            v-model="formData.data.spells" 
+            @add-to-actions="handleAddSpellToActions"
+          />
         </v-window-item>
 
         <!-- Description Tab -->
@@ -263,7 +266,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, StatBlockData, ItemType } from '@/types/item.types'
+import type { LibraryItem, CreateLibraryItemPayload, UpdateLibraryItemPayload, StatBlockData, ItemType, Action } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
@@ -444,6 +447,16 @@ function handleJsonImport(importData: CreateLibraryItemPayload, options?: { impo
   // formData.value.tagIds, userFileIds, featuredImageId remain unchanged
 
   console.log('[StatBlockForm] JSON import applied:', formData.value)
+}
+
+function handleAddSpellToActions(action: Action) {
+  if (!formData.value.data.actions) {
+    formData.value.data.actions = []
+  }
+  formData.value.data.actions.push(action)
+  
+  // Switch to actions tab to show the newly added action
+  activeTab.value = 'actions'
 }
 
 watch(() => props.item, (newItem) => {

@@ -387,7 +387,12 @@ const resolvedDescription = computed(() => {
 
 .character-card.compact .card-title {
   font-size: 0.875rem !important;
-  padding-bottom: 2px !important;
+  padding-bottom: 4px !important;
+  line-height: 1.2 !important;
+}
+
+.character-card.compact .card-title .text-h6 {
+  font-size: 0.875rem !important;
 }
 
 .character-card.compact .stats-row {

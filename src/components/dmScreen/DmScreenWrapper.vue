@@ -30,7 +30,7 @@
           :line-width="gridLineWidth"
         />
         <Controls />
-        <MiniMap />
+        <MiniMap v-if="!isPortalMode" />
       </VueFlow>
     </div>
 
@@ -182,6 +182,36 @@
                 Remove
               </v-btn>
             </div>
+          </div>
+
+          <v-divider class="my-4" />
+
+          <!-- Portal Actions -->
+          <div>
+            <h3 class="text-subtitle-1 font-weight-bold mb-3">
+              <v-icon icon="mdi-projector-screen" class="mr-2" size="small" />
+              Portal
+            </h3>
+            <v-btn
+              color="primary"
+              variant="tonal"
+              size="small"
+              prepend-icon="mdi-projector-screen"
+              block
+              @click="handleSendToPortal"
+              :disabled="!hasActivePortal"
+            >
+              Send to Portal
+            </v-btn>
+            <v-alert
+              v-if="!hasActivePortal"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              No active portal. Set an active portal from the portal control menu.
+            </v-alert>
           </div>
         </v-card-text>
         <v-divider />
@@ -399,12 +429,13 @@ import DmScreenFlowNode from './DmScreenFlowNode.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
 import { useToast } from 'vue-toastification'
 import { debounce } from '@/utils/helpers'
 
 // Get Vue Flow instance for viewport calculations
-const { project, viewport, getNode } = useVueFlow()
+const { project, viewport, getNode, zoomIn, zoomOut, setViewport, getViewport } = useVueFlow()
 const vueFlowRef = ref<any>(null)
 
 // Register custom node types
@@ -414,6 +445,7 @@ const nodeTypes = {
 
 const props = defineProps<{
   dmScreen: DmScreen
+  isPortalMode?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -694,9 +726,75 @@ defineExpose({
     // Debounced update
     debouncedUpdate(updatedItems)
   },
+  // DM Screen viewport controls for portal
+  handleDmScreenZoomIn: () => {
+    try {
+      const vueFlow = vueFlowRef.value
+      if (vueFlow && typeof vueFlow.zoomIn === 'function') {
+        vueFlow.zoomIn({ duration: 200 })
+      } else if (typeof zoomIn === 'function') {
+        zoomIn({ duration: 200 })
+      }
+    } catch (error) {
+      console.error('[DmScreenWrapper] Failed to zoom in:', error)
+    }
+  },
+  handleDmScreenZoomOut: () => {
+    try {
+      const vueFlow = vueFlowRef.value
+      if (vueFlow && typeof vueFlow.zoomOut === 'function') {
+        vueFlow.zoomOut({ duration: 200 })
+      } else if (typeof zoomOut === 'function') {
+        zoomOut({ duration: 200 })
+      }
+    } catch (error) {
+      console.error('[DmScreenWrapper] Failed to zoom out:', error)
+    }
+  },
+  handleDmScreenPan: (deltaX: number, deltaY: number) => {
+    try {
+      const vueFlow = vueFlowRef.value
+      let currentViewport
+      
+      if (vueFlow && typeof vueFlow.getViewport === 'function') {
+        currentViewport = vueFlow.getViewport()
+      } else if (typeof getViewport === 'function') {
+        currentViewport = getViewport()
+      }
+      
+      if (currentViewport) {
+        const newViewport = {
+          x: currentViewport.x + deltaX,
+          y: currentViewport.y + deltaY,
+          zoom: currentViewport.zoom,
+        }
+        
+        if (vueFlow && typeof vueFlow.setViewport === 'function') {
+          vueFlow.setViewport(newViewport, { duration: 200 })
+        } else if (typeof setViewport === 'function') {
+          setViewport(newViewport, { duration: 200 })
+        }
+      }
+    } catch (error) {
+      console.error('[DmScreenWrapper] Failed to pan:', error)
+    }
+  },
+  handleDmScreenResetView: () => {
+    try {
+      const vueFlow = vueFlowRef.value
+      if (vueFlow && typeof vueFlow.setViewport === 'function') {
+        vueFlow.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+      } else if (typeof setViewport === 'function') {
+        setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+      }
+    } catch (error) {
+      console.error('[DmScreenWrapper] Failed to reset view:', error)
+    }
+  },
 })
 
 const dmScreensStore = useDmScreensStore()
+const portalViewsStore = usePortalViewsStore()
 const filesStore = useFilesStore()
 const toast = useToast()
 
@@ -711,6 +809,7 @@ const localBackgroundImageWidth = ref(props.dmScreen.settings?.backgroundImageWi
 const localLockBackgroundImages = ref(props.dmScreen.settings?.lockBackgroundImages || false)
 const localBackgroundOpacity = ref(props.dmScreen.settings?.backgroundOpacity ?? 1.0)
 const isUpdating = ref(false) // Track if we're currently updating to prevent feedback loops
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
 
 // Shape style editor state
 const editingShapeData = ref({
@@ -1681,6 +1780,23 @@ function saveSettings() {
   
   debouncedSettingsUpdate(updatedSettings)
   showSettingsDialog.value = false
+}
+
+// Send DM screen to portal
+async function handleSendToPortal() {
+  if (!hasActivePortal.value) {
+    toast.error('No active portal. Please set an active portal first.')
+    return
+  }
+  
+  try {
+    await portalViewsStore.addDmScreenToActivePortal(props.dmScreen, true)
+    toast.success('DM screen sent to portal')
+    showSettingsDialog.value = false
+  } catch (error: any) {
+    console.error('[DmScreenWrapper] Failed to send DM screen to portal:', error)
+    toast.error(error.message || 'Failed to send DM screen to portal')
+  }
 }
 </script>
 

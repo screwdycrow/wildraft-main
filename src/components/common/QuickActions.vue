@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { useItemDialogs } from '@/composables/useItemDialogs'
+import { useDialogsStore } from '@/stores/dialogs'
 import type { ItemType } from '@/types/item.types'
 
 interface Props {
@@ -47,13 +47,13 @@ interface Props {
 const props = defineProps<Props>()
 
 const route = useRoute()
-const { openCreateDialog } = useItemDialogs()
+const dialogsStore = useDialogsStore()
 
 function handleCreate(itemType: ItemType) {
   const libraryId = parseInt(route.params.id as string || route.params.libraryId as string)
   
   if (!isNaN(libraryId)) {
-    openCreateDialog(itemType, libraryId, props.initialTagIds)
+    dialogsStore.openItemEditorCreate(itemType, libraryId, props.initialTagIds)
   } else {
     console.error('Cannot create item: library ID not found in route')
   }

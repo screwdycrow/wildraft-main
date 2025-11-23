@@ -64,13 +64,28 @@
                 R
               </v-chip>
             </div>
-            <v-btn
-              icon="mdi-delete"
-              color="error"
-              variant="text"
-              size="small"
-              @click.stop="removeSpell(index)"
-            />
+            <div class="d-flex gap-1">
+              <v-tooltip location="top">
+                <template #activator="{ props: tooltipProps }">
+                  <v-btn
+                    v-bind="tooltipProps"
+                    icon="mdi-plus-circle"
+                    color="primary"
+                    variant="text"
+                    size="small"
+                    @click.stop="convertSpellToAction(index)"
+                  />
+                </template>
+                <span>Add to Actions</span>
+              </v-tooltip>
+              <v-btn
+                icon="mdi-delete"
+                color="error"
+                variant="text"
+                size="small"
+                @click.stop="removeSpell(index)"
+              />
+            </div>
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -207,15 +222,21 @@
 </template>
 
 <script setup lang="ts">
-import type { Spell } from '@/types/item.types'
+import type { Spell, Action } from '@/types/item.types'
 
 interface Props {
   includeRoll?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+interface Emits {
+  (e: 'add-to-actions', action: Action): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
   includeRoll: true,
 })
+
+const emit = defineEmits<Emits>()
 
 const spells = defineModel<Spell[]>({ default: () => [] })
 
@@ -270,6 +291,60 @@ function getSpellLevelLabel(level: number): string {
   if (level === 2) return '2nd'
   if (level === 3) return '3rd'
   return `${level}th`
+}
+
+function convertSpellToAction(index: number): void {
+  const spell = spells.value[index]
+  if (!spell) return
+
+  // Determine action type based on casting time
+  let actionType: 'action' | 'bonus' | 'reaction' | 'legendary' = 'action'
+  if (spell.castingTime) {
+    const castingTime = spell.castingTime.toLowerCase()
+    if (castingTime.includes('bonus')) {
+      actionType = 'bonus'
+    } else if (castingTime.includes('reaction')) {
+      actionType = 'reaction'
+    }
+  }
+
+  // Build description with spell details
+  let description = spell.description || ''
+  
+  // Add spell level and school info to description if not already present
+  const levelLabel = spell.level === 0 ? 'Cantrip' : `Level ${spell.level}`
+  const schoolInfo = spell.school ? `${levelLabel} ${spell.school}` : levelLabel
+  
+  // Prepend spell info if description doesn't already mention it
+  if (!description.toLowerCase().includes(spell.name.toLowerCase())) {
+    description = `${spell.name} (${schoolInfo})${description ? ': ' + description : ''}`
+  }
+  
+  // Add casting time, range, components if available
+  const details: string[] = []
+  if (spell.castingTime) details.push(`Casting Time: ${spell.castingTime}`)
+  if (spell.range) details.push(`Range: ${spell.range}`)
+  if (spell.components) details.push(`Components: ${spell.components}`)
+  if (spell.duration) details.push(`Duration: ${spell.duration}`)
+  if (spell.concentration) details.push('(Concentration)')
+  if (spell.ritual) details.push('(Ritual)')
+  
+  if (details.length > 0) {
+    description += `\n\n${details.join(', ')}`
+  }
+
+  // Create action from spell
+  const action: Action = {
+    name: spell.name,
+    actionType: actionType,
+    description: description.trim(),
+    toHit: spell.toHit || undefined,
+    dc: spell.dc || undefined,
+    roll: spell.roll || undefined,
+    range: spell.range || undefined,
+  }
+
+  emit('add-to-actions', action)
 }
 </script>
 

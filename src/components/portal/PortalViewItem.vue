@@ -39,6 +39,15 @@
       :file-name="item.object?.fileName || 'Portal PDF'"
     />
     
+    <!-- DM Screen Viewer -->
+    <DmScreenWrapper
+      v-else-if="item.type === 'DmScreenViewer' && dmScreen"
+      ref="dmScreenWrapperRef"
+      :dm-screen="dmScreen"
+      :is-portal-mode="true"
+      class="portal-dm-screen-wrapper"
+    />
+    
     <!-- Placeholder for other types -->
     <div v-else class="item-placeholder">
       <v-icon icon="mdi-file" size="48" color="grey" />
@@ -49,12 +58,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import ImageViewer from '@/components/files/viewers/ImageViewer.vue'
 import VideoViewer from '@/components/files/viewers/VideoViewer.vue'
 import PdfViewer from '@/components/files/viewers/PdfViewer.vue'
+import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import { useFilesStore } from '@/stores/files'
+import { useDmScreensStore } from '@/stores/dmScreens'
 import type { PortalViewItem, ViewerState } from '@/types/portal.types'
+import type { DmScreen } from '@/types/dmScreen.types'
 
 interface Props {
   item: PortalViewItem
@@ -69,9 +81,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const filesStore = useFilesStore()
+const dmScreensStore = useDmScreensStore()
 const downloadUrl = ref<string | null>(null)
 const isLoadingUrl = ref(false)
 const imageViewerRef = ref<InstanceType<typeof ImageViewer> | null>(null)
+const dmScreen = ref<DmScreen | null>(null)
+const dmScreenWrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null)
 
 // Fetch download URL if item has a UserFile object
 const fetchDownloadUrl = async () => {
@@ -109,13 +124,46 @@ const fetchDownloadUrl = async () => {
   }
 }
 
+// Fetch DM screen if item is DmScreenViewer
+const fetchDmScreen = async () => {
+  if (props.item.type !== 'DmScreenViewer') {
+    dmScreen.value = null
+    return
+  }
+  
+  const dmScreenId = props.item.dmScreenId
+  const libraryId = props.item.libraryId
+  
+  if (!dmScreenId || !libraryId) {
+    console.warn('[PortalViewItem] DmScreenViewer item missing dmScreenId or libraryId')
+    dmScreen.value = null
+    return
+  }
+  
+  try {
+    const screen = await dmScreensStore.fetchDmScreen(libraryId, dmScreenId)
+    dmScreen.value = screen
+  } catch (error) {
+    console.error('[PortalViewItem] Failed to fetch DM screen:', error)
+    dmScreen.value = null
+  }
+}
+
 // Watch for item changes
 watch(() => props.item, () => {
-  fetchDownloadUrl()
+  if (props.item.type === 'DmScreenViewer') {
+    fetchDmScreen()
+  } else {
+    fetchDownloadUrl()
+  }
 }, { immediate: true })
 
 onMounted(() => {
-  fetchDownloadUrl()
+  if (props.item.type === 'DmScreenViewer') {
+    fetchDmScreen()
+  } else {
+    fetchDownloadUrl()
+  }
 })
 
 // Expose method to save state if this is an ImageViewer
@@ -125,8 +173,37 @@ const saveState = () => {
   }
 }
 
+// Expose DM screen control methods
+const handleDmScreenZoomIn = () => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDmScreenZoomIn()
+  }
+}
+
+const handleDmScreenZoomOut = () => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDmScreenZoomOut()
+  }
+}
+
+const handleDmScreenPan = (deltaX: number, deltaY: number) => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDmScreenPan(deltaX, deltaY)
+  }
+}
+
+const handleDmScreenResetView = () => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDmScreenResetView()
+  }
+}
+
 defineExpose({
-  saveState
+  saveState,
+  handleDmScreenZoomIn,
+  handleDmScreenZoomOut,
+  handleDmScreenPan,
+  handleDmScreenResetView,
 })
 </script>
 
@@ -165,6 +242,11 @@ defineExpose({
   padding: 32px;
   text-align: center;
   background: rgba(0, 0, 0, 0.5);
+}
+
+.portal-dm-screen-wrapper {
+  width: 100%;
+  height: 100%;
 }
 </style>
 

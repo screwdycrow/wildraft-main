@@ -93,7 +93,7 @@
           size="x-small"
           color="primary"
           variant="flat"
-          @click.stop="$emit('edit', item)"
+          @click.stop="handleEditClick"
         >
           <v-icon />
           <v-tooltip activator="parent" location="bottom">
@@ -306,8 +306,18 @@ function handleClick(event: MouseEvent) {
       dialogsStore.openItemViewer(props.item, props.libraryId)
     } else {
       // Fallback to emitting view event if no libraryId
-    emit('view', props.item)
+      emit('view', props.item)
     }
+  }
+}
+
+// Handle edit - use dialogsStore
+function handleEditClick() {
+  if (props.libraryId) {
+    dialogsStore.openItemEditor(props.item, props.libraryId)
+  } else {
+    // Fallback to emitting edit event if no libraryId
+    emit('edit', props.item)
   }
 }
 

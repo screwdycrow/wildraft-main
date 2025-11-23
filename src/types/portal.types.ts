@@ -3,6 +3,7 @@ export type PortalViewItemType =
   | 'VideoViewer' 
   | 'ImageViewer' 
   | 'PDFViewer'
+  | 'DmScreenViewer'
 
 export interface PortalViewItem {
   id: string
@@ -101,4 +102,9 @@ export type PortalCommand =
   | 'show-on-top'
   | 'hide-on-top'
   | 'refetch-encounter'
+  | 'update-screen-item'
+  | 'dm-screen-zoom-in'
+  | 'dm-screen-zoom-out'
+  | 'dm-screen-pan'
+  | 'dm-screen-reset-view'
 

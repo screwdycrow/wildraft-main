@@ -63,14 +63,14 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       'traits[].name': 'string - Feature name',
       'traits[].description': 'string - Feature description',
       // Actions (array)
-      actions: 'array (optional) - Combat actions',
-      'actions[].name': 'string - Action name',
-      'actions[].actionType': 'string - Type: action, bonus, reaction, legendary',
-      'actions[].toHit': 'string (optional) - Attack bonus or to-hit value',
-      'actions[].dc': 'string (optional) - Saving throw DC',
-      'actions[].roll': 'string (optional) - Attack/damage roll',
-      'actions[].range': 'string (optional) - Attack range',
-      'actions[].description': 'string - Action description',
+      actions: 'array (optional) - Combat actions with full mechanical details',
+      'actions[].name': 'string (required) - Action name (e.g., "Longsword", "Healing Word", "Multiattack")',
+      'actions[].actionType': 'string (required) - Type: "action", "bonus", "reaction", or "legendary"',
+      'actions[].description': 'string (required) - Detailed action description including mechanics, effects, and flavor text',
+      'actions[].toHit': 'string (optional) - Attack bonus for attack rolls. Format: "+5", "+3", "-1". Include ONLY if the action requires an attack roll. Calculate from ability modifier + proficiency if applicable.',
+      'actions[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing", "26d6 fire". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'actions[].dc': 'string (optional) - Saving throw DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Include ONLY if the action requires a saving throw. Calculate from 8 + ability modifier + proficiency.',
+      'actions[].range': 'string (optional) - Attack or effect range. Format: "5 ft", "30/120 ft", "60 ft", "60 ft cone", "15 ft radius"',
       // Spells
       spellSlots: 'array (optional) - Spell slots by level',
       'spellSlots[].level': 'number (1-9) - Spell level',
@@ -84,20 +84,20 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       'customCounters[].icon': 'string (optional) - Material Design Icon name (mdi-*)',
       'customCounters[].color': 'string (optional) - Hex or theme color name',
       'customCounters[].description': 'string (optional) - Helper text',
-      spells: 'array (optional) - Known spells',
-      'spells[].name': 'string - Spell name',
-      'spells[].level': 'number (0-9) - Spell level (0 for cantrips)',
-      'spells[].school': 'string (optional) - Spell school',
-      'spells[].castingTime': 'string (optional) - Casting time',
-      'spells[].range': 'string (optional) - Spell range',
-      'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Spell attack/save',
-      'spells[].toHit': 'string (optional) - Spell attack bonus',
-      'spells[].dc': 'string (optional) - Spell save DC',
-      'spells[].duration': 'string (optional) - Spell duration',
-      'spells[].concentration': 'boolean (optional) - Requires concentration',
-      'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
-      'spells[].description': 'string - Spell description',
+      spells: 'array (optional) - Known spells with full mechanical details',
+      'spells[].name': 'string (required) - Spell name (e.g., "Fire Bolt", "Cure Wounds", "Magic Missile")',
+      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips, 1-9 for spell levels)',
+      'spells[].school': 'string (optional) - Spell school (e.g., "Evocation", "Abjuration", "Divination")',
+      'spells[].castingTime': 'string (optional) - Casting time (e.g., "1 action", "1 bonus action", "1 reaction", "1 minute")',
+      'spells[].range': 'string (optional) - Spell range (e.g., "Self", "Touch", "60 ft", "150 ft", "500 miles")',
+      'spells[].components': 'string (optional) - Spell components (e.g., "V", "S", "M", "V, S", "V, S, M (a pinch of soot)")',
+      'spells[].toHit': 'string (optional) - Spell attack bonus for spells that make attack rolls. Format: "+5", "+3". Calculate from spellcasting ability modifier + proficiency. Only include for spells like Fire Bolt, Ray of Frost, etc.',
+      'spells[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d10 fire", "8d6 fire", "1d4+1 healing", "2d8+3 cold". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'spells[].dc': 'string (optional) - Spell save DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Calculate from 8 + spellcasting ability modifier + proficiency. Only include for spells requiring saving throws.',
+      'spells[].duration': 'string (optional) - Spell duration (e.g., "Instantaneous", "1 minute", "1 hour", "Concentration, up to 1 minute", "Until dispelled")',
+      'spells[].concentration': 'boolean (optional) - Requires concentration (true if duration includes "Concentration")',
+      'spells[].ritual': 'boolean (optional) - Can be cast as ritual (true if spell has ritual tag)',
+      'spells[].description': 'string (required) - Detailed spell description including effects, mechanics, and flavor text',
       // Equipment
       gold: 'number (optional) - Gold pieces',
       inventory: 'array (optional) - Inventory items',
@@ -230,20 +230,20 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       'customCounters[].color': 'string (optional) - Hex or theme color name',
       'customCounters[].description': 'string (optional) - Helper text',
       // Spells (array)
-      spells: 'array (optional) - Spells the creature can cast',
-      'spells[].name': 'string - Spell name',
-      'spells[].level': 'number (0-9) - Spell level (0 for cantrips)',
-      'spells[].school': 'string (optional) - Spell school',
-      'spells[].castingTime': 'string (optional) - Casting time',
-      'spells[].range': 'string (optional) - Spell range',
-      'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Spell attack/save',
-      'spells[].toHit': 'string (optional) - Spell attack bonus',
-      'spells[].dc': 'string (optional) - Spell save DC',
-      'spells[].duration': 'string (optional) - Spell duration',
-      'spells[].concentration': 'boolean (optional) - Requires concentration',
-      'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
-      'spells[].description': 'string - Spell description'
+      spells: 'array (optional) - Spells the creature can cast with full mechanical details',
+      'spells[].name': 'string (required) - Spell name (e.g., "Fireball", "Detect Magic", "Cure Wounds")',
+      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips, 1-9 for spell levels)',
+      'spells[].school': 'string (optional) - Spell school (e.g., "Evocation", "Abjuration", "Divination")',
+      'spells[].castingTime': 'string (optional) - Casting time (e.g., "1 action", "1 bonus action", "1 reaction", "1 minute")',
+      'spells[].range': 'string (optional) - Spell range (e.g., "Self", "Touch", "60 ft", "150 ft", "500 miles")',
+      'spells[].components': 'string (optional) - Spell components (e.g., "V", "S", "M", "V, S", "V, S, M (a pinch of soot)")',
+      'spells[].toHit': 'string (optional) - Spell attack bonus for spells that make attack rolls. Format: "+5", "+3". Calculate from spellcasting ability modifier + proficiency. Only include for spells like Fire Bolt, Ray of Frost, etc.',
+      'spells[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d10 fire", "8d6 fire", "1d4+1 healing", "2d8+3 cold". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'spells[].dc': 'string (optional) - Spell save DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Calculate from 8 + spellcasting ability modifier + proficiency. Only include for spells requiring saving throws.',
+      'spells[].duration': 'string (optional) - Spell duration (e.g., "Instantaneous", "1 minute", "1 hour", "Concentration, up to 1 minute", "Until dispelled")',
+      'spells[].concentration': 'boolean (optional) - Requires concentration (true if duration includes "Concentration")',
+      'spells[].ritual': 'boolean (optional) - Can be cast as ritual (true if spell has ritual tag)',
+      'spells[].description': 'string (required) - Detailed spell description including effects, mechanics, and flavor text'
     },
     example: JSON.stringify({
       name: "Ancient Red Dragon",
@@ -281,27 +281,48 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
         {
           name: "Multiattack",
           actionType: "action",
-          description: "One bite and two claws."
+          description: "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
         },
         {
           name: "Bite",
           actionType: "action",
           toHit: "+17",
-          roll: "2d10+10 piercing, 4d6 fire",
-          description: "Bite with flame"
+          roll: "2d10+10 piercing plus 4d6 fire",
+          range: "15 ft",
+          description: "Melee Weapon Attack: +17 to hit, reach 15 ft., one target. Hit: 21 (2d10 + 10) piercing damage plus 14 (4d6) fire damage."
+        },
+        {
+          name: "Fire Breath (Recharge 5-6)",
+          actionType: "action",
+          dc: "24 DEX",
+          roll: "26d6 fire",
+          range: "60 ft cone",
+          description: "The dragon exhales fire in a 60-foot cone. Each creature in that area must make a DC 24 Dexterity saving throw, taking 91 (26d6) fire damage on a failed save, or half as much damage on a successful one."
         }
       ],
       spells: [
         {
-          name: "Detect",
+          name: "Detect Magic",
           level: 1,
           school: "Divination",
           castingTime: "1 action",
           range: "Self",
           components: "V, S",
-          duration: "Concentration, 10 minutes",
+          duration: "Concentration, up to 10 minutes",
           concentration: true,
-          description: "Sense nearby magic"
+          description: "For the duration, you sense the presence of magic within 30 feet of you. If you sense magic in this way, you can use your action to see a faint aura around any visible creature or object in the area that bears magic, and you learn its school of magic, if any."
+        },
+        {
+          name: "Fireball",
+          level: 3,
+          school: "Evocation",
+          castingTime: "1 action",
+          range: "150 ft",
+          components: "V, S, M (a tiny ball of bat guano and sulfur)",
+          dc: "18 DEX",
+          roll: "8d6 fire",
+          duration: "Instantaneous",
+          description: "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one. The fire spreads around corners. It ignites flammable objects in the area that aren't being worn or carried."
         }
       ],
       customCounters: [
@@ -342,30 +363,30 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
   // Universal Note
   NOTE: {
     title: 'Note',
-    description: 'Import a note with optional chapters and content',
+    description: 'Import a note with optional chapters and content. Supports various note types: session notes, dungeons, NPCs, locations, shops, loot, quests, and more.',
     schema: {
       name: 'string (required) - Note title',
-      content: 'string (required) - Main note content (supports rich text/markdown)',
-      chapters: 'array (optional) - Additional chapters',
-      'chapters[].order': 'number - Chapter order (auto-assigned if not provided)',
-      'chapters[].title': 'string - Chapter title',
-      'chapters[].content': 'string - Chapter content (supports rich text/markdown)',
-      isPinned: 'boolean (optional) - Whether the note is pinned'
+      content: 'string (required) - Main note content (supports HTML/rich text. Use <p> tags for paragraphs, <ul>/<ol> for lists, <strong>/<em> for emphasis)',
+      chapters: 'array (optional) - Additional chapters for organizing content',
+      'chapters[].order': 'number (optional) - Chapter order (auto-assigned if not provided, starting from 1)',
+      'chapters[].title': 'string (required) - Chapter title',
+      'chapters[].content': 'string (required) - Chapter content (supports HTML/rich text)',
+      isPinned: 'boolean (optional) - Whether the note is pinned (default: false)'
     },
     example: JSON.stringify({
       name: "Campaign Session Notes",
-      content: "<p>This session covered the party's journey through the Whispering Woods...</p>",
+      content: "<p>This session covered the party's journey through the Whispering Woods. They discovered an ancient temple and encountered several hostile creatures.</p>",
       isPinned: false,
       chapters: [
         {
           order: 1,
           title: "Travel Encounters",
-          content: "<p>The party encountered a group of bandits at the crossroads...</p>"
+          content: "<p>The party encountered a group of bandits at the crossroads. After a brief negotiation, they decided to fight. The bandits were defeated, and the party found 50 gold pieces.</p>"
         },
         {
           order: 2,
           title: "Dungeon Exploration",
-          content: "<p>Upon entering the ancient ruins, the party found...</p>"
+          content: "<p>Upon entering the ancient ruins, the party found:</p><ul><li>A trapped hallway with pressure plates</li><li>A room with a riddle inscribed on the wall</li><li>A treasure chamber with magical items</li></ul>"
         }
       ]
     }, null, 2)

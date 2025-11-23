@@ -156,14 +156,14 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'traits[].name': 'string - Feature name',
       'traits[].description': 'string - Feature description',
       // Actions (array)
-      actions: 'array (optional) - Combat actions',
-      'actions[].name': 'string (required) - Action name',
-      'actions[].actionType': 'string (required) - Type: action, bonus, reaction, or legendary',
-      'actions[].description': 'string (required) - Action description',
-      'actions[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing". Do NOT include to-hit or DC here.',
-      'actions[].toHit': 'string (optional) - Attack bonus ONLY. Format: "+5", "+3", "-1". Only for attacks that require an attack roll.',
-      'actions[].dc': 'string (optional) - Saving throw DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for actions requiring a saving throw.',
-      'actions[].range': 'string (optional) - Attack range (e.g., "5 ft", "30/120 ft", "60 ft")',
+      actions: 'array (optional) - Combat actions with full mechanical details',
+      'actions[].name': 'string (required) - Action name (e.g., "Longsword", "Healing Word", "Multiattack")',
+      'actions[].actionType': 'string (required) - Type: "action", "bonus", "reaction", or "legendary"',
+      'actions[].description': 'string (required) - Detailed action description including mechanics, effects, and flavor text',
+      'actions[].toHit': 'string (optional) - Attack bonus for attack rolls. Format: "+5", "+3", "-1". Include ONLY if the action requires an attack roll. Calculate from ability modifier + proficiency if applicable.',
+      'actions[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing", "26d6 fire". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'actions[].dc': 'string (optional) - Saving throw DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Include ONLY if the action requires a saving throw. Calculate from 8 + ability modifier + proficiency.',
+      'actions[].range': 'string (optional) - Attack or effect range. Format: "5 ft", "30/120 ft", "60 ft", "60 ft cone", "15 ft radius"',
       // Spells
       spellSlots: 'array (optional) - Spell slots by level',
       'spellSlots[].level': 'number (1-9) - Spell level',
@@ -177,20 +177,20 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'customCounters[].icon': 'string (optional) - Material Design Icon name (mdi-*)',
       'customCounters[].color': 'string (optional) - Hex or theme color name',
       'customCounters[].description': 'string (optional) - Helper text',
-      spells: 'array (optional) - Known spells',
-      'spells[].name': 'string (required) - Spell name',
-      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips)',
-      'spells[].description': 'string (required) - Spell description',
-      'spells[].school': 'string (optional) - Spell school',
-      'spells[].castingTime': 'string (optional) - Casting time',
-      'spells[].range': 'string (optional) - Spell range',
-      'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 cold", "1d4+1 healing". Do NOT include to-hit or DC here.',
-      'spells[].toHit': 'string (optional) - Spell attack bonus ONLY. Format: "+5", "+3". Only for spells that make attack rolls (like Fire Bolt).',
-      'spells[].dc': 'string (optional) - Spell save DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for spells requiring a saving throw.',
-      'spells[].duration': 'string (optional) - Spell duration',
-      'spells[].concentration': 'boolean (optional) - Requires concentration',
-      'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
+      spells: 'array (optional) - Known spells with full mechanical details',
+      'spells[].name': 'string (required) - Spell name (e.g., "Fire Bolt", "Cure Wounds", "Magic Missile")',
+      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips, 1-9 for spell levels)',
+      'spells[].school': 'string (optional) - Spell school (e.g., "Evocation", "Abjuration", "Divination")',
+      'spells[].castingTime': 'string (optional) - Casting time (e.g., "1 action", "1 bonus action", "1 reaction", "1 minute")',
+      'spells[].range': 'string (optional) - Spell range (e.g., "Self", "Touch", "60 ft", "150 ft", "500 miles")',
+      'spells[].components': 'string (optional) - Spell components (e.g., "V", "S", "M", "V, S", "V, S, M (a pinch of soot)")',
+      'spells[].toHit': 'string (optional) - Spell attack bonus for spells that make attack rolls. Format: "+5", "+3". Calculate from spellcasting ability modifier + proficiency. Only include for spells like Fire Bolt, Ray of Frost, etc.',
+      'spells[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d10 fire", "8d6 fire", "1d4+1 healing", "2d8+3 cold". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'spells[].dc': 'string (optional) - Spell save DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Calculate from 8 + spellcasting ability modifier + proficiency. Only include for spells requiring saving throws.',
+      'spells[].duration': 'string (optional) - Spell duration (e.g., "Instantaneous", "1 minute", "1 hour", "Concentration, up to 1 minute", "Until dispelled")',
+      'spells[].concentration': 'boolean (optional) - Requires concentration (true if duration includes "Concentration")',
+      'spells[].ritual': 'boolean (optional) - Can be cast as ritual (true if spell has ritual tag)',
+      'spells[].description': 'string (required) - Detailed spell description including effects, mechanics, and flavor text',
       // Character-specific fields
       proficiencyBonus: 'number (optional) - Proficiency bonus (usually calculated from level)',
       inspiration: 'boolean (optional) - Has inspiration',
@@ -245,9 +245,29 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
         { name: "Fey Ancestry", description: "Advantage on saves vs. charm, immune to sleep" }
       ],
       actions: [
-        { name: "Staff", actionType: "action", toHit: "+4", roll: "1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff swing" },
-        { name: "Fire Breath", actionType: "action", dc: "15 DEX", roll: "2d6 fire", range: "15 ft cone", description: "Breathes fire in a cone" },
-        { name: "Healing Word", actionType: "bonus", roll: "1d4+2 healing", range: "60 ft", description: "Heal an ally" }
+        { 
+          name: "Quarterstaff", 
+          actionType: "action", 
+          toHit: "+4", 
+          roll: "1d6+2 bludgeoning", 
+          range: "5 ft", 
+          description: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) bludgeoning damage." 
+        },
+        { 
+          name: "Fire Bolt", 
+          actionType: "action", 
+          toHit: "+5", 
+          roll: "1d10 fire", 
+          range: "120 ft", 
+          description: "Ranged Spell Attack: +5 to hit, range 120 ft., one target. Hit: 5 (1d10) fire damage. A flammable object hit by this spell ignites if it isn't being worn or carried." 
+        },
+        { 
+          name: "Healing Word", 
+          actionType: "bonus", 
+          roll: "1d4+2 healing", 
+          range: "60 ft", 
+          description: "A creature of your choice that you can see within range regains hit points equal to 1d4 + your spellcasting ability modifier. This spell has no effect on undead or constructs." 
+        }
       ],
       spellSlots: [
         { level: 1, max: 4, remaining: 4 },
@@ -259,10 +279,49 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
         { name: "Starry Form", value: 1, min: 0, max: 1, icon: "mdi-star-circle" }
       ],
       spells: [
-        { name: "Druidcraft", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 ft", components: "V, S", duration: "Instantaneous", description: "Small nature trick" },
-        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, dc: "14 STR", description: "Grasping vines restrain targets" },
-        { name: "Fire Bolt", level: 0, school: "Evocation", castingTime: "1 action", range: "120 ft", components: "V, S", toHit: "+5", roll: "1d10 fire", description: "Ranged spell attack" },
-        { name: "Cure Wounds", level: 1, school: "Evocation", castingTime: "1 action", range: "Touch", components: "V, S", roll: "1d8+3 healing", description: "Heal a creature" }
+        { 
+          name: "Druidcraft", 
+          level: 0, 
+          school: "Transmutation", 
+          castingTime: "1 action", 
+          range: "30 ft", 
+          components: "V, S", 
+          duration: "Instantaneous", 
+          description: "Whispering to the spirits of nature, you create one of the following effects within range: You create a tiny, harmless sensory effect that predicts what the weather will be at your location for the next 24 hours. You instantly make a flower blossom, a seed pod open, or a leaf bud bloom. You create an instantaneous, harmless sensory effect, such as falling leaves, a puff of wind, the sound of a small animal, or the faint odor of skunk. You instantly light or snuff out a candle, a torch, or a small campfire." 
+        },
+        { 
+          name: "Entangle", 
+          level: 1, 
+          school: "Conjuration", 
+          castingTime: "1 action", 
+          range: "90 ft", 
+          components: "V, S", 
+          duration: "Concentration, up to 1 minute", 
+          concentration: true, 
+          dc: "14 STR", 
+          description: "Grasping weeds and vines sprout from the ground in a 20-foot square starting from a point within range. For the duration, these plants turn the ground in the area into difficult terrain. A creature in the area when you cast the spell must succeed on a Strength saving throw or be restrained by the entangling plants until the spell ends. A creature restrained by the plants can use its action to make a Strength check against your spell save DC. On a success, it frees itself." 
+        },
+        { 
+          name: "Fire Bolt", 
+          level: 0, 
+          school: "Evocation", 
+          castingTime: "1 action", 
+          range: "120 ft", 
+          components: "V, S", 
+          toHit: "+5", 
+          roll: "1d10 fire", 
+          description: "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 fire damage. A flammable object hit by this spell ignites if it isn't being worn or carried." 
+        },
+        { 
+          name: "Cure Wounds", 
+          level: 1, 
+          school: "Evocation", 
+          castingTime: "1 action", 
+          range: "Touch", 
+          components: "V, S", 
+          roll: "1d8+3 healing", 
+          description: "A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs." 
+        }
       ],
       gold: 125,
       inventory: [
@@ -330,20 +389,20 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
       'customCounters[].color': 'string (optional) - Hex or theme color name',
       'customCounters[].description': 'string (optional) - Helper text',
       // Spells (array)
-      spells: 'array (optional) - Spells the creature can cast',
-      'spells[].name': 'string - Spell name',
-      'spells[].level': 'number (0-9) - Spell level (0 for cantrips)',
-      'spells[].school': 'string (optional) - Spell school',
-      'spells[].castingTime': 'string (optional) - Casting time',
-      'spells[].range': 'string (optional) - Spell range',
-      'spells[].components': 'string (optional) - Spell components',
-      'spells[].roll': 'string (optional) - Damage/healing roll ONLY. Format: "1d6 fire", "2d8+3 cold", "1d4+1 healing". Do NOT include to-hit or DC here.',
-      'spells[].toHit': 'string (optional) - Spell attack bonus ONLY. Format: "+5", "+3". Only for spells that make attack rolls (like Fire Bolt).',
-      'spells[].dc': 'string (optional) - Spell save DC ONLY. Format: "15 DEX", "18 CON", "12 WIS". Only for spells requiring a saving throw.',
-      'spells[].duration': 'string (optional) - Spell duration',
-      'spells[].concentration': 'boolean (optional) - Requires concentration',
-      'spells[].ritual': 'boolean (optional) - Can be cast as ritual',
-      'spells[].description': 'string (required) - Spell description'
+      spells: 'array (optional) - Spells the creature can cast with full mechanical details',
+      'spells[].name': 'string (required) - Spell name (e.g., "Fireball", "Detect Magic", "Cure Wounds")',
+      'spells[].level': 'number (required, 0-9) - Spell level (0 for cantrips, 1-9 for spell levels)',
+      'spells[].school': 'string (optional) - Spell school (e.g., "Evocation", "Abjuration", "Divination")',
+      'spells[].castingTime': 'string (optional) - Casting time (e.g., "1 action", "1 bonus action", "1 reaction", "1 minute")',
+      'spells[].range': 'string (optional) - Spell range (e.g., "Self", "Touch", "60 ft", "150 ft", "500 miles")',
+      'spells[].components': 'string (optional) - Spell components (e.g., "V", "S", "M", "V, S", "V, S, M (a pinch of soot)")',
+      'spells[].toHit': 'string (optional) - Spell attack bonus for spells that make attack rolls. Format: "+5", "+3". Calculate from spellcasting ability modifier + proficiency. Only include for spells like Fire Bolt, Ray of Frost, etc.',
+      'spells[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d10 fire", "8d6 fire", "1d4+1 healing", "2d8+3 cold". Include damage type. Do NOT include to-hit bonuses or DCs here.',
+      'spells[].dc': 'string (optional) - Spell save DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Calculate from 8 + spellcasting ability modifier + proficiency. Only include for spells requiring saving throws.',
+      'spells[].duration': 'string (optional) - Spell duration (e.g., "Instantaneous", "1 minute", "1 hour", "Concentration, up to 1 minute", "Until dispelled")',
+      'spells[].concentration': 'boolean (optional) - Requires concentration (true if duration includes "Concentration")',
+      'spells[].ritual': 'boolean (optional) - Can be cast as ritual (true if spell has ritual tag)',
+      'spells[].description': 'string (required) - Detailed spell description including effects, mechanics, and flavor text'
     },
     example: JSON.stringify({
       name: "Ancient Red Dragon",
@@ -381,23 +440,23 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
         {
           name: "Multiattack",
           actionType: "action",
-          description: "One bite and two claws."
+          description: "The dragon can use its Frightful Presence. It then makes three attacks: one with its bite and two with its claws."
         },
         {
           name: "Bite",
           actionType: "action",
           toHit: "+17",
-          roll: "2d10+10 piercing, 4d6 fire",
-          range: "10 ft",
-          description: "Bite with flame"
+          roll: "2d10+10 piercing plus 4d6 fire",
+          range: "15 ft",
+          description: "Melee Weapon Attack: +17 to hit, reach 15 ft., one target. Hit: 21 (2d10 + 10) piercing damage plus 14 (4d6) fire damage."
         },
         {
-          name: "Fire Breath",
+          name: "Fire Breath (Recharge 5-6)",
           actionType: "action",
           dc: "24 DEX",
           roll: "26d6 fire",
           range: "60 ft cone",
-          description: "Breathes fire in a cone. Recharge 5-6."
+          description: "The dragon exhales fire in a 60-foot cone. Each creature in that area must make a DC 24 Dexterity saving throw, taking 91 (26d6) fire damage on a failed save, or half as much damage on a successful one."
         }
       ],
       spells: [
@@ -408,9 +467,9 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
           castingTime: "1 action",
           range: "Self",
           components: "V, S",
-          duration: "Concentration, 10 minutes",
+          duration: "Concentration, up to 10 minutes",
           concentration: true,
-          description: "Sense nearby magic"
+          description: "For the duration, you sense the presence of magic within 30 feet of you. If you sense magic in this way, you can use your action to see a faint aura around any visible creature or object in the area that bears magic, and you learn its school of magic, if any."
         },
         {
           name: "Fireball",
@@ -418,11 +477,11 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
           school: "Evocation",
           castingTime: "1 action",
           range: "150 ft",
-          components: "V, S, M",
+          components: "V, S, M (a tiny ball of bat guano and sulfur)",
           dc: "18 DEX",
           roll: "8d6 fire",
           duration: "Instantaneous",
-          description: "Explosion of fire in a 20-foot radius"
+          description: "A bright streak flashes from your pointing finger to a point you choose within range and then blossoms with a low roar into an explosion of flame. Each creature in a 20-foot-radius sphere centered on that point must make a Dexterity saving throw. A target takes 8d6 fire damage on a failed save, or half as much damage on a successful one. The fire spreads around corners. It ignites flammable objects in the area that aren't being worn or carried."
         }
       ],
       customCounters: [
@@ -463,30 +522,30 @@ const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> =
   // Universal Note
   NOTE: {
     title: 'Note',
-    description: 'Import a note with optional chapters and content',
+    description: 'Import a note with optional chapters and content. Supports various note types: session notes, dungeons, NPCs, locations, shops, loot, quests, and more.',
     schema: {
       name: 'string (required) - Note title',
-      content: 'string (required) - Main note content (supports rich text/markdown)',
-      chapters: 'array (optional) - Additional chapters',
-      'chapters[].order': 'number - Chapter order (auto-assigned if not provided)',
-      'chapters[].title': 'string - Chapter title',
-      'chapters[].content': 'string - Chapter content (supports rich text/markdown)',
-      isPinned: 'boolean (optional) - Whether the note is pinned'
+      content: 'string (required) - Main note content (supports HTML/rich text. Use <p> tags for paragraphs, <ul>/<ol> for lists, <strong>/<em> for emphasis)',
+      chapters: 'array (optional) - Additional chapters for organizing content',
+      'chapters[].order': 'number (optional) - Chapter order (auto-assigned if not provided, starting from 1)',
+      'chapters[].title': 'string (required) - Chapter title',
+      'chapters[].content': 'string (required) - Chapter content (supports HTML/rich text)',
+      isPinned: 'boolean (optional) - Whether the note is pinned (default: false)'
     },
     example: JSON.stringify({
       name: "Campaign Session Notes",
-      content: "<p>This session covered the party's journey through the Whispering Woods...</p>",
+      content: "<p>This session covered the party's journey through the Whispering Woods. They discovered an ancient temple and encountered several hostile creatures.</p>",
       isPinned: false,
       chapters: [
         {
           order: 1,
           title: "Travel Encounters",
-          content: "<p>The party encountered a group of bandits at the crossroads...</p>"
+          content: "<p>The party encountered a group of bandits at the crossroads. After a brief negotiation, they decided to fight. The bandits were defeated, and the party found 50 gold pieces.</p>"
         },
         {
           order: 2,
           title: "Dungeon Exploration",
-          content: "<p>Upon entering the ancient ruins, the party found...</p>"
+          content: "<p>Upon entering the ancient ruins, the party found:</p><ul><li>A trapped hallway with pressure plates</li><li>A room with a riddle inscribed on the wall</li><li>A treasure chamber with magical items</li></ul>"
         }
       ]
     }, null, 2)

@@ -240,6 +240,35 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
         cacheMetadata.value.timestamp = Date.now()
       }
 
+      // Check if this DM screen is currently displayed in the portal
+      // and send update-screen-item command if so
+      try {
+        const { usePortalViewsStore } = await import('@/stores/portalViews')
+        const { usePortalSocket } = await import('@/composables/usePortalSocket')
+        const portalViewsStore = usePortalViewsStore()
+        const { sendPortalViewUpdate } = usePortalSocket()
+        
+        const currentPortalView = portalViewsStore.currentPortalView
+        if (currentPortalView?.items) {
+          // Find if there's a DmScreenViewer item for this DM screen
+          const dmScreenItemIndex = currentPortalView.items.findIndex(
+            (item: any) => item.type === 'DmScreenViewer' && item.dmScreenId === dmScreenId
+          )
+          
+          // Check if this is the current item being displayed
+          if (dmScreenItemIndex !== -1 && currentPortalView.currentItem === dmScreenItemIndex) {
+            // Send update-screen-item command
+            sendPortalViewUpdate({
+              command: 'update-screen-item',
+              dmScreen: response.dmScreen,
+            })
+          }
+        }
+      } catch (error) {
+        // Silently fail - portal might not be active
+        console.debug('[DmScreens Store] Could not send portal update:', error)
+      }
+
       return response.dmScreen
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to update DM screen'

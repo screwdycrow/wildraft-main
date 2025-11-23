@@ -91,6 +91,22 @@
 
           <v-divider class="my-3" />
 
+          <!-- Send to Portal Button -->
+          <v-btn
+            size="small"
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-projector-screen"
+            block
+            class="mb-3"
+            @click="handleSendToPortal"
+            :disabled="!hasActivePortal"
+          >
+            Send to Portal
+          </v-btn>
+
+          <v-divider class="my-3" />
+
           <!-- Actions -->
           <div class="d-flex gap-2">
             <v-btn
@@ -131,6 +147,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
 import { useToast } from 'vue-toastification'
 import FileManager from '@/components/files/FileManager.vue'
@@ -140,6 +157,7 @@ import type { DmScreenItem } from '@/types/dmScreen.types'
 
 const router = useRouter()
 const dmScreensStore = useDmScreensStore()
+const portalViewsStore = usePortalViewsStore()
 const filesStore = useFilesStore()
 const toast = useToast()
 
@@ -147,6 +165,7 @@ const showFileManager = ref(false)
 
 const activeDmScreen = computed(() => dmScreensStore.activeDmScreen)
 const cardsInHandEnabled = computed(() => dmScreensStore.cardsInHandEnabled)
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
 
 const dmScreenOptions = computed(() => {
   return dmScreensStore.dmScreens.map(ds => ({
@@ -257,6 +276,26 @@ async function handleFilesSelected(fileIds: number | number[]) {
   } catch (error: any) {
     console.error('[DmScreenControlMenu] Failed to add files:', error)
     toast.error('Failed to add files to DM screen')
+  }
+}
+
+async function handleSendToPortal() {
+  if (!activeDmScreen.value) {
+    toast.error('No active DM screen')
+    return
+  }
+  
+  if (!hasActivePortal.value) {
+    toast.error('No active portal. Please set an active portal first.')
+    return
+  }
+  
+  try {
+    await portalViewsStore.addDmScreenToActivePortal(activeDmScreen.value, true)
+    toast.success('DM screen sent to portal')
+  } catch (error: any) {
+    console.error('[DmScreenControlMenu] Failed to send DM screen to portal:', error)
+    toast.error(error.message || 'Failed to send DM screen to portal')
   }
 }
 </script>

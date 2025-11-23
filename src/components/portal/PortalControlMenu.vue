@@ -152,19 +152,19 @@
                   :class="{ 'item-preview-card--active': index === (currentPortal?.currentItem || 0) }"
                   @click="setActiveItem(index)"
                 >
-                  <!-- UserFile Preview (ImageViewer, VideoViewer, PDFViewer) -->
-                  <div v-if="isUserFileType(item.type)" class="item-preview-image">
+                  <!-- UserFile/DmScreen Preview (ImageViewer, VideoViewer, PDFViewer, DmScreenViewer) -->
+                  <div v-if="shouldShowImagePreview(item.type)" class="item-preview-image">
                     <img
-                      v-if="itemPreviewUrls[index]"
+                      v-if="item.type !== 'DmScreenViewer' && itemPreviewUrls[index]"
                       :src="itemPreviewUrls[index]"
                       :alt="getItemTitle(item, index)"
                       @error="handlePreviewError(index)"
                     />
                     <v-icon
-                      v-else-if="itemPreviewLoading[index]"
-                      icon="mdi-loading"
+                      v-else-if="item.type === 'DmScreenViewer' || (item.type !== 'DmScreenViewer' && itemPreviewLoading[index])"
+                      :icon="item.type === 'DmScreenViewer' ? 'mdi-monitor-dashboard' : 'mdi-loading'"
                       size="small"
-                      class="item-preview-loading"
+                      :class="item.type === 'DmScreenViewer' ? 'item-preview-placeholder' : 'item-preview-loading'"
                     />
                     <v-icon
                       v-else
@@ -259,6 +259,99 @@
               </v-btn>
             </div>
           </div>
+
+          <!-- DM Screen Controls (only show for DmScreenViewer) -->
+          <template v-if="isDmScreenViewerActive">
+            <v-divider class="my-3" />
+            
+            <div class="mb-3">
+              <div class="d-flex align-center gap-2 mb-2">
+                <v-icon icon="mdi-monitor-dashboard" size="small" class="mr-1" />
+                <span class="text-caption font-weight-medium">DM Screen Controls</span>
+              </div>
+              
+              <!-- Zoom Controls -->
+              <div class="control-items-row mb-3">
+                <v-btn
+                  icon="mdi-magnify-minus"
+                  size="x-small"
+                  variant="tonal"
+                  @click="dmScreenZoomOut"
+                  :disabled="!isConnected"
+                >
+                  <v-icon />
+                  <v-tooltip activator="parent" location="bottom">Zoom Out</v-tooltip>
+                </v-btn>
+                <v-btn
+                  icon="mdi-magnify-plus"
+                  size="x-small"
+                  variant="tonal"
+                  @click="dmScreenZoomIn"
+                  :disabled="!isConnected"
+                >
+                  <v-icon />
+                  <v-tooltip activator="parent" location="bottom">Zoom In</v-tooltip>
+                </v-btn>
+                <v-btn
+                  icon="mdi-fit-to-screen"
+                  size="x-small"
+                  variant="tonal"
+                  @click="dmScreenResetView"
+                  :disabled="!isConnected"
+                >
+                  <v-icon />
+                  <v-tooltip activator="parent" location="bottom">Reset View</v-tooltip>
+                </v-btn>
+              </div>
+              
+              <!-- Pan Controls -->
+              <div class="control-section mb-2">
+                <div class="pan-controls">
+                  <div class="pan-row">
+                    <v-btn
+                      icon="mdi-arrow-up"
+                      size="x-small"
+                      variant="tonal"
+                      @click="dmScreenPanUp"
+                      :disabled="!isConnected"
+                    />
+                  </div>
+                  <div class="pan-row">
+                    <v-btn
+                      icon="mdi-arrow-left"
+                      size="x-small"
+                      variant="tonal"
+                      @click="dmScreenPanLeft"
+                      :disabled="!isConnected"
+                    />
+                    <v-btn
+                      icon="mdi-crosshairs"
+                      size="x-small"
+                      variant="tonal"
+                      @click="dmScreenResetPosition"
+                      :disabled="!isConnected"
+                    />
+                    <v-btn
+                      icon="mdi-arrow-right"
+                      size="x-small"
+                      variant="tonal"
+                      @click="dmScreenPanRight"
+                      :disabled="!isConnected"
+                    />
+                  </div>
+                  <div class="pan-row">
+                    <v-btn
+                      icon="mdi-arrow-down"
+                      size="x-small"
+                      variant="tonal"
+                      @click="dmScreenPanDown"
+                      :disabled="!isConnected"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
 
           <!-- Image Viewer Controls (only show for ImageViewer/UrlImageViewer) -->
           <template v-if="isImageViewerActive">
@@ -526,6 +619,11 @@ const isUserFileType = (type: string): boolean => {
   return type === 'ImageViewer' || type === 'VideoViewer' || type === 'PDFViewer'
 }
 
+// Check if item type should show image preview
+const shouldShowImagePreview = (type: string): boolean => {
+  return isUserFileType(type) || type === 'DmScreenViewer'
+}
+
 const getItemTypeIcon = (type: string): string => {
   switch (type) {
     case 'ImageViewer':
@@ -536,6 +634,8 @@ const getItemTypeIcon = (type: string): string => {
       return 'mdi-file-pdf-box'
     case 'libraryItemViewer':
       return 'mdi-file-document'
+    case 'DmScreenViewer':
+      return 'mdi-monitor-dashboard'
     default:
       return 'mdi-file'
   }
@@ -550,7 +650,7 @@ const getItemTitle = (item: PortalViewItem, index: number): string => {
 
 // Fetch preview URL for a UserFile item
 const fetchItemPreview = async (item: PortalViewItem, index: number, forceRefresh = false) => {
-  if (!isUserFileType(item.type)) return
+  if (!isUserFileType(item.type) || item.type === 'DmScreenViewer') return
   
   const itemObject = item.object as any
   const fileId = itemObject?.id
@@ -699,7 +799,17 @@ const isImageViewerActive = computed(() => {
   const currentItemIndex = currentPortal.value.currentItem || 0
   const currentItem = currentPortal.value.items[currentItemIndex]
   
-  return currentItem?.type === 'ImageViewer' || currentItem?.type === 'UrlImageViewer'
+  return currentItem?.type === 'ImageViewer'
+})
+
+// Check if current item is a DmScreenViewer
+const isDmScreenViewerActive = computed(() => {
+  if (!currentPortal.value?.items || currentPortal.value.items.length === 0) return false
+  
+  const currentItemIndex = currentPortal.value.currentItem || 0
+  const currentItem = currentPortal.value.items[currentItemIndex]
+  
+  return currentItem?.type === 'DmScreenViewer'
 })
 
 // Viewer state (mirrors ImageViewer.vue)
@@ -1056,6 +1166,64 @@ const handleUploadComplete = async (files: UserFile[]) => {
 const handleUploadError = (error: Error) => {
   // Error toast is already shown by DragDropUpload component
   console.error('[PortalControlMenu] Upload error:', error)
+}
+
+// DM Screen control functions
+const DM_SCREEN_PAN_AMOUNT = 100 // pixels
+
+const dmScreenZoomIn = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-zoom-in',
+  })
+}
+
+const dmScreenZoomOut = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-zoom-out',
+  })
+}
+
+const dmScreenPanUp = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-pan',
+    deltaX: 0,
+    deltaY: DM_SCREEN_PAN_AMOUNT,
+  })
+}
+
+const dmScreenPanDown = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-pan',
+    deltaX: 0,
+    deltaY: -DM_SCREEN_PAN_AMOUNT,
+  })
+}
+
+const dmScreenPanLeft = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-pan',
+    deltaX: DM_SCREEN_PAN_AMOUNT,
+    deltaY: 0,
+  })
+}
+
+const dmScreenPanRight = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-pan',
+    deltaX: -DM_SCREEN_PAN_AMOUNT,
+    deltaY: 0,
+  })
+}
+
+const dmScreenResetPosition = () => {
+  // Reset view which will center and reset zoom
+  dmScreenResetView()
+}
+
+const dmScreenResetView = () => {
+  sendPortalViewUpdate({
+    command: 'dm-screen-reset-view',
+  })
 }
 </script>
 

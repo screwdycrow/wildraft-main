@@ -257,6 +257,39 @@ const handlePortalViewUpdated = (payload: any) => {
     showOnTopVisible.value = false
     showOnTopItem.value = null
   }
+  
+  // Handle Update Screen Item (DM Screen update)
+  if (payload.command === 'update-screen-item' && payload.dmScreen) {
+    // Refetch the portal view to get the updated DM screen data
+    if (libraryId.value && portalViewId.value) {
+      portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value)
+    }
+  }
+  
+  // Handle DM Screen controls
+  if (payload.command === 'dm-screen-zoom-in') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDmScreenZoomIn === 'function') {
+      (currentItemRef.value as any).handleDmScreenZoomIn()
+    }
+  }
+  
+  if (payload.command === 'dm-screen-zoom-out') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDmScreenZoomOut === 'function') {
+      (currentItemRef.value as any).handleDmScreenZoomOut()
+    }
+  }
+  
+  if (payload.command === 'dm-screen-pan' && payload.deltaX !== undefined && payload.deltaY !== undefined) {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDmScreenPan === 'function') {
+      (currentItemRef.value as any).handleDmScreenPan(payload.deltaX, payload.deltaY)
+    }
+  }
+  
+  if (payload.command === 'dm-screen-reset-view') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDmScreenResetView === 'function') {
+      (currentItemRef.value as any).handleDmScreenResetView()
+    }
+  }
 }
 
 const handleSyncResponse = (payload: any) => {

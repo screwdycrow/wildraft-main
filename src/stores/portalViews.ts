@@ -284,6 +284,19 @@ export const usePortalViewsStore = defineStore('portalViews', () => {
     }
   }
   
+  // Helper: Map DM Screen to PortalViewItem
+  function mapDmScreenToPortalViewItem(dmScreen: { id: string; libraryId: number }): PortalViewItem {
+    // Generate unique ID for this portal view item
+    const itemId = `dmscreen-${dmScreen.id}-${Date.now()}`
+    
+    return {
+      id: itemId,
+      type: 'DmScreenViewer',
+      dmScreenId: dmScreen.id,
+      libraryId: dmScreen.libraryId,
+    }
+  }
+  
   // Add item to active portal and set it as current
   async function addItemToActivePortal(userFile: UserFile, setAsCurrent: boolean = true) {
     if (!activePortal.value) {
@@ -301,6 +314,54 @@ export const usePortalViewsStore = defineStore('portalViews', () => {
     
     // Map UserFile to PortalViewItem
     const newItem = mapUserFileToPortalViewItem(userFile)
+    
+    // Get current items or initialize empty array
+    const currentItems = currentPortalView.value.items || []
+    
+    // Add new item to the list
+    const updatedItems = [...currentItems, newItem]
+    
+    // Determine the new current item index
+    const newCurrentItem = setAsCurrent ? updatedItems.length - 1 : currentPortalView.value.currentItem || 0
+    
+    // Update portal view
+    const updated = await updatePortalView(libraryId, portalViewId, {
+      items: updatedItems,
+      currentItem: newCurrentItem,
+    })
+    
+    // Send socket command to change item
+    try {
+      const { usePortalSocket } = await import('@/composables/usePortalSocket')
+      const { sendPortalViewUpdate } = usePortalSocket()
+      sendPortalViewUpdate({
+        command: 'change-item',
+        itemIndex: newCurrentItem,
+      })
+    } catch (error) {
+      console.error('[Portal Store] Failed to send item change command:', error)
+    }
+    
+    return newItem
+  }
+  
+  // Add DM screen to active portal and set it as current
+  async function addDmScreenToActivePortal(dmScreen: { id: string; libraryId: number }, setAsCurrent: boolean = true) {
+    if (!activePortal.value) {
+      throw new Error('No active portal set')
+    }
+    
+    const { libraryId, portalViewId } = activePortal.value
+    
+    // Fetch current portal view
+    await fetchPortalView(libraryId, portalViewId)
+    
+    if (!currentPortalView.value) {
+      throw new Error('Failed to load current portal view')
+    }
+    
+    // Map DM Screen to PortalViewItem
+    const newItem = mapDmScreenToPortalViewItem(dmScreen)
     
     // Get current items or initialize empty array
     const currentItems = currentPortalView.value.items || []
@@ -358,6 +419,8 @@ export const usePortalViewsStore = defineStore('portalViews', () => {
     clearActivePortal,
     mapUserFileToPortalViewItem,
     addItemToActivePortal,
+    mapDmScreenToPortalViewItem,
+    addDmScreenToActivePortal,
   }
 })
 

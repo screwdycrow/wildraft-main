@@ -345,6 +345,29 @@ function generateItemTypePrompt(schema: JsonImportSchema): string {
     .filter(([_, desc]) => !desc.includes('(required)'))
     .map(([field]) => field)
 
+  // Enhanced prompts for stat blocks and characters
+  const isStatBlock = schema.title.includes('Stat Block')
+  const isCharacter = schema.title.includes('Character')
+  
+  let instructions = `- Generate a complete, valid JSON object
+- Use realistic values appropriate for the item type
+- Follow the exact field naming and structure shown above
+- Include arrays where specified (even if empty)
+- Use proper data types (strings, numbers, booleans, arrays, objects)
+- Do not include any fields not listed in the specifications above`
+
+  if (isStatBlock || isCharacter) {
+    instructions += `
+
+CRITICAL FOR ACTIONS AND SPELLS:
+- For actions with attack rolls: Include "toHit" with the attack bonus (e.g., "+5", "+3"). Calculate from ability modifier + proficiency bonus.
+- For actions/spells with damage: Include "roll" with damage dice and type (e.g., "1d6 fire", "2d8+3 slashing"). Do NOT include to-hit bonuses here.
+- For actions/spells requiring saving throws: Include "dc" with ability (e.g., "15 DEX", "18 CON"). Calculate from 8 + ability modifier + proficiency bonus.
+- Always include detailed "description" fields with full mechanical text, including hit/miss effects, range, area of effect, and flavor text.
+- For spells: Include all spell details (school, casting time, range, components, duration, concentration, ritual) as specified.
+- Make descriptions playable and complete - include all information a player/DM needs to use the action or spell.`
+  }
+
   return `Please generate a JSON object for a ${schema.title} with the following specifications:
 
 REQUIRED FIELDS:
@@ -354,12 +377,7 @@ OPTIONAL FIELDS:
 ${optionalFields.map(field => `- ${field}: ${schema.schema[field]}`).join('\n')}
 
 INSTRUCTIONS:
-- Generate a complete, valid JSON object
-- Use realistic values appropriate for the item type
-- Follow the exact field naming and structure shown above
-- Include arrays where specified (even if empty)
-- Use proper data types (strings, numbers, booleans, arrays, objects)
-- Do not include any fields not listed in the specifications above
+${instructions}
 
 EXAMPLE OUTPUT FORMAT:
 ${schema.example}

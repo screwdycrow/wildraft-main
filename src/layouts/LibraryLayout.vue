@@ -364,8 +364,8 @@
 
     <!-- Global Item Dialogs -->
     <global-quick-item-view />
-    <global-item-dialog />
     <global-item-viewer-dialog />
+    <global-item-editor-dialog />
     <global-file-viewer-dialog />
 
     <!-- DM Screen Cards in Hand -->
@@ -388,7 +388,6 @@ import { useTagsStore } from '@/stores/tags'
 import { useToast } from 'vue-toastification'
 import UserMenu from '@/components/common/UserMenu.vue'
 import QuickActions from '@/components/common/QuickActions.vue'
-import GlobalItemDialog from '@/components/items/GlobalItemDialog.vue'
 import GlobalQuickItemView from '@/components/items/GlobalQuickItemView.vue'
 import CombatEncounter from '@/components/combat/CombatEncounter.vue'
 import DiceRoller from '@/components/dice/DiceRoller.vue'

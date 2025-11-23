@@ -43,10 +43,15 @@ export const useDialogsStore = defineStore('dialogs', () => {
 
   // Item Editor Dialog
   const itemEditorOpen = ref(false)
-  const itemEditorData = ref<{ item: LibraryItem; libraryId: number } | null>(null)
+  const itemEditorData = ref<{ item: LibraryItem | null; libraryId: number; itemType?: string; initialTagIds?: number[] } | null>(null)
 
   function openItemEditor(item: LibraryItem, libraryId: number) {
     itemEditorData.value = { item, libraryId }
+    itemEditorOpen.value = true
+  }
+
+  function openItemEditorCreate(itemType: string, libraryId: number, initialTagIds?: number[]) {
+    itemEditorData.value = { item: null, libraryId, itemType, initialTagIds }
     itemEditorOpen.value = true
   }
 
@@ -74,6 +79,7 @@ export const useDialogsStore = defineStore('dialogs', () => {
     itemEditorOpen,
     itemEditorData,
     openItemEditor,
+    openItemEditorCreate,
     closeItemEditor,
   }
 })

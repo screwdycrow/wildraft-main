@@ -18,7 +18,7 @@
           >
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
-          <v-icon icon="mdi-folder-multiple" class="mr-2" />
+        <v-icon icon="mdi-folder-multiple" class="mr-2" />
           <span>{{ currentCategoryName || (selectMode ? 'Select Files' : 'File Manager') }}</span>
         </div>
         
@@ -490,8 +490,8 @@ const handleUploadComplete = async (_files: UserFile[]) => {
   } else {
     // Reload uncategorized files
     await filesStore.fetchUncategorizedFiles()
-  }
-  
+    }
+
   // Refresh categories to update file counts
   if (libraryId.value) {
     await fileCategoriesStore.fetchCategories(libraryId.value)
