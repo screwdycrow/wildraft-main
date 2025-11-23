@@ -15,6 +15,9 @@ export const uploadFileSchema = {
     fileBuffer: Type.Optional(Type.String({ 
       description: 'Base64 encoded file content (optional, for direct upload)' 
     })),
+    categoryId: Type.Optional(Type.Number({ 
+      description: 'ID of the file category (optional, must belong to a library the user has access to)' 
+    })),
   }),
   response: {
     201: Type.Object({
@@ -24,6 +27,7 @@ export const uploadFileSchema = {
       fileName: Type.String(),
       fileType: Type.String(),
       fileSize: Type.Number(),
+      categoryId: Type.Union([Type.Number(), Type.Null()], { description: 'ID of the file category, or null if uncategorized' }),
       downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
       createdAt: Type.String(),
       updatedAt: Type.String(),
@@ -79,6 +83,9 @@ export const confirmUploadSchema = {
     fileType: Type.String(),
     fileSize: Type.Number(),
     filePath: Type.String(),
+    categoryId: Type.Optional(Type.Number({ 
+      description: 'ID of the file category (optional, must belong to a library the user has access to)' 
+    })),
   }),
   response: {
     201: Type.Object({
@@ -88,6 +95,7 @@ export const confirmUploadSchema = {
       fileName: Type.String(),
       fileType: Type.String(),
       fileSize: Type.Number(),
+      categoryId: Type.Union([Type.Number(), Type.Null()], { description: 'ID of the file category, or null if uncategorized' }),
       downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
       createdAt: Type.String(),
       updatedAt: Type.String(),
@@ -151,6 +159,43 @@ export const listUserFilesSchema = {
           fileName: Type.String(),
           fileType: Type.String(),
           fileSize: Type.Number(),
+          categoryId: Type.Union([Type.Number(), Type.Null()], { description: 'ID of the file category, or null if uncategorized' }),
+          downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
+          createdAt: Type.String(),
+          updatedAt: Type.String(),
+        })
+      ),
+      total: Type.Number(),
+      limit: Type.Number(),
+      offset: Type.Number(),
+    }),
+    401: Type.Object({
+      error: Type.String(),
+      message: Type.String(),
+    }),
+  },
+};
+
+// Schema for listing uncategorized user files
+export const listUncategorizedFilesSchema = {
+  tags: ['files'],
+  description: 'List all files for the authenticated user that are not in any category',
+  security: [{ bearerAuth: [] }],
+  querystring: Type.Object({
+    limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 50 })),
+    offset: Type.Optional(Type.Number({ minimum: 0, default: 0 })),
+  }),
+  response: {
+    200: Type.Object({
+      files: Type.Array(
+        Type.Object({
+          id: Type.Number(),
+          userId: Type.Number(),
+          fileUrl: Type.String(),
+          fileName: Type.String(),
+          fileType: Type.String(),
+          fileSize: Type.Number(),
+          categoryId: Type.Null({ description: 'Always null for uncategorized files' }),
           downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
           createdAt: Type.String(),
           updatedAt: Type.String(),
@@ -210,9 +255,58 @@ export const getFileSchema = {
       fileName: Type.String(),
       fileType: Type.String(),
       fileSize: Type.Number(),
+      categoryId: Type.Union([Type.Number(), Type.Null()], { description: 'ID of the file category, or null if uncategorized' }),
       downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
       createdAt: Type.String(),
       updatedAt: Type.String(),
+    }),
+    401: Type.Object({
+      error: Type.String(),
+      message: Type.String(),
+    }),
+    403: Type.Object({
+      error: Type.String(),
+      message: Type.String(),
+    }),
+    404: Type.Object({
+      error: Type.String(),
+      message: Type.String(),
+    }),
+  },
+};
+
+// Schema for updating a file
+export const updateFileSchema = {
+  tags: ['files'],
+  description: 'Update file metadata (categoryId)',
+  security: [{ bearerAuth: [] }],
+  params: Type.Object({
+    fileId: Type.Number({ description: 'ID of the file' }),
+  }),
+  body: Type.Object({
+    categoryId: Type.Optional(Type.Union([Type.Number(), Type.Null()], { 
+      description: 'ID of the file category, or null to remove from category. Must belong to a library the user has access to.' 
+    })),
+  }),
+  response: {
+    200: Type.Object({
+      message: Type.String({ example: 'File updated successfully' }),
+      file: Type.Object({
+        id: Type.Number(),
+        userId: Type.Number(),
+        fileUrl: Type.String(),
+        fileName: Type.String(),
+        fileType: Type.String(),
+        fileSize: Type.Number(),
+        categoryId: Type.Union([Type.Number(), Type.Null()]),
+        downloadUrl: Type.String({ description: 'Presigned download URL (valid for 1 hour)' }),
+        createdAt: Type.String(),
+        updatedAt: Type.String(),
+      }),
+    }),
+    400: Type.Object({
+      error: Type.String(),
+      message: Type.String(),
     }),
     401: Type.Object({
       error: Type.String(),

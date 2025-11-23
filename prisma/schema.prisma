@@ -40,6 +40,7 @@ model Library {
   tags            Tag[]
   DMScreen        DMScreen[]
   version         LibraryVersion?
+  userFileCategories UserFileCategory[] @relation("LibraryUserFileCategories")
 }
 
 enum LibraryTemplate {
@@ -100,6 +101,8 @@ model UserFile {
   updatedAt       DateTime      @updatedAt
   libraryItems    LibraryItem[] @relation("LibraryItemFiles")
   featuredInItems LibraryItem[] @relation("FeaturedImage")
+  categoryId      Int?
+  category        UserFileCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
 
 enum LibraryItemType {
@@ -141,6 +144,16 @@ model CombatEncounter {
   library        Library      @relation(fields: [libraryId], references: [id], onDelete: Cascade)
 
   @@index([libraryId])
+}
+
+model UserFileCategory {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  library   Library  @relation("LibraryUserFileCategories", fields: [libraryId], references: [id], onDelete: Cascade)
+  userFiles UserFile[]
 }
 
 model DMScreen {

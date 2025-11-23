@@ -7,6 +7,7 @@ import { libraryAccessRoutes } from './library-access';
 import { libraryItemRoutes } from './library-items';
 import { tagRoutes } from './tags';
 import { userFileRoutes } from './user-files';
+import { userFileCategoryRoutes } from './user-file-categories';
 import { combatEncounterRoutes } from './combat-encounters';
 import { portalViewRoutes } from './portal-views';
 import { dmScreenRoutes } from './dm-screens';
@@ -33,6 +34,9 @@ export const registerRoutes = (fastify: FastifyInstance) => {
   
   // Tag routes
   fastify.register(tagRoutes, { prefix: '/api/libraries' });
+  
+  // User file category routes
+  fastify.register(userFileCategoryRoutes, { prefix: '/api/libraries' });
   
   // Combat encounter routes
   fastify.register(combatEncounterRoutes, { prefix: '/api/libraries' });

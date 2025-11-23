@@ -17,8 +17,10 @@ import {
   confirmUploadSchema,
   getDownloadUrlSchema,
   listUserFilesSchema,
+  listUncategorizedFilesSchema,
   deleteFileSchema,
   getFileSchema,
+  updateFileSchema,
 } from '../schemas/user-file.schemas';
 
 // Default expiration for cached files (6 hours)
@@ -67,6 +69,41 @@ export async function enrichUserFilesWithDownloadUrls(
   );
 }
 
+/**
+ * Helper function to validate that a categoryId belongs to a library the user has access to
+ */
+async function validateCategoryAccess(
+  categoryId: number | null | undefined,
+  userId: number
+): Promise<{ valid: boolean; error?: string }> {
+  if (!categoryId) {
+    return { valid: true };
+  }
+
+  const category = await prisma.userFileCategory.findUnique({
+    where: { id: categoryId },
+    include: {
+      library: {
+        include: {
+          access: {
+            where: { userId },
+          },
+        },
+      },
+    },
+  });
+
+  if (!category) {
+    return { valid: false, error: 'Category not found' };
+  }
+
+  if (category.library.access.length === 0) {
+    return { valid: false, error: 'You do not have access to this category\'s library' };
+  }
+
+  return { valid: true };
+}
+
 export const userFileRoutes = async (fastify: FastifyInstance) => {
   /**
    * POST /api/files/upload
@@ -79,17 +116,27 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
       schema: uploadFileSchema,
     },
     async (request, reply) => {
-      const { fileName, fileType, fileSize, filePath, fileBuffer } = request.body as {
+      const { fileName, fileType, fileSize, filePath, fileBuffer, categoryId } = request.body as {
         fileName: string;
         fileType: string;
         fileSize: number;
         filePath: string;
         fileBuffer?: string;
+        categoryId?: number | null;
       };
 
       const userId = request.user!.userId;
 
       try {
+        // Validate category access if provided
+        const categoryValidation = await validateCategoryAccess(categoryId, userId);
+        if (!categoryValidation.valid) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            message: categoryValidation.error || 'Invalid category',
+          });
+        }
+
         let buffer: Buffer | null = null;
         let finalFileType = fileType;
 
@@ -130,6 +177,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
             fileName,
             fileType: finalFileType,
             fileSize: finalBufferSize,
+            ...(categoryId !== undefined && { categoryId: categoryId || null }),
           },
         });
 
@@ -194,16 +242,26 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
       schema: confirmUploadSchema,
     },
     async (request, reply) => {
-      const { fileName, fileType, fileSize, filePath } = request.body as {
+      const { fileName, fileType, fileSize, filePath, categoryId } = request.body as {
         fileName: string;
         fileType: string;
         fileSize: number;
         filePath: string;
+        categoryId?: number | null;
       };
 
       const userId = request.user!.userId;
 
       try {
+        // Validate category access if provided
+        const categoryValidation = await validateCategoryAccess(categoryId, userId);
+        if (!categoryValidation.valid) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            message: categoryValidation.error || 'Invalid category',
+          });
+        }
+
         // Verify file exists in S3
         const exists = await fileExistsInS3(filePath);
         if (!exists) {
@@ -248,6 +306,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
             fileName,
               fileType: finalFileType,
               fileSize: finalFileSize,
+            ...(categoryId !== undefined && { categoryId: categoryId || null }),
           },
         });
 
@@ -380,6 +439,61 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
   );
 
   /**
+   * GET /api/files/uncategorized
+   * List all files for the authenticated user that are not in any category
+   */
+  fastify.get(
+    '/uncategorized',
+    {
+      preHandler: authenticateToken,
+      schema: listUncategorizedFilesSchema,
+    },
+    async (request, reply) => {
+      const { limit = 50, offset = 0 } = request.query as {
+        limit?: number;
+        offset?: number;
+      };
+      const userId = request.user!.userId;
+
+      try {
+        const [files, total] = await Promise.all([
+          prisma.userFile.findMany({
+            where: { 
+              userId,
+              categoryId: null,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+          }),
+          prisma.userFile.count({
+            where: { 
+              userId,
+              categoryId: null,
+            },
+          }),
+        ]);
+
+        // Add download URLs to all files
+        const enrichedFiles = await enrichUserFilesWithDownloadUrls(files);
+
+        return reply.code(200).send({
+          files: enrichedFiles,
+          total,
+          limit,
+          offset,
+        });
+      } catch (error) {
+        request.log.error({ error }, 'Failed to list uncategorized files');
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error instanceof Error ? error.message : 'Failed to list uncategorized files',
+        });
+      }
+    }
+  );
+
+  /**
    * GET /api/files/:fileId
    * Get details about a specific file
    */
@@ -421,6 +535,82 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
         return reply.code(500).send({
           error: 'Internal Server Error',
           message: error instanceof Error ? error.message : 'Failed to get file',
+        });
+      }
+    }
+  );
+
+  /**
+   * PUT /api/files/:fileId
+   * Update file metadata (categoryId)
+   */
+  fastify.put<{
+    Params: { fileId: string };
+    Body: {
+      categoryId?: number | null;
+    };
+  }>(
+    '/:fileId',
+    {
+      preHandler: authenticateToken,
+      schema: updateFileSchema,
+    },
+    async (request, reply) => {
+      const { fileId } = request.params;
+      const { categoryId } = request.body;
+      const userId = request.user!.userId;
+
+      try {
+        // Get file from database
+        const file = await prisma.userFile.findUnique({
+          where: { id: parseInt(fileId, 10) },
+        });
+
+        if (!file) {
+          return reply.code(404).send({
+            error: 'Not Found',
+            message: 'File not found',
+          });
+        }
+
+        // Check if user owns the file
+        if (file.userId !== userId) {
+          return reply.code(403).send({
+            error: 'Forbidden',
+            message: 'You do not have permission to update this file',
+          });
+        }
+
+        // Validate category access if provided
+        if (categoryId !== undefined) {
+          const categoryValidation = await validateCategoryAccess(categoryId, userId);
+          if (!categoryValidation.valid) {
+            return reply.code(400).send({
+              error: 'Bad Request',
+              message: categoryValidation.error || 'Invalid category',
+            });
+          }
+        }
+
+        // Update the file
+        const updatedFile = await prisma.userFile.update({
+          where: { id: parseInt(fileId, 10) },
+          data: {
+            ...(categoryId !== undefined && { categoryId: categoryId || null }),
+          },
+        });
+
+        // Add download URL to response
+        const enrichedFile = await enrichUserFileWithDownloadUrl(updatedFile);
+        return reply.code(200).send({
+          message: 'File updated successfully',
+          file: enrichedFile,
+        });
+      } catch (error) {
+        request.log.error({ error }, 'Failed to update file');
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error instanceof Error ? error.message : 'Failed to update file',
         });
       }
     }

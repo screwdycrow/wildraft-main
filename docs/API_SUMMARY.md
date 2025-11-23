@@ -93,6 +93,21 @@ Authorization: Bearer <your-jwt-token>
 
 ---
 
+### File Categories (`/api/libraries/:libraryId/file-categories`)
+- **POST** `/:libraryId/file-categories` - Create file category
+- **GET** `/:libraryId/file-categories` - Get all categories with file counts
+- **GET** `/:libraryId/file-categories/:categoryId` - Get single category with files
+- **PUT** `/:libraryId/file-categories/:categoryId` - Update category name
+- **DELETE** `/:libraryId/file-categories/:categoryId` - Delete category
+
+**Permissions:**
+- VIEWER: Can list and view categories
+- EDITOR/OWNER: Can create, update, and delete categories
+
+[Full Documentation](FILE_CATEGORIES_API.md)
+
+---
+
 ### Combat Encounters (`/api/libraries/:libraryId/encounters`)
 - **POST** `/:libraryId/encounters` - Create combat encounter
 - **GET** `/:libraryId/encounters` - Get all encounters
@@ -132,8 +147,14 @@ Authorization: Bearer <your-jwt-token>
 - **POST** `/upload` - Direct upload with base64 content
 - **GET** `/` - List user's files (paginated)
 - **GET** `/:fileId` - Get file details
+- **PUT** `/:fileId` - Update file metadata (categoryId)
 - **GET** `/:fileId/download-url` - Get presigned download URL
 - **DELETE** `/:fileId` - Delete file
+
+**Features:**
+- Files can be assigned to categories (library-scoped)
+- Category assignment validated against library access
+- All file responses include `categoryId` field
 
 **Upload Methods:**
 1. **Presigned URL (Recommended)**: Frontend uploads directly to S3
@@ -308,7 +329,10 @@ npm run export-openapi
 - Relations: library
 
 ### UserFile
-- id, userId, fileUrl, fileName, fileType, fileSize
+- id, userId, fileUrl, fileName, fileType, fileSize, categoryId (nullable)
+
+### UserFileCategory
+- id, name, libraryId, createdAt, updatedAt
 - createdAt, updatedAt
 - Relations: user, libraryItems[]
 
