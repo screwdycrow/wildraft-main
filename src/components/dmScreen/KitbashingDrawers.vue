@@ -146,10 +146,36 @@ const libraryId = computed(() => {
 
 const dmScreen = computed(() => dmScreensStore.currentDmScreen)
 
-// Watch for dmScreen changes to load categories
-watch(dmScreen, async (newScreen) => {
-  if (newScreen && libraryId.value) {
-    await fileCategoriesStore.fetchCategories(libraryId.value)
+// Track last fetched libraryId to prevent unnecessary refetches
+const lastFetchedLibraryId = ref<number | null>(null)
+const lastDmScreenId = ref<string | null>(null)
+
+// Watch for libraryId changes to load categories (only if libraryId changed)
+watch(libraryId, async (newLibraryId) => {
+  // Only fetch if:
+  // 1. We have a valid libraryId
+  // 2. The libraryId actually changed
+  // 3. We have a dmScreen loaded
+  if (newLibraryId && newLibraryId !== lastFetchedLibraryId.value && dmScreen.value) {
+    await fileCategoriesStore.fetchCategories(newLibraryId)
+    lastFetchedLibraryId.value = newLibraryId
+    lastDmScreenId.value = dmScreen.value.id
+  }
+}, { immediate: true })
+
+// Watch for dmScreen ID changes (when switching between screens or initial load)
+watch(() => dmScreen.value?.id, async (newScreenId, oldScreenId) => {
+  // Only fetch if:
+  // 1. We have a screen ID
+  // 2. The screen ID actually changed (not just the object reference)
+  // 3. We have a libraryId
+  if (newScreenId && newScreenId !== lastDmScreenId.value && libraryId.value) {
+    // Only fetch if libraryId changed or this is the first load
+    if (libraryId.value !== lastFetchedLibraryId.value || lastDmScreenId.value === null) {
+      await fileCategoriesStore.fetchCategories(libraryId.value)
+      lastFetchedLibraryId.value = libraryId.value
+    }
+    lastDmScreenId.value = newScreenId
   }
 }, { immediate: true })
 
@@ -184,13 +210,6 @@ const masonryGutter = {
   960: '8px',
   600: '6px',
 }
-
-// Load categories on mount and when dmScreen changes
-watch(dmScreen, async (newScreen) => {
-  if (newScreen && libraryId.value) {
-    await fileCategoriesStore.fetchCategories(libraryId.value)
-  }
-}, { immediate: true })
 
 // Watch for drawer opening to load files
 watch(openDrawerIds, async (newIds) => {

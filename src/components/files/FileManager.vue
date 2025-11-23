@@ -195,6 +195,48 @@
 
       <v-divider />
 
+      <!-- Bulk Actions Bar (when files are selected) -->
+      <div v-if="selectMode && selectedFiles.size > 0" class="bulk-actions-bar pa-3">
+        <div class="d-flex align-center gap-2">
+          <span class="text-body-2 font-weight-medium">
+            {{ selectedFiles.size }} file{{ selectedFiles.size > 1 ? 's' : '' }} selected
+          </span>
+          <v-divider vertical />
+          <v-btn
+            icon="mdi-folder-move"
+            size="small"
+            variant="text"
+            @click="showBulkMoveDialog = true"
+            :disabled="fileCategoriesStore.categories.length === 0"
+          >
+            <v-icon />
+            <v-tooltip activator="parent" location="top">Move to Folder</v-tooltip>
+          </v-btn>
+          <v-btn
+            icon="mdi-delete"
+            size="small"
+            variant="text"
+            color="error"
+            @click="showBulkDeleteDialog = true"
+          >
+            <v-icon />
+            <v-tooltip activator="parent" location="top">Delete</v-tooltip>
+          </v-btn>
+          <v-spacer />
+          <v-btn
+            icon="mdi-close"
+            size="small"
+            variant="text"
+            @click="selectedFiles.clear()"
+          >
+            <v-icon />
+            <v-tooltip activator="parent" location="top">Clear Selection</v-tooltip>
+          </v-btn>
+        </div>
+      </div>
+
+      <v-divider v-if="selectMode && selectedFiles.size > 0" />
+
       <v-card-actions>
         <v-spacer />
         <v-btn
@@ -311,6 +353,55 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Bulk Move to Folder Dialog -->
+  <v-dialog v-model="showBulkMoveDialog" max-width="400">
+    <v-card>
+      <v-card-title>Move {{ selectedFiles.size }} file{{ selectedFiles.size > 1 ? 's' : '' }} to Folder</v-card-title>
+      <v-card-text>
+        <v-list>
+          <v-list-item
+            title="Uncategorized"
+            prepend-icon="mdi-folder-outline"
+            @click="bulkMoveToFolder(null)"
+          />
+          <v-list-item
+            v-for="category in fileCategoriesStore.categories"
+            :key="category.id"
+            :title="category.name"
+            :subtitle="`${category.fileCount || 0} files`"
+            prepend-icon="mdi-folder"
+            @click="bulkMoveToFolder(category.id)"
+          />
+        </v-list>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn @click="showBulkMoveDialog = false">Cancel</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <!-- Bulk Delete Confirmation -->
+  <v-dialog v-model="showBulkDeleteDialog" max-width="400">
+    <v-card>
+      <v-card-title>Delete {{ selectedFiles.size }} file{{ selectedFiles.size > 1 ? 's' : '' }}?</v-card-title>
+      <v-card-text>
+        Are you sure you want to delete {{ selectedFiles.size }} selected file{{ selectedFiles.size > 1 ? 's' : '' }}?
+        <br />
+        <span class="text-caption text-medium-emphasis">
+          This action cannot be undone.
+        </span>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn @click="showBulkDeleteDialog = false">Cancel</v-btn>
+        <v-btn color="error" @click="confirmBulkDelete" :loading="bulkDeleting">
+          Delete
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -377,6 +468,11 @@ const showDeleteFolderDialog = ref(false)
 const folderToDelete = ref<FileCategory | null>(null)
 const deletingFolder = ref(false)
 
+// Bulk actions
+const showBulkMoveDialog = ref(false)
+const showBulkDeleteDialog = ref(false)
+const bulkDeleting = ref(false)
+
 // Get library ID from route or store
 const libraryId = computed(() => {
   const id = route.params.id || route.params.libraryId
@@ -416,7 +512,7 @@ watch(isOpen, async (value) => {
     // Reset navigation
     currentCategoryId.value = null
     
-    // Load categories if we have a library ID
+    // Load categories if we have a library ID (will use cache if already loaded)
     if (libraryId.value) {
       try {
         await fileCategoriesStore.fetchCategories(libraryId.value)
@@ -492,9 +588,9 @@ const handleUploadComplete = async (_files: UserFile[]) => {
     await filesStore.fetchUncategorizedFiles()
     }
 
-  // Refresh categories to update file counts
+  // Refresh categories to update file counts (force refresh to get updated counts)
   if (libraryId.value) {
-    await fileCategoriesStore.fetchCategories(libraryId.value)
+    await fileCategoriesStore.fetchCategories(libraryId.value, true)
   }
 }
 
@@ -617,6 +713,7 @@ const loadFilesForCategory = async (categoryId: number) => {
             const downloadUrl = await filesStore.getDownloadUrl(file.id)
             return {
               id: file.id,
+              userId: file.userId || 0, // Include userId if available
               fileName: file.fileName,
               fileType: file.fileType,
               fileSize: file.fileSize,
@@ -631,6 +728,7 @@ const loadFilesForCategory = async (categoryId: number) => {
             // Return file without downloadUrl if fetch fails
             return {
               id: file.id,
+              userId: file.userId || 0, // Include userId if available
               fileName: file.fileName,
               fileType: file.fileType,
               fileSize: file.fileSize,
@@ -638,7 +736,7 @@ const loadFilesForCategory = async (categoryId: number) => {
               createdAt: file.createdAt,
               updatedAt: file.updatedAt,
               fileUrl: file.fileUrl || '',
-              downloadUrl: null,
+              downloadUrl: '',
             } as UserFile
           }
         })
@@ -859,6 +957,120 @@ const handleFolderDrop = async (event: DragEvent, categoryId: number) => {
     toast.error(error.response?.data?.error || 'Failed to move file to folder')
   }
 }
+
+// Bulk actions
+const bulkMoveToFolder = async (categoryId: number | null) => {
+  if (selectedFiles.value.size === 0) return
+
+  const fileIds = Array.from(selectedFiles.value)
+  const filesToMove = filteredFiles.value.filter(f => fileIds.includes(f.id))
+
+  if (filesToMove.length === 0) return
+
+  bulkDeleting.value = true
+  try {
+    // Move all selected files
+    await Promise.all(
+      filesToMove.map(file => filesStore.updateFileCategory(file.id, categoryId))
+    )
+
+    // Update local state
+    if (currentCategoryId.value !== null) {
+      if (categoryId === currentCategoryId.value) {
+        // Files moved to current category - add them if not already there
+        filesToMove.forEach(file => {
+          if (!categoryFiles.value.find(f => f.id === file.id)) {
+            categoryFiles.value.push({ ...file, categoryId })
+          }
+        })
+      } else {
+        // Files moved away from current category - remove them
+        const movedIds = new Set(filesToMove.map(f => f.id))
+        categoryFiles.value = categoryFiles.value.filter(f => !movedIds.has(f.id))
+      }
+    }
+
+    // Update category file counts locally
+    const categoryCounts: Record<number, number> = {}
+    filesToMove.forEach(file => {
+      const oldCatId = file.categoryId
+      if (oldCatId !== null) {
+        categoryCounts[oldCatId] = (categoryCounts[oldCatId] || 0) - 1
+      }
+      if (categoryId !== null) {
+        categoryCounts[categoryId] = (categoryCounts[categoryId] || 0) + 1
+      }
+    })
+
+    Object.entries(categoryCounts).forEach(([catId, delta]) => {
+      const categoryIndex = fileCategoriesStore.categories.findIndex(c => c.id === Number(catId))
+      if (categoryIndex !== -1) {
+        const category = fileCategoriesStore.categories[categoryIndex]
+        if (category.fileCount !== undefined) {
+          category.fileCount = Math.max(0, (category.fileCount || 0) + delta)
+        }
+      }
+    })
+
+    const categoryName = categoryId !== null
+      ? fileCategoriesStore.getCategoryById(categoryId)?.name || 'folder'
+      : 'Uncategorized'
+
+    toast.success(`Moved ${filesToMove.length} file${filesToMove.length > 1 ? 's' : ''} to "${categoryName}"`)
+    showBulkMoveDialog.value = false
+    selectedFiles.value.clear()
+  } catch (error: any) {
+    console.error('Failed to move files to folder:', error)
+    toast.error(error.response?.data?.error || 'Failed to move files to folder')
+  } finally {
+    bulkDeleting.value = false
+  }
+}
+
+const confirmBulkDelete = async () => {
+  if (selectedFiles.value.size === 0) return
+
+  const fileIds = Array.from(selectedFiles.value)
+  const filesToDelete = filteredFiles.value.filter(f => fileIds.includes(f.id))
+
+  if (filesToDelete.length === 0) return
+
+  bulkDeleting.value = true
+  try {
+    // Delete all selected files
+    await Promise.all(
+      filesToDelete.map(file => filesStore.deleteFile(file.id))
+    )
+
+    // Update local state
+    if (currentCategoryId.value !== null) {
+      const deletedIds = new Set(filesToDelete.map(f => f.id))
+      categoryFiles.value = categoryFiles.value.filter(f => !deletedIds.has(f.id))
+    }
+
+    // Update category file counts locally
+    filesToDelete.forEach(file => {
+      if (file.categoryId !== null) {
+        const categoryIndex = fileCategoriesStore.categories.findIndex(c => c.id === file.categoryId)
+        if (categoryIndex !== -1) {
+          const category = fileCategoriesStore.categories[categoryIndex]
+          if (category.fileCount !== undefined) {
+            category.fileCount = Math.max(0, (category.fileCount || 0) - 1)
+          }
+        }
+      }
+    })
+
+    toast.success(`Deleted ${filesToDelete.length} file${filesToDelete.length > 1 ? 's' : ''}`)
+    showBulkDeleteDialog.value = false
+    selectedFiles.value.clear()
+  } catch (error: any) {
+    console.error('Failed to delete files:', error)
+    toast.error(error.response?.data?.error || 'Failed to delete files')
+  } finally {
+    bulkDeleting.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -934,6 +1146,11 @@ const handleFolderDrop = async (event: DragEvent, categoryId: number) => {
 
 .folder-card:hover .folder-card__menu {
   opacity: 1;
+}
+
+.bulk-actions-bar {
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-top: 1px solid rgba(var(--v-theme-primary), 0.2);
 }
 </style>
 
