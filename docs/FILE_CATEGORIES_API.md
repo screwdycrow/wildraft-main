@@ -468,3 +468,4 @@ const groupFilesByCategory = (files: File[], categories: Category[]) => {
 - **Category validation** ensures you can only assign files to categories in libraries you have access to
 - **Deleting a category** automatically uncategorizes all files in that category
 
+
