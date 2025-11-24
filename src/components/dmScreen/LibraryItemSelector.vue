@@ -3,6 +3,7 @@
     v-model="isOpen"
     max-width="800"
     scrollable
+    :attach="false"
   >
     <v-card>
       <v-card-title>

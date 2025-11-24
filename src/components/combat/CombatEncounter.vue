@@ -133,7 +133,7 @@
     </div>
 
     <!-- Create Encounter Dialog -->
-    <v-dialog v-model="showCreateDialog" max-width="500">
+    <v-dialog v-model="showCreateDialog" max-width="500" :attach="false">
       <v-card class="glass-card" elevation="0">
         <v-card-title class="text-h5 font-weight-bold pa-6">
           Create Combat Encounter
@@ -184,7 +184,7 @@
     />
 
     <!-- Manage Encounters Dialog -->
-    <v-dialog v-model="showManageDialog" max-width="600">
+    <v-dialog v-model="showManageDialog" max-width="600" :attach="false">
       <v-card class="glass-card" elevation="0">
         <v-card-title class="text-h5 font-weight-bold pa-6">
           Manage Encounters

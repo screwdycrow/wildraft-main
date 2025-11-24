@@ -1,5 +1,6 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="700" scrollable>
+  <Teleport to="body">
+    <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="700" scrollable>
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon :icon="isEdit ? 'mdi-pencil' : 'mdi-account-plus'" :color="isEdit ? 'primary' : 'purple'" class="mr-2" />
@@ -159,11 +160,12 @@
       @update:amount="formData.hp = $event"
     />
 
-  </v-dialog>
+    </v-dialog>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, Teleport } from 'vue'
 import type { Combatant } from '@/types/combat.types'
 import AmountEditor from '@/components/common/AmountEditor.vue'
 import ActionListEditor from '@/components/items/dnd5e/common/ActionListEditor.vue'

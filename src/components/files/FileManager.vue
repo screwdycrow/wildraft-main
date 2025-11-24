@@ -4,6 +4,7 @@
     max-width="1400"
     scrollable
     persistent
+    :attach="false"
   >
     <v-card class="glass-card">
       <v-card-title class="d-flex align-center">

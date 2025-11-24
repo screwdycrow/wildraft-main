@@ -20,20 +20,17 @@
 
       <!-- DM Screen Wrapper -->
       <dm-screen-wrapper
-        ref="dmScreenWrapperRef"
+        v-if="dmScreen"
         :dm-screen="dmScreen"
-        @update:lock-background-images="lockBackgroundImages = $event"
-        @update:show-grid="showGrid = $event"
-        @selected-item="selectedItem = $event"
       />
     </div>
 
     <!-- Floating Toolbar -->
     <dm-screen-floating-toolbar
-      v-if="dmScreen"
-      :lock-background-images="lockBackgroundImages"
-      :show-grid="showGrid"
-      :selected-item="selectedItem"
+      v-if="dmScreen && dmScreenComposable"
+      :lock-background-images="dmScreenComposable.lockBackgroundImages.value"
+      :show-grid="dmScreenComposable.showGrid.value"
+      :selected-item="dmScreenComposable.selectedItem.value || null"
       @add-item="handleAddItem"
       @add-background="handleAddBackground"
       @add-file="handleAddFileFromToolbar"
@@ -52,7 +49,9 @@
 
     <!-- File Manager Dialog for adding files -->
     <file-manager
-      v-model="showFileManager"
+      v-if="dmScreenComposable"
+      :model-value="dmScreenComposable.showFileManager.value"
+      @update:model-value="dmScreenComposable.showFileManager.value = $event"
       select-mode
       :multiple="true"
       return-type="id"
@@ -68,10 +67,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, provide } from 'vue'
+import { useRoute } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
+import { useDmScreen } from '@/composables/useDmScreen'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import DmScreenFloatingToolbar from '@/components/dmScreen/DmScreenFloatingToolbar.vue'
 import KitbashingDrawers from '@/components/dmScreen/KitbashingDrawers.vue'
@@ -79,19 +79,12 @@ import FileManager from '@/components/files/FileManager.vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 
 const route = useRoute()
-const router = useRouter()
 const dmScreensStore = useDmScreensStore()
 const toast = useToast()
 
-const dmScreenWrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null)
-const lockBackgroundImages = ref(false)
-const showGrid = ref(true)
-const selectedItem = ref<DmScreenItem | null>(null)
-const showFileManager = ref(false)
-
 const libraryId = computed(() => {
   const id = route.params.id
-  return id ? Number(id) : null
+  return id ? Number(route.params.id) : null
 })
 
 const dmScreenId = computed(() => {
@@ -102,25 +95,16 @@ const dmScreen = computed(() => {
   return dmScreensStore.currentDmScreen
 })
 
-// Watch for sidebar width changes (from LibraryLayout)
-// This is a simple approach - in a real app you might use provide/inject or a store
-watch(() => dmScreen.value?.settings?.lockBackgroundImages, (value: boolean | undefined) => {
-  if (value !== undefined) {
-    lockBackgroundImages.value = value
-  }
-}, { immediate: true })
+// Call composable directly - this is the correct way!
+const libId = route.params.id ? Number(route.params.id) : null
+const screenId = route.params.dmScreenId as string
+const dmScreenComposable = libId && screenId ? useDmScreen(screenId, libId) : null
 
-watch(() => dmScreen.value?.settings?.grid?.showGrid, (value: boolean | undefined) => {
-  if (value !== undefined) {
-    showGrid.value = value
-  } else {
-    showGrid.value = true // Default to true
-  }
-}, { immediate: true })
+// Provide composable to child components
+if (dmScreenComposable) {
+  provide('dmScreenComposable', dmScreenComposable)
+}
 
-// Calculate sidebar width based on rail state
-// In rail mode, sidebar is ~56px, otherwise 200px
-// We'll watch for changes in the DOM or use a more sophisticated approach
 onMounted(async () => {
   await loadDmScreen()
 })
@@ -135,86 +119,89 @@ async function loadDmScreen() {
   }
 }
 
-function goBack() {
-  if (libraryId.value) {
-    router.push({ name: 'LibraryDmScreens', params: { id: libraryId.value } })
+function handleAddItem() {
+  if (dmScreenComposable) {
+    dmScreenComposable.showItemSelector.value = true
   }
 }
 
-function handleEdit() {
-  // TODO: Implement edit functionality
-  toast.info('Edit functionality coming soon')
-}
-
-function handleAddItem() {
-  dmScreenWrapperRef.value?.addItem()
-}
-
 function handleAddBackground() {
-  dmScreenWrapperRef.value?.addBackground()
+  if (dmScreenComposable) {
+    dmScreenComposable.showFileManager.value = true
+  }
 }
 
 function handleOpenSettings() {
-  dmScreenWrapperRef.value?.openSettings()
+  if (dmScreenComposable) {
+    dmScreenComposable.showSettingsDialog.value = true
+  }
 }
 
 function handleToggleLockBackground() {
-  dmScreenWrapperRef.value?.toggleLockBackground()
+  dmScreenComposable?.toggleLockBackground()
 }
 
 function handleToggleGrid() {
-  dmScreenWrapperRef.value?.toggleGrid()
+  dmScreenComposable?.toggleGrid()
 }
 
 function handleAddTextNode() {
-  dmScreenWrapperRef.value?.addTextNode()
+  dmScreenComposable?.addTextNode()
 }
 
 function handleAddShapeNode() {
-  dmScreenWrapperRef.value?.addShapeNode()
+  dmScreenComposable?.addShapeNode()
 }
 
 function handleSendToBack() {
-  dmScreenWrapperRef.value?.sendToBack(selectedItem.value)
+  if (dmScreenComposable?.selectedItem.value) {
+    dmScreenComposable.sendToBack(dmScreenComposable.selectedItem.value)
+  }
 }
 
 function handleSendToFront() {
-  dmScreenWrapperRef.value?.sendToFront(selectedItem.value)
+  if (dmScreenComposable?.selectedItem.value) {
+    dmScreenComposable.sendToFront(dmScreenComposable.selectedItem.value)
+  }
 }
 
 function handleEditShapeStyle() {
-  dmScreenWrapperRef.value?.editShapeStyle(selectedItem.value)
+  if (dmScreenComposable?.selectedItem.value) {
+    dmScreenComposable.editShapeStyle(dmScreenComposable.selectedItem.value)
+  }
 }
 
 function handleDeleteSelected() {
-  if (selectedItem.value) {
-    dmScreenWrapperRef.value?.deleteItem(selectedItem.value.id)
-    selectedItem.value = null
+  if (dmScreenComposable && dmScreenComposable.selectedItem.value) {
+    dmScreenComposable.deleteItem(dmScreenComposable.selectedItem.value.id)
+    dmScreenComposable.selectedItem.value = null
   }
 }
 
 function handleRotateLeft() {
-  if (selectedItem.value && dmScreenWrapperRef.value) {
-    dmScreenWrapperRef.value.rotateItem(selectedItem.value, -90)
+  if (dmScreenComposable?.selectedItem.value) {
+    dmScreenComposable.rotateItem(dmScreenComposable.selectedItem.value, -90)
   }
 }
 
 function handleRotateRight() {
-  if (selectedItem.value && dmScreenWrapperRef.value) {
-    dmScreenWrapperRef.value.rotateItem(selectedItem.value, 90)
+  if (dmScreenComposable?.selectedItem.value) {
+    dmScreenComposable.rotateItem(dmScreenComposable.selectedItem.value, 90)
   }
 }
 
 function handleAddFile(file: any) {
-  dmScreenWrapperRef.value?.addUserFile(file)
+  dmScreenComposable?.addUserFile(file)
 }
 
 function handleAddFileFromToolbar() {
-  showFileManager.value = true
+  if (dmScreenComposable) {
+    dmScreenComposable.showFileManager.value = true
+  }
 }
 
 async function handleFilesSelected(fileIds: number | number[] | string | string[]) {
-  if (!dmScreen.value) return
+  if (!dmScreen.value || !dmScreenComposable) return
   
   // Convert to number array
   const idsArray: number[] = (Array.isArray(fileIds) ? fileIds : [fileIds])
@@ -224,16 +211,14 @@ async function handleFilesSelected(fileIds: number | number[] | string | string[
   if (idsArray.length === 0) return
   
   try {
+    // Use default position since we don't have VueFlow context here
+    const center = { x: 400, y: 300 }
     const currentItems = dmScreen.value.items || []
     const newItems: DmScreenItem[] = []
     
     // Default size for MediaCard nodes
     const defaultWidth = 300
     const defaultHeight = 400
-    
-    // Get viewport center from Vue Flow (approximate)
-    const centerX = 400
-    const centerY = 300
     
     // Add each selected file as a UserFile node
     for (let i = 0; i < idsArray.length; i++) {
@@ -251,11 +236,11 @@ async function handleFilesSelected(fileIds: number | number[] | string | string[
           isBackground: false,
         },
         nodeOptions: {
-          x: centerX + offsetX - defaultWidth / 2,
-          y: centerY + offsetY - defaultHeight / 2,
+          x: center.x + offsetX,
+          y: center.y + offsetY,
           position: { 
-            x: centerX + offsetX - defaultWidth / 2,
-            y: centerY + offsetY - defaultHeight / 2
+            x: center.x + offsetX,
+            y: center.y + offsetY
           },
           width: defaultWidth,
           height: defaultHeight,
@@ -268,15 +253,10 @@ async function handleFilesSelected(fileIds: number | number[] | string | string[
     }
     
     const updatedItems = [...currentItems, ...newItems]
-    
-    await dmScreensStore.updateDmScreen(
-      dmScreen.value.libraryId,
-      dmScreen.value.id,
-      { items: updatedItems }
-    )
+    dmScreenComposable.updateItems(updatedItems)
     
     toast.success(`Added ${idsArray.length} file${idsArray.length > 1 ? 's' : ''} to DM screen`)
-    showFileManager.value = false
+    dmScreenComposable.showFileManager.value = false
   } catch (error: any) {
     console.error('[DmScreenView] Failed to add files:', error)
     toast.error('Failed to add files to DM screen')

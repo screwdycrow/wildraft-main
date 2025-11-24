@@ -20,18 +20,7 @@
     </div>
 
     <!-- Hide/Show Sidebar Button (only if encounter exists or details should be shown) -->
-    <v-btn
-      v-if="shouldShowToggleButton"
-      icon
-      class="portal-sidebar-toggle"
-      :class="{ 'sidebar-hidden': !sidebarVisible }"
-      @click="sidebarVisible = !sidebarVisible"
-    >
-      <v-icon>{{ sidebarVisible ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
-      <v-tooltip activator="parent" location="left">
-        {{ sidebarVisible ? 'Hide Combat' : 'Show Combat' }}
-      </v-tooltip>
-    </v-btn>
+
     
     <!-- 3D Dice Box -->
     <DiceBox3D />
