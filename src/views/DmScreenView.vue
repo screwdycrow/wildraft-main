@@ -16,29 +16,27 @@
 
     <!-- DM Screen Content -->
     <div v-else-if="dmScreen" class="dm-screen-container">
-      <!-- Header -->
-
-      <!-- DM Screen Wrapper -->
       <dm-screen-wrapper
-        v-if="dmScreen"
+        ref="wrapperRef"
         :dm-screen="dmScreen"
       />
     </div>
 
     <!-- Floating Toolbar -->
     <dm-screen-floating-toolbar
-      v-if="dmScreen && dmScreenComposable"
-      :lock-background-images="dmScreenComposable.lockBackgroundImages.value"
-      :show-grid="dmScreenComposable.showGrid.value"
-      :selected-item="dmScreenComposable.selectedItem.value || null"
+      v-if="dmScreen"
+      :lock-background-images="lockBackgroundImages"
+      :show-grid="showGrid"
+      :selected-item="selectedItem"
       @add-item="handleAddItem"
       @add-background="handleAddBackground"
-      @add-file="handleAddFileFromToolbar"
+      @add-file="handleAddFile"
       @add-text-node="handleAddTextNode"
       @add-shape-node="handleAddShapeNode"
       @open-settings="handleOpenSettings"
       @toggle-lock-background="handleToggleLockBackground"
       @toggle-grid="handleToggleGrid"
+      @duplicate-item="handleDuplicateItem"
       @send-to-back="handleSendToBack"
       @send-to-front="handleSendToFront"
       @rotate-left="handleRotateLeft"
@@ -47,11 +45,9 @@
       @delete-selected="handleDeleteSelected"
     />
 
-    <!-- File Manager Dialog for adding files -->
+    <!-- File Manager Dialog -->
     <file-manager
-      v-if="dmScreenComposable"
-      :model-value="dmScreenComposable.showFileManager.value"
-      @update:model-value="dmScreenComposable.showFileManager.value = $event"
+      v-model="showFileManager"
       select-mode
       :multiple="true"
       return-type="id"
@@ -61,26 +57,40 @@
     <!-- Kitbashing Drawers -->
     <kitbashing-drawers
       v-if="dmScreen"
-      @add-file="handleAddFile"
+      @add-file="handleAddFileFromDrawer"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, provide } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
-import { useDmScreen } from '@/composables/useDmScreen'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import DmScreenFloatingToolbar from '@/components/dmScreen/DmScreenFloatingToolbar.vue'
 import KitbashingDrawers from '@/components/dmScreen/KitbashingDrawers.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 
+// =====================================================
+// ROUTE & STORES
+// =====================================================
+
 const route = useRoute()
 const dmScreensStore = useDmScreensStore()
 const toast = useToast()
+
+// =====================================================
+// REFS
+// =====================================================
+
+const wrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null)
+const showFileManager = ref(false)
+
+// =====================================================
+// COMPUTED - Derived from route params
+// =====================================================
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -91,19 +101,29 @@ const dmScreenId = computed(() => {
   return route.params.dmScreenId as string
 })
 
+// =====================================================
+// COMPUTED - Derived from store (NO WATCHERS)
+// =====================================================
+
 const dmScreen = computed(() => {
   return dmScreensStore.currentDmScreen
 })
 
-// Call composable directly - this is the correct way!
-const libId = route.params.id ? Number(route.params.id) : null
-const screenId = route.params.dmScreenId as string
-const dmScreenComposable = libId && screenId ? useDmScreen(screenId, libId) : null
+const selectedItem = computed(() => {
+  return dmScreensStore.selectedItem
+})
 
-// Provide composable to child components
-if (dmScreenComposable) {
-  provide('dmScreenComposable', dmScreenComposable)
-}
+const lockBackgroundImages = computed(() => {
+  return dmScreen.value?.settings?.lockBackgroundImages || false
+})
+
+const showGrid = computed(() => {
+  return dmScreen.value?.settings?.grid?.showGrid !== false
+})
+
+// =====================================================
+// LIFECYCLE
+// =====================================================
 
 onMounted(async () => {
   await loadDmScreen()
@@ -119,155 +139,164 @@ async function loadDmScreen() {
   }
 }
 
+// =====================================================
+// TOOLBAR EVENT HANDLERS
+// All handlers call store actions directly
+// =====================================================
+
 function handleAddItem() {
-  if (dmScreenComposable) {
-    dmScreenComposable.showItemSelector.value = true
-  }
+  wrapperRef.value?.openItemSelector()
 }
 
 function handleAddBackground() {
-  if (dmScreenComposable) {
-    dmScreenComposable.showFileManager.value = true
-  }
+  wrapperRef.value?.openFileManager()
+}
+
+function handleAddFile() {
+  showFileManager.value = true
 }
 
 function handleOpenSettings() {
-  if (dmScreenComposable) {
-    dmScreenComposable.showSettingsDialog.value = true
-  }
+  wrapperRef.value?.openSettings()
 }
 
 function handleToggleLockBackground() {
-  dmScreenComposable?.toggleLockBackground()
+  wrapperRef.value?.toggleLockBackground()
 }
 
 function handleToggleGrid() {
-  dmScreenComposable?.toggleGrid()
+  wrapperRef.value?.toggleGrid()
 }
 
 function handleAddTextNode() {
-  dmScreenComposable?.addTextNode()
+  wrapperRef.value?.addTextNode()
 }
 
 function handleAddShapeNode() {
-  dmScreenComposable?.addShapeNode()
+  wrapperRef.value?.addShapeNode()
+}
+
+function handleDuplicateItem() {
+  if (!dmScreen.value || !selectedItem.value) return
+  dmScreensStore.duplicateItem(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id
+  )
+  toast.success('Item duplicated')
 }
 
 function handleSendToBack() {
-  if (dmScreenComposable?.selectedItem.value) {
-    dmScreenComposable.sendToBack(dmScreenComposable.selectedItem.value)
-  }
+  if (!dmScreen.value || !selectedItem.value) return
+  dmScreensStore.sendToBack(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id
+  )
+  toast.success('Sent to back')
 }
 
 function handleSendToFront() {
-  if (dmScreenComposable?.selectedItem.value) {
-    dmScreenComposable.sendToFront(dmScreenComposable.selectedItem.value)
-  }
-}
-
-function handleEditShapeStyle() {
-  if (dmScreenComposable?.selectedItem.value) {
-    dmScreenComposable.editShapeStyle(dmScreenComposable.selectedItem.value)
-  }
-}
-
-function handleDeleteSelected() {
-  if (dmScreenComposable && dmScreenComposable.selectedItem.value) {
-    dmScreenComposable.deleteItem(dmScreenComposable.selectedItem.value.id)
-    dmScreenComposable.selectedItem.value = null
-  }
+  if (!dmScreen.value || !selectedItem.value) return
+  dmScreensStore.sendToFront(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id
+  )
+  toast.success('Sent to front')
 }
 
 function handleRotateLeft() {
-  if (dmScreenComposable?.selectedItem.value) {
-    dmScreenComposable.rotateItem(dmScreenComposable.selectedItem.value, -90)
-  }
+  if (!dmScreen.value || !selectedItem.value) return
+  const currentRotation = selectedItem.value.nodeOptions?.rotation || 0
+  const newRotation = ((currentRotation - 90) % 360 + 360) % 360
+  dmScreensStore.updateItemRotation(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id,
+    newRotation
+  )
 }
 
 function handleRotateRight() {
-  if (dmScreenComposable?.selectedItem.value) {
-    dmScreenComposable.rotateItem(dmScreenComposable.selectedItem.value, 90)
-  }
+  if (!dmScreen.value || !selectedItem.value) return
+  const currentRotation = selectedItem.value.nodeOptions?.rotation || 0
+  const newRotation = (currentRotation + 90) % 360
+  dmScreensStore.updateItemRotation(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id,
+    newRotation
+  )
 }
 
-function handleAddFile(file: any) {
-  dmScreenComposable?.addUserFile(file)
+function handleEditShapeStyle() {
+  if (!selectedItem.value) return
+  wrapperRef.value?.openShapeStyleEditor(selectedItem.value)
 }
 
-function handleAddFileFromToolbar() {
-  if (dmScreenComposable) {
-    dmScreenComposable.showFileManager.value = true
-  }
+function handleDeleteSelected() {
+  if (!dmScreen.value || !selectedItem.value) return
+  dmScreensStore.deleteItem(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id
+  )
+  toast.success('Item deleted')
+}
+
+// =====================================================
+// FILE HANDLERS
+// =====================================================
+
+function handleAddFileFromDrawer(file: any) {
+  if (!dmScreen.value) return
+  
+  // Use default position
+  const position = { x: 400, y: 300 }
+  
+  dmScreensStore.addUserFile(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    file.id,
+    position
+  )
+  
+  toast.success('File added to DM screen')
 }
 
 async function handleFilesSelected(fileIds: number | number[] | string | string[]) {
-  if (!dmScreen.value || !dmScreenComposable) return
+  if (!dmScreen.value) return
   
-  // Convert to number array
   const idsArray: number[] = (Array.isArray(fileIds) ? fileIds : [fileIds])
     .map(id => typeof id === 'string' ? parseInt(id, 10) : id)
     .filter(id => !isNaN(id))
   
   if (idsArray.length === 0) return
   
-  try {
-    // Use default position since we don't have VueFlow context here
-    const center = { x: 400, y: 300 }
-    const currentItems = dmScreen.value.items || []
-    const newItems: DmScreenItem[] = []
+  // Add each file
+  for (let i = 0; i < idsArray.length; i++) {
+    const fileId = idsArray[i]
+    const offsetX = (i % 3) * 50 - 50
+    const offsetY = Math.floor(i / 3) * 50
     
-    // Default size for MediaCard nodes
-    const defaultWidth = 300
-    const defaultHeight = 400
-    
-    // Add each selected file as a UserFile node
-    for (let i = 0; i < idsArray.length; i++) {
-      const fileId = idsArray[i]
-      
-      // Stagger positions slightly for multiple files
-      const offsetX = (i % 3) * 50 - 50 // -50, 0, 50
-      const offsetY = Math.floor(i / 3) * 50
-      
-      const userFileItem: DmScreenItem = {
-        id: `userfile-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'UserFileId',
-        data: {
-          id: fileId,
-          isBackground: false,
-        },
-        nodeOptions: {
-          x: center.x + offsetX,
-          y: center.y + offsetY,
-          position: { 
-            x: center.x + offsetX,
-            y: center.y + offsetY
-          },
-          width: defaultWidth,
-          height: defaultHeight,
-          resizable: true,
-        },
-        isMinimized: false,
-      }
-      
-      newItems.push(userFileItem)
-    }
-    
-    const updatedItems = [...currentItems, ...newItems]
-    dmScreenComposable.updateItems(updatedItems)
-    
-    toast.success(`Added ${idsArray.length} file${idsArray.length > 1 ? 's' : ''} to DM screen`)
-    dmScreenComposable.showFileManager.value = false
-  } catch (error: any) {
-    console.error('[DmScreenView] Failed to add files:', error)
-    toast.error('Failed to add files to DM screen')
+    dmScreensStore.addUserFile(
+      dmScreen.value.id,
+      dmScreen.value.libraryId,
+      fileId,
+      { x: 400 + offsetX, y: 300 + offsetY }
+    )
   }
+  
+  toast.success(`Added ${idsArray.length} file${idsArray.length > 1 ? 's' : ''} to DM screen`)
+  showFileManager.value = false
 }
 </script>
 
 <style scoped>
 .dm-screen-view {
-    width: 100%;
-  height:90vh;
+  width: 100%;
+  height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -294,17 +323,4 @@ async function handleFilesSelected(fileIds: number | number[] | string | string[
   overflow: hidden;
   isolation: isolate;
 }
-
-
-.header-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-}
 </style>
-

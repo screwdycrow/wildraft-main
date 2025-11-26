@@ -2,16 +2,22 @@
   <div ref="target" class="lazy-file-preview">
     <transition name="fade-in" appear>
       <div
-        v-if="isVisible"
+        v-if="shouldRender"
         class="file-preview"
         :class="{ 'file-preview--image': isImage }"
         @click="$emit('click', file)"
         @dragstart="handleDragStart"
         draggable="true"
       >
+        <!-- Loading state while fetching URL -->
+        <div v-if="isLoadingUrl" class="file-preview-loading">
+          <v-progress-circular indeterminate color="primary" size="24" />
+        </div>
+        
+        <!-- Image preview -->
         <v-img
-          v-if="isImage"
-          :src="file.downloadUrl"
+          v-else-if="isImage && imageUrl"
+          :src="imageUrl"
           :aspect-ratio="1"
           cover
           class="file-preview-image"
@@ -22,25 +28,30 @@
             </div>
           </template>
         </v-img>
+        
+        <!-- Non-image file icon -->
         <div v-else class="file-preview-icon">
           <v-icon :icon="getFileIcon(file.fileType)" size="32" />
         </div>
       </div>
     </transition>
-    <div v-if="!isVisible" class="file-preview file-preview--skeleton">
+    
+    <!-- Skeleton placeholder when not visible -->
+    <div v-if="!shouldRender" class="file-preview file-preview--skeleton">
       <div class="skeleton-placeholder" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useIntersectionObserver } from '@vueuse/core'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useFilesStore } from '@/stores/files'
 import type { UserFile } from '@/api/files'
 import { getFileIcon } from '@/api/files'
 
 interface Props {
   file: UserFile
+  scrollContainer?: HTMLElement | null
 }
 
 const props = defineProps<Props>()
@@ -50,24 +61,95 @@ const emit = defineEmits<{
   dragstart: [event: DragEvent, file: UserFile]
 }>()
 
+const filesStore = useFilesStore()
+
 const target = ref<HTMLElement>()
-const isVisible = ref(false)
+const hasBeenVisible = ref(false)
+const isLoadingUrl = ref(false)
+const imageUrl = ref<string | null>(null)
+let observer: IntersectionObserver | null = null
 
-const isImage = props.file.fileType.startsWith('image/')
+const isImage = computed(() => props.file.fileType.startsWith('image/'))
+const shouldRender = computed(() => hasBeenVisible.value)
 
-useIntersectionObserver(
-  target,
-  ([{ isIntersecting }]) => {
-    if (isIntersecting) {
-      isVisible.value = true
-    }
-  },
-  {
-    rootMargin: '100px',
-    threshold: 0.01,
-    immediate: true,
+function setupObserver() {
+  if (!target.value) return
+  
+  // Clean up existing observer
+  if (observer) {
+    observer.disconnect()
+    observer = null
   }
-)
+  
+  observer = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      if (entry && entry.isIntersecting && !hasBeenVisible.value) {
+        hasBeenVisible.value = true
+        
+        // Fetch URL only now
+        if (isImage.value) {
+          fetchDownloadUrl()
+        }
+        
+        // Stop observing once visible
+        if (observer) {
+          observer.disconnect()
+          observer = null
+        }
+      }
+    },
+    {
+      // Use the scroll container as root if provided, otherwise use viewport
+      root: props.scrollContainer || null,
+      rootMargin: '50px', // Start loading 50px before entering viewport
+      threshold: 0.01,
+    }
+  )
+  
+  observer.observe(target.value)
+}
+
+// Watch for scroll container changes and re-setup observer
+watch(() => props.scrollContainer, (newContainer) => {
+  if (newContainer && target.value && !hasBeenVisible.value) {
+    setupObserver()
+  }
+}, { immediate: false })
+
+onMounted(() => {
+  // Wait a tick to ensure scroll container is available
+  setTimeout(() => {
+    setupObserver()
+  }, 0)
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+    observer = null
+  }
+})
+
+async function fetchDownloadUrl() {
+  // Check if URL is already provided
+  if (props.file.downloadUrl) {
+    imageUrl.value = props.file.downloadUrl
+    return
+  }
+  
+  // Fetch the download URL
+  isLoadingUrl.value = true
+  try {
+    const url = await filesStore.getDownloadUrl(props.file.id)
+    imageUrl.value = url
+  } catch (error) {
+    console.error(`[LazyFilePreview] Failed to get download URL for file ${props.file.id}:`, error)
+    imageUrl.value = null
+  } finally {
+    isLoadingUrl.value = false
+  }
+}
 
 function handleDragStart(event: DragEvent) {
   if (!event.dataTransfer) return
@@ -81,7 +163,6 @@ function handleDragStart(event: DragEvent) {
   event.dataTransfer.setData('text/plain', `file:${props.file.id}`)
   
   // Emit the event so parent can override the data if needed
-  // The parent (KitbashingDrawers) will override with 'user-file-background' type
   emit('dragstart', event, props.file)
 }
 </script>
@@ -114,7 +195,8 @@ function handleDragStart(event: DragEvent) {
   height: 100%;
 }
 
-.file-preview-icon {
+.file-preview-icon,
+.file-preview-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -158,4 +240,3 @@ function handleDragStart(event: DragEvent) {
   opacity: 0;
 }
 </style>
-

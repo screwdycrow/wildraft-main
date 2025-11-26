@@ -57,7 +57,7 @@
       <div 
         v-else-if="item.type === 'UserFileId' && userFile && item.data.isBackground" 
         class="background-image-container"
-        :style="{ opacity: backgroundOpacity || 1 }"
+        :style="{ opacity: props.backgroundOpacity ?? 1 }"
       >
         <v-img
           v-if="userFile.fileType.startsWith('image/') && userFile.downloadUrl"
@@ -194,6 +194,7 @@ interface Props {
   dmScreenId: string
   snapToGrid?: boolean
   gridSize?: number
+  backgroundOpacity?: number
 }
 
 const props = defineProps<Props>()

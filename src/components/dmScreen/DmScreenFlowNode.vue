@@ -1,19 +1,27 @@
 <template>
   <div class="dm-screen-flow-node-container" :style="containerStyle">
-  <NodeResizer
-    v-if="isSelected"
-    :min-width="data.item.isMinimized ? 20 : 100"
-    :min-height="data.item.isMinimized ? 20 : 100"
-    :handle-color="'#6366f1'"
-    :handle-size="16"
-    :line-style="{ stroke: '#6366f1', strokeWidth: 2 }"
-  />
-    
-    <!-- Rotation Handle and Action Toolbar - positioned together outside rotated content -->
-    <div
+    <!-- NodeResizer - @resize-end triggers the store update -->
+    <NodeResizer
       v-if="isSelected"
-      class="top-controls"
-    >
+      :min-width="data.item.isMinimized ? 20 : 100"
+      :min-height="data.item.isMinimized ? 20 : 100"
+      :color="'#6366f1'"
+      :handle-style="{ 
+        width: '12px', 
+        height: '12px', 
+        borderRadius: '2px',
+        border: '2px solid #fff',
+        background: '#6366f1'
+      }"
+      :line-style="{ 
+        borderWidth: '2px',
+        borderColor: '#6366f1'
+      }"
+      @resize-end="handleResizeEnd"
+    />
+    
+    <!-- Rotation Handle and Action Toolbar -->
+    <div v-if="isSelected" class="top-controls">
       <!-- Rotation Handle -->
       <div
         class="rotation-handle"
@@ -38,7 +46,7 @@
         </v-btn>
         
         <v-btn
-          v-if="data.item.type !== 'CombatantItemToken' && !data.item.data.isBackground && data.item.type !== 'TextNode' && data.item.type !== 'ShapeNode'"
+          v-if="canMinimize"
           icon
           size="x-small"
           variant="text"
@@ -56,7 +64,7 @@
           size="x-small"
           variant="text"
           color="error"
-          @click.stop="handleDeleteClick"
+          @click.stop="handleDelete"
         >
           <v-icon size="small">mdi-close</v-icon>
           <v-tooltip activator="parent" location="bottom">
@@ -66,37 +74,41 @@
       </div>
     </div>
     
-  <div 
-    class="dm-screen-flow-node" 
-    :class="{ 
-      'minimized': data.item.isMinimized, 
-      'selected': isSelected,
-      'is-dragging': props.dragging,
-      'rotating': isRotating
-    }"
-    :style="nodeStyle"
-  >
-    <dm-screen-item-wrapper
-      :key="data.item.id"
-      :item="data.item"
-      :library-id="data.libraryId"
-      :dm-screen-id="data.dmScreenId"
-      :snap-to-grid="data.snapToGrid"
-      :grid-size="data.gridSize"
-      :background-opacity="data.backgroundOpacity"
-      @update="handleUpdate"
-      @delete="handleDelete"
-    />
+    <div 
+      class="dm-screen-flow-node" 
+      :class="{ 
+        'minimized': data.item.isMinimized, 
+        'selected': isSelected,
+        'is-dragging': props.dragging,
+        'rotating': isRotating
+      }"
+    >
+      <dm-screen-item-wrapper
+        :key="data.item.id"
+        :item="data.item"
+        :library-id="data.libraryId"
+        :dm-screen-id="data.dmScreenId"
+        :snap-to-grid="data.snapToGrid"
+        :grid-size="data.gridSize"
+        :background-opacity="data.backgroundOpacity"
+        @update="handleItemUpdate"
+        @delete="handleDelete"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { useVueFlow } from '@vue-flow/core'
 import { NodeResizer } from '@vue-flow/node-resizer'
+import { useVueFlow } from '@vue-flow/core'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 import DmScreenItemWrapper from './DmScreenItemWrapper.vue'
+import { useDmScreensStore } from '@/stores/dmScreens'
+
+// =====================================================
+// PROPS
+// =====================================================
 
 interface Props {
   id: string
@@ -106,8 +118,8 @@ interface Props {
     dmScreenId: string
     snapToGrid?: boolean
     gridSize?: number
-    onUpdate?: (item: DmScreenItem) => void
-    onDelete?: (itemId: string) => void
+    backgroundOpacity?: number
+    rotation?: number
   }
   selected?: boolean
   dragging?: boolean
@@ -118,30 +130,39 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const vueFlow = useVueFlow()
-const { project, viewport, updateNodeInternals, getNode: vueFlowGetNode } = vueFlow
+// =====================================================
+// STORE & VUEFLOW
+// =====================================================
 
-// Safe wrapper for getNode
-const getNode = (id: string) => {
-  if (typeof vueFlowGetNode === 'function') {
-    return vueFlowGetNode(id)
-  }
-  return null
-}
+const dmScreensStore = useDmScreensStore()
+const { findNode } = useVueFlow()
+
+// =====================================================
+// LOCAL STATE
+// =====================================================
 
 const isRotating = ref(false)
 const rotationStartAngle = ref(0)
 const rotationStartMouseAngle = ref(0)
+const currentRotation = ref(props.data.rotation ?? props.data.item.nodeOptions?.rotation ?? 0)
 
-// Use the selected prop directly from Vue Flow
+// Sync rotation with props when not actively rotating
+watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
+  if (!isRotating.value && newRotation !== undefined) {
+    currentRotation.value = newRotation
+  }
+}, { immediate: false })
+
+// =====================================================
+// COMPUTED
+// =====================================================
+
 const isSelected = computed(() => props.selected || false)
 
-// Compute rotation from item's nodeOptions or data
 const rotation = computed(() => {
-  return props.data.rotation ?? props.data.item.nodeOptions?.rotation ?? 0
+  return currentRotation.value
 })
 
-// Container style - applies rotation to entire container including resize handles
 const containerStyle = computed(() => {
   if (rotation.value) {
     return {
@@ -152,25 +173,75 @@ const containerStyle = computed(() => {
   return {}
 })
 
-// Node style - no additional rotation since container handles it
-const nodeStyle = computed(() => {
-  return {}
+const canMinimize = computed(() => {
+  const item = props.data.item
+  return item.type !== 'CombatantItemToken' && 
+         !item.data.isBackground && 
+         item.type !== 'TextNode' && 
+         item.type !== 'ShapeNode'
 })
 
-function handleUpdate(updatedItem: DmScreenItem) {
-  if (props.data.onUpdate) {
-    props.data.onUpdate(updatedItem)
-  }
+// =====================================================
+// ITEM UPDATE HANDLER
+// =====================================================
+
+function handleItemUpdate(updatedItem: DmScreenItem) {
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    updatedItem.id,
+    updatedItem
+  )
 }
 
-function handleDelete(itemId: string) {
-  if (props.data.onDelete) {
-    props.data.onDelete(itemId)
-  }
+// =====================================================
+// DELETE HANDLER
+// =====================================================
+
+function handleDelete() {
+  dmScreensStore.deleteItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    props.data.item.id
+  )
 }
 
+// =====================================================
+// RESIZE END HANDLER
+// =====================================================
 
-// Calculate angle from center to mouse position
+function handleResizeEnd(_event: any) {
+  // Get the actual node from VueFlow - this has the correct dimensions and position
+  const node = findNode(props.id)
+  if (!node) {
+    console.warn('[DmScreenFlowNode] Could not find node for resize end:', props.id)
+    return
+  }
+  
+  // Get dimensions from VueFlow's node state
+  const width = node.dimensions?.width || props.data.item.nodeOptions?.width || 300
+  const height = node.dimensions?.height || props.data.item.nodeOptions?.height || 200
+  const x = node.position?.x ?? props.data.item.nodeOptions?.position?.x ?? 0
+  const y = node.position?.y ?? props.data.item.nodeOptions?.position?.y ?? 0
+  
+  console.log('[DmScreenFlowNode] Resize end:', { id: props.id, width, height, x, y })
+  
+  // Update dimensions in store (triggers debounced API call)
+  dmScreensStore.updateItemDimensions(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    props.data.item.id,
+    width,
+    height,
+    x,
+    y
+  )
+}
+
+// =====================================================
+// ROTATION HANDLERS
+// =====================================================
+
 function getAngleFromCenter(centerX: number, centerY: number, mouseX: number, mouseY: number): number {
   const dx = mouseX - centerX
   const dy = mouseY - centerY
@@ -178,24 +249,15 @@ function getAngleFromCenter(centerX: number, centerY: number, mouseX: number, mo
 }
 
 function handleRotationStart(event: MouseEvent) {
-  if (!props.data.onUpdate) return
-  
   isRotating.value = true
-  rotationStartAngle.value = rotation.value
+  rotationStartAngle.value = currentRotation.value
   
-  // Use the current mouse position as the center
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const handleCenterX = rect.left + rect.width / 2
-  const handleCenterY = rect.top + rect.height / 2
-  
-  // Get the node element to find its center
   const nodeElement = document.querySelector(`[data-id="${props.id}"]`)
   if (nodeElement) {
     const nodeRect = nodeElement.getBoundingClientRect()
     const nodeCenterX = nodeRect.left + nodeRect.width / 2
     const nodeCenterY = nodeRect.top + nodeRect.height / 2
     
-    // Get initial mouse angle from node center
     rotationStartMouseAngle.value = getAngleFromCenter(
       nodeCenterX,
       nodeCenterY,
@@ -209,9 +271,8 @@ function handleRotationStart(event: MouseEvent) {
 }
 
 function handleRotationMove(event: MouseEvent) {
-  if (!isRotating.value || !props.data.onUpdate) return
+  if (!isRotating.value) return
   
-  // Get the node element to find its center
   const nodeElement = document.querySelector(`[data-id="${props.id}"]`)
   if (!nodeElement) return
   
@@ -219,7 +280,6 @@ function handleRotationMove(event: MouseEvent) {
   const nodeCenterX = nodeRect.left + nodeRect.width / 2
   const nodeCenterY = nodeRect.top + nodeRect.height / 2
   
-  // Get current mouse angle from node center
   const currentMouseAngle = getAngleFromCenter(
     nodeCenterX,
     nodeCenterY,
@@ -227,151 +287,110 @@ function handleRotationMove(event: MouseEvent) {
     event.clientY
   )
   
-  // Calculate rotation delta
   let deltaAngle = currentMouseAngle - rotationStartMouseAngle.value
   
-  // Normalize to -180 to 180 range
   if (deltaAngle > 180) deltaAngle -= 360
   if (deltaAngle < -180) deltaAngle += 360
   
-  // Calculate new rotation
   let newRotation = rotationStartAngle.value + deltaAngle
-  
-  // Normalize to 0-360 range
   newRotation = ((newRotation % 360) + 360) % 360
   
-  // Round to nearest 15 degrees when shift is held for snapping
+  // Snap to 15 degrees when shift is held
   if (event.shiftKey) {
     newRotation = Math.round(newRotation / 15) * 15
   }
   
-  // Update the item
-  const updatedItem: DmScreenItem = {
-    ...props.data.item,
-    nodeOptions: {
-      ...props.data.item.nodeOptions,
-      rotation: newRotation,
-    },
-  }
-  
-  handleUpdate(updatedItem)
+  // Update local rotation for immediate visual feedback
+  currentRotation.value = newRotation
 }
 
 function handleRotationEnd() {
+  if (!isRotating.value) return
+  
   isRotating.value = false
-  // Update Vue Flow internals after rotation is complete
-  updateNodeInternals(props.id)
+  
+  // Persist rotation to store (debounced API call)
+  dmScreensStore.updateItemRotation(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    props.data.item.id,
+    currentRotation.value
+  )
 }
 
 function resetRotation() {
-  if (!props.data.onUpdate) return
+  currentRotation.value = 0
   
-  const updatedItem: DmScreenItem = {
-    ...props.data.item,
-    nodeOptions: {
-      ...props.data.item.nodeOptions,
-      rotation: 0,
-    },
-  }
-  
-  handleUpdate(updatedItem)
-  updateNodeInternals(props.id)
+  dmScreensStore.updateItemRotation(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    props.data.item.id,
+    0
+  )
 }
 
+// =====================================================
+// MINIMIZE HANDLER
+// =====================================================
+
 function toggleMinimize() {
-  if (!props.data.onUpdate) return
-  
-  const isCurrentlyMinimized = props.data.item.isMinimized
+  const item = props.data.item
+  const isCurrentlyMinimized = item.isMinimized
   
   const updatedItem: DmScreenItem = {
-    ...props.data.item,
+    ...item,
     isMinimized: !isCurrentlyMinimized,
   }
   
   if (!isCurrentlyMinimized) {
-    // Minimizing: Store current dimensions for restoration
-    const node = getNode(props.id)
-    const currentWidth = node?.dimensions?.width || props.width || props.data.item.nodeOptions?.width || 300
-    const currentHeight = node?.dimensions?.height || props.height || props.data.item.nodeOptions?.height || 200
+    // Minimizing: Store current dimensions
+    const currentWidth = props.width || item.nodeOptions?.width || 300
+    const currentHeight = props.height || item.nodeOptions?.height || 200
     
-    // Store the full-size dimensions
     updatedItem.nodeOptions = {
       ...updatedItem.nodeOptions,
       fullWidth: currentWidth,
       fullHeight: currentHeight,
-      width: updatedItem.minimizedDimensions?.width || 150, // Use previous minimized size if exists
+      width: updatedItem.minimizedDimensions?.width || 150,
       height: updatedItem.minimizedDimensions?.height || 150,
     }
     
-    // If minimizedDimensions exist from previous minimize, keep them
-    // Otherwise set default
     if (!updatedItem.minimizedDimensions) {
-      updatedItem.minimizedDimensions = {
-        width: 150,
-        height: 150,
-      }
+      updatedItem.minimizedDimensions = { width: 150, height: 150 }
     }
   } else {
-    // Maximizing: Restore original full dimensions
-    const fullWidth = updatedItem.nodeOptions?.fullWidth || 300
-    const fullHeight = updatedItem.nodeOptions?.fullHeight || 200
+    // Maximizing: Restore full dimensions
+    const fullWidth = item.nodeOptions?.fullWidth || 300
+    const fullHeight = item.nodeOptions?.fullHeight || 200
     
     updatedItem.nodeOptions = {
       ...updatedItem.nodeOptions,
       width: fullWidth,
       height: fullHeight,
     }
-    
-    // Keep minimizedDimensions so we can restore to the custom size when minimizing again
-    // Don't delete updatedItem.minimizedDimensions
   }
   
-  console.log('[DmScreenFlowNode] Toggle minimize:', {
-    wasMinimized: isCurrentlyMinimized,
-    nowMinimized: !isCurrentlyMinimized,
-    fullWidth: updatedItem.nodeOptions?.fullWidth,
-    fullHeight: updatedItem.nodeOptions?.fullHeight,
-    width: updatedItem.nodeOptions?.width,
-    height: updatedItem.nodeOptions?.height,
-  })
-  
-  handleUpdate(updatedItem)
-  
-  // Update node internals after dimension change
-  if (typeof updateNodeInternals === 'function') {
-    setTimeout(() => {
-      const node = getNode(props.id)
-      if (node) {
-        console.log('[DmScreenFlowNode] Node after toggle:', {
-          id: node.id,
-          isMinimized: updatedItem.isMinimized,
-          nodeDimensions: { width: node.width, height: node.height }
-        })
-      }
-      updateNodeInternals(props.id)
-    }, 10)
-  }
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
 }
 
-function handleDeleteClick() {
-  handleDelete(props.data.item.id)
-}
+// =====================================================
+// LIFECYCLE
+// =====================================================
 
-// Set up global mouse event listeners for rotation
 onMounted(() => {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('mousemove', handleRotationMove)
-    window.addEventListener('mouseup', handleRotationEnd)
-  }
+  window.addEventListener('mousemove', handleRotationMove)
+  window.addEventListener('mouseup', handleRotationEnd)
 })
 
 onUnmounted(() => {
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('mousemove', handleRotationMove)
-    window.removeEventListener('mouseup', handleRotationEnd)
-  }
+  window.removeEventListener('mousemove', handleRotationMove)
+  window.removeEventListener('mouseup', handleRotationEnd)
 })
-
 </script>
 
 <style scoped>
@@ -469,5 +488,57 @@ onUnmounted(() => {
   min-width: 28px !important;
   width: 28px !important;
   height: 28px !important;
+}
+
+/* Photoshop-style resize handles */
+:deep(.vue-flow__resize-control) {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff !important;
+  background: #6366f1 !important;
+  border-radius: 2px !important;
+  opacity: 1 !important;
+  transition: all 0.15s ease;
+}
+
+:deep(.vue-flow__resize-control:hover) {
+  width: 14px;
+  height: 14px;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+:deep(.vue-flow__resize-control.top.left),
+:deep(.vue-flow__resize-control.top.right),
+:deep(.vue-flow__resize-control.bottom.left),
+:deep(.vue-flow__resize-control.bottom.right) {
+  cursor: nwse-resize;
+}
+
+:deep(.vue-flow__resize-control.top.right),
+:deep(.vue-flow__resize-control.bottom.left) {
+  cursor: nesw-resize;
+}
+
+:deep(.vue-flow__resize-control.top),
+:deep(.vue-flow__resize-control.bottom) {
+  cursor: ns-resize;
+  width: 40px;
+}
+
+:deep(.vue-flow__resize-control.left),
+:deep(.vue-flow__resize-control.right) {
+  cursor: ew-resize;
+  height: 40px;
+}
+
+:deep(.vue-flow__resize-line) {
+  border-width: 2px !important;
+  border-color: #6366f1 !important;
+  opacity: 1 !important;
+}
+
+:deep(.vue-flow__node.selected) {
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
 }
 </style>

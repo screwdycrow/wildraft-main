@@ -45,7 +45,11 @@
               </div>
             </div>
             
-            <div class="drawer-content" ref="drawerContentRef">
+            <div 
+              class="drawer-content" 
+              :ref="(el) => setDrawerContentRef(pinnedCategory.id, el)"
+              :data-drawer-id="pinnedCategory.id"
+            >
               <MasonryGrid
                 v-if="!loadingFiles[pinnedCategory.id] && categoryFiles[pinnedCategory.id]?.length > 0"
                 :columns="masonryColumns"
@@ -59,6 +63,7 @@
                 >
                   <lazy-file-preview
                     :file="file"
+                    :scroll-container="drawerContentRefs[pinnedCategory.id]"
                     @click="handleFileClick(file)"
                     @dragstart="handleFileDragStart($event, file)"
                   />
@@ -122,12 +127,10 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useFileCategoriesStore } from '@/stores/fileCategories'
-import { useFilesStore } from '@/stores/files'
 import { useRoute } from 'vue-router'
 import type { FileCategory } from '@/api/files'
 import type { UserFile } from '@/api/files'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
-import { getFileIcon } from '@/api/files'
 import LazyFilePreview from './LazyFilePreview.vue'
 
 defineEmits<{
@@ -137,7 +140,6 @@ defineEmits<{
 const route = useRoute()
 const dmScreensStore = useDmScreensStore()
 const fileCategoriesStore = useFileCategoriesStore()
-const filesStore = useFilesStore()
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -193,7 +195,14 @@ const openDrawerIds = ref<Set<number>>(new Set())
 const showAddDialog = ref(false)
 const categoryFiles = ref<Record<number, UserFile[]>>({})
 const loadingFiles = ref<Record<number, boolean>>({})
-const drawerContentRef = ref<HTMLElement | null>(null)
+const drawerContentRefs = ref<Record<number, HTMLElement | null>>({})
+
+// Function to set drawer content ref
+function setDrawerContentRef(categoryId: number, el: any) {
+  if (el) {
+    drawerContentRefs.value[categoryId] = el as HTMLElement
+  }
+}
 
 const masonryColumns = {
   default: 3,
@@ -230,25 +239,13 @@ async function loadCategoryFiles(categoryId: number) {
     // The API returns userFiles as part of the category
     const userFiles = (category as any).userFiles || []
     
-    // Filter only image files and fetch download URLs
+    // Filter only image files - DON'T fetch download URLs here
+    // LazyFilePreview will fetch URLs only when items enter the viewport
     const imageFiles = userFiles.filter((file: any) => 
       file.fileType && file.fileType.startsWith('image/')
-    )
+    ) as UserFile[]
     
-    // Fetch download URLs for all image files
-    const filesWithUrls = await Promise.all(
-      imageFiles.map(async (file: any) => {
-        try {
-          const downloadUrl = await filesStore.getDownloadUrl(file.id)
-          return { ...file, downloadUrl } as UserFile
-        } catch (error) {
-          console.error(`Failed to get download URL for file ${file.id}:`, error)
-          return file as UserFile
-        }
-      })
-    )
-    
-    categoryFiles.value[categoryId] = filesWithUrls
+    categoryFiles.value[categoryId] = imageFiles
   } catch (error) {
     console.error('Failed to load category files:', error)
     categoryFiles.value[categoryId] = []
@@ -283,11 +280,6 @@ async function pinCategory(category: FileCategory) {
   })
   
   showAddDialog.value = false
-}
-
-// Keep isImage for other uses if needed
-function isImage(file: UserFile) {
-  return file.fileType.startsWith('image/')
 }
 
 function handleFileClick(file: UserFile) {

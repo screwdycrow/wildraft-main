@@ -8,10 +8,9 @@
     >
       <VueFlow
         v-if="dmScreen"
-        :key="dmScreen.id"
         ref="vueFlowRef"
-        :nodes="allNodes"
-        :edges="edges"
+        :nodes="nodes"
+        :edges="[]"
         :node-types="nodeTypes"
         :default-viewport="{ zoom: 1, x: 0, y: 0 }"
         :min-zoom="0.2"
@@ -21,19 +20,22 @@
         class="dm-screen-flow"
         @nodes-change="onNodesChange"
         @node-drag-stop="onNodeDragStop"
+        @node-click="onNodeClick"
+        @pane-click="onPaneClick"
       >
-        <Background
-          v-if="showGrid"
-          :pattern-color="gridColor"
-          :gap="gridSize"
-          :size="gridSize"
-          :line-width="gridLineWidth"
-        />
         <Controls />
         <MiniMap v-if="!isPortalMode" />
+        
+        <!-- Grid Overlay - on top of everything, non-selectable -->
+        <GridNode
+          v-if="gridOptions.showGrid"
+          :grid-size="gridOptions.gridSize"
+          :grid-color="gridOptions.gridColor"
+          :grid-opacity="gridOptions.gridOpacity"
+          :line-width="gridOptions.gridLineWidth"
+        />
       </VueFlow>
     </div>
-
 
     <!-- Settings Dialog -->
     <v-dialog v-model="showSettingsDialog" max-width="500" scrollable :attach="false">
@@ -64,6 +66,16 @@
               min="10"
               max="100"
               step="5"
+              thumb-label
+              hide-details
+              class="mb-3"
+            />
+            <v-slider
+              v-model.number="localGridOptions.gridOpacity"
+              label="Grid Opacity"
+              min="0.1"
+              max="1"
+              step="0.1"
               thumb-label
               hide-details
               class="mb-3"
@@ -116,7 +128,7 @@
               density="compact"
               class="mb-3"
             >
-              {{ backgroundImageCount }} background node{{ backgroundImageCount > 1 ? 's' : '' }} on canvas. Click any to delete.
+              {{ backgroundImageCount }} background node{{ backgroundImageCount > 1 ? 's' : '' }} on canvas.
             </v-alert>
             
             <div class="d-flex gap-2 mb-4">
@@ -129,16 +141,6 @@
               >
                 {{ backgroundImageCount > 0 ? 'Add Another' : 'Add Background Node' }}
               </v-btn>
-              <v-btn
-                v-if="backgroundImageCount > 0"
-                color="error"
-                variant="outlined"
-                size="small"
-                @click="removeBackgroundImage"
-                prepend-icon="mdi-delete"
-              >
-                Remove All
-              </v-btn>
             </div>
 
             <v-divider class="my-3" />
@@ -150,16 +152,6 @@
             <p class="text-caption text-grey-lighten-1 mb-3">
               A fixed background image that doesn't scale with zoom
             </p>
-            
-            <v-alert
-              v-if="canvasBackgroundUrl"
-              type="success"
-              variant="tonal"
-              density="compact"
-              class="mb-3"
-            >
-              Canvas background is set
-            </v-alert>
             
             <div class="d-flex gap-2">
               <v-btn
@@ -203,15 +195,6 @@
             >
               Send to Portal
             </v-btn>
-            <v-alert
-              v-if="!hasActivePortal"
-              type="info"
-              variant="tonal"
-              density="compact"
-              class="mt-3"
-            >
-              No active portal. Set an active portal from the portal control menu.
-            </v-alert>
           </div>
         </v-card-text>
         <v-divider />
@@ -234,7 +217,7 @@
       @select="handleAddLibraryItem"
     />
 
-    <!-- File Manager for Background Image (images only) -->
+    <!-- File Manager for Background Image -->
     <file-manager
       v-model="showFileManager"
       select-mode
@@ -244,7 +227,7 @@
       @select="handleBackgroundImageSelect"
     />
 
-    <!-- File Manager for Canvas Background (images only) -->
+    <!-- File Manager for Canvas Background -->
     <file-manager
       v-model="showCanvasBackgroundSelector"
       select-mode
@@ -269,13 +252,11 @@
                   v-model="editingShapeData.color"
                   type="color"
                   class="shape-color-picker"
-                  @input="updateShapePreview"
                 />
                 <v-text-field
                   v-model="editingShapeData.color"
                   label="Hex Color"
                   density="compact"
-                  @update:model-value="updateShapePreview"
                 />
               </div>
             </div>
@@ -290,7 +271,6 @@
                 :min="0"
                 :max="1"
                 :step="0.1"
-                @update:model-value="updateShapePreview"
               />
             </div>
 
@@ -302,13 +282,11 @@
                   v-model="editingShapeData.borderColor"
                   type="color"
                   class="shape-color-picker"
-                  @input="updateShapePreview"
                 />
                 <v-text-field
                   v-model="editingShapeData.borderColor"
                   label="Hex Color"
                   density="compact"
-                  @update:model-value="updateShapePreview"
                 />
               </div>
             </div>
@@ -323,7 +301,6 @@
                 :min="0"
                 :max="10"
                 :step="1"
-                @update:model-value="updateShapePreview"
               />
             </div>
 
@@ -332,44 +309,7 @@
               v-model="editingShapeData.label"
               label="Label (optional)"
               density="compact"
-              @update:model-value="updateShapePreview"
             />
-
-            <!-- Preview -->
-            <div class="shape-preview-container">
-              <div class="shape-preview-label">Preview</div>
-              <svg width="150" height="150" viewBox="0 0 150 150" class="shape-preview">
-                <circle
-                  v-if="editingShapeData.shape === 'circle'"
-                  cx="75"
-                  cy="75"
-                  r="50"
-                  :fill="editingShapeData.color"
-                  :fill-opacity="editingShapeData.opacity"
-                  :stroke="editingShapeData.borderColor"
-                  :stroke-width="editingShapeData.borderWidth"
-                />
-                <rect
-                  v-else-if="editingShapeData.shape === 'square'"
-                  x="35"
-                  y="35"
-                  width="100"
-                  height="100"
-                  :fill="editingShapeData.color"
-                  :fill-opacity="editingShapeData.opacity"
-                  :stroke="editingShapeData.borderColor"
-                  :stroke-width="editingShapeData.borderWidth"
-                />
-                <polygon
-                  v-else-if="editingShapeData.shape === 'triangle'"
-                  points="75,25 125,125 25,125"
-                  :fill="editingShapeData.color"
-                  :fill-opacity="editingShapeData.opacity"
-                  :stroke="editingShapeData.borderColor"
-                  :stroke-width="editingShapeData.borderWidth"
-                />
-              </svg>
-            </div>
           </div>
         </v-card-text>
         <v-divider />
@@ -385,7 +325,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Empty State (overlay on VueFlow) -->
+    <!-- Empty State -->
     <div v-if="!dmScreen.items || dmScreen.items.length === 0" class="empty-state-overlay">
       <div class="empty-state-content">
         <v-icon icon="mdi-monitor-dashboard" size="120" color="grey-lighten-1" class="mb-6" />
@@ -417,428 +357,75 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, inject, onMounted, onUnmounted } from 'vue'
+import { ref, computed, markRaw, onMounted } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import type { Node, Edge, NodeChange, NodeDragEvent } from '@vue-flow/core'
+import type { Node, NodeDragEvent, NodeChange } from '@vue-flow/core'
 import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions } from '@/types/dmScreen.types'
 import type { LibraryItem } from '@/types/item.types'
 import DmScreenFlowNode from './DmScreenFlowNode.vue'
+import GridNode from './GridNode.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
-import { useVueFlowStore } from '@/stores/vueFlow'
 import { useToast } from 'vue-toastification'
-import { debounce } from '@/utils/helpers'
 
-// Get Vue Flow instance for viewport calculations
-const { project, viewport, getNode, zoomIn, zoomOut, setViewport, getViewport } = useVueFlow()
-const vueFlowRef = ref<any>(null)
-
-// Register custom node types
-const nodeTypes = {
-  dmScreenItem: DmScreenFlowNode,
-}
+// =====================================================
+// PROPS & EMITS
+// =====================================================
 
 const props = defineProps<{
   dmScreen: DmScreen
   isPortalMode?: boolean
 }>()
 
-// Initialize stores
+// =====================================================
+// STORES & COMPOSABLES
+// =====================================================
+
 const dmScreensStore = useDmScreensStore()
 const portalViewsStore = usePortalViewsStore()
 const filesStore = useFilesStore()
-const vueFlowStore = useVueFlowStore()
 const toast = useToast()
 
-// Inject composable from parent
-const dmScreenComposable = inject<ReturnType<typeof import('@/composables/useDmScreen').useDmScreen> | null>('dmScreenComposable', null)
+const { project } = useVueFlow()
+const vueFlowRef = ref<any>(null)
 
-// Set project function in VueFlow store so composable can use it
-watch(() => project, (newProject) => {
-  if (newProject) {
-    vueFlowStore.setProjectFn(newProject)
-  }
-}, { immediate: true })
+// =====================================================
+// NODE TYPES (marked raw to prevent reactivity)
+// =====================================================
 
-const emit = defineEmits<{
-  'update:lock-background-images': [value: boolean]
-  'update:show-grid': [value: boolean]
-  'selected-item': [item: DmScreenItem | null]
-}>()
-
-// Helper function to get viewport center position
-function getViewportCenter(itemWidth = 300, itemHeight = 200): { x: number; y: number } {
-  try {
-    // Get the center of the visible viewport in screen coordinates
-    const viewportCenterX = window.innerWidth / 2
-    const viewportCenterY = window.innerHeight / 2
-    
-    // Project screen coordinates to flow coordinates
-    const flowPosition = project({ x: viewportCenterX, y: viewportCenterY })
-    
-    // Offset by half the item dimensions to center it
-    return {
-      x: flowPosition.x - itemWidth / 2,
-      y: flowPosition.y - itemHeight / 2,
-    }
-  } catch (error) {
-    // Fallback if project is not available yet
-    console.warn('[DmScreenWrapper] Could not get viewport center, using default position')
-    return { x: 400, y: 300 }
-  }
-}
-
-// Methods to be exposed
-async function addTextNode() {
-  try {
-    const center = getViewportCenter(200, 100)
-    const newItem: DmScreenItem = {
-      id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: 'TextNode',
-      data: {
-        text: 'Double-click to edit',
-        fontSize: 16,
-        fontWeight: 'normal',
-        textColor: '#ffffff',
-        textAlign: 'center',
-      },
-      nodeOptions: {
-        x: center.x,
-        y: center.y,
-        position: center,
-        width: 200,
-        height: 100,
-        resizable: true,
-      },
-      isMinimized: false,
-    }
-
-    const updatedItems = [...(props.dmScreen.items || []), newItem]
-    
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-
-    toast.success('Text node added')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to add text node:', error)
-    toast.error('Failed to add text node')
-  }
-}
-
-async function addShapeNode() {
-  try {
-    const center = getViewportCenter(150, 150)
-    const newItem: DmScreenItem = {
-      id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: 'ShapeNode',
-      data: {
-        shape: 'circle',
-        color: '#6366f1',
-        opacity: 0.8,
-        borderColor: '#ffffff',
-        borderWidth: 2,
-        label: '',
-      },
-      nodeOptions: {
-        x: center.x,
-        y: center.y,
-        position: center,
-        width: 150,
-        height: 150,
-        resizable: true,
-      },
-      isMinimized: false,
-    }
-
-    const updatedItems = [...(props.dmScreen.items || []), newItem]
-    
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-
-    toast.success('Shape node added')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to add shape node:', error)
-    toast.error('Failed to add shape node')
-  }
-}
-
-// Handle adding a UserFile to the DM screen
-async function addUserFile(userFile: any) {
-  if (!props.dmScreen.items) return
-
-  try {
-    const fileItem: DmScreenItem = dmScreensStore.convertUserFileToDmScreenItem(userFile)
-    
-    // Center the item in the viewport
-    const center = getViewportCenter(300, 200)
-    fileItem.nodeOptions = {
-      ...fileItem.nodeOptions,
-      x: center.x,
-      y: center.y,
-      position: center,
-    }
-
-    const updatedItems = [...(props.dmScreen.items || []), fileItem]
-
-    // Update local state immediately
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-
-    // Save to API
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-
-    toast.success('File added to DM screen')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to add file:', error)
-    toast.error('Failed to add file')
-  }
-}
-
-// Expose methods for parent component
-defineExpose({
-  addItem: () => { showItemSelector.value = true },
-  addBackground: () => { showFileManager.value = true },
-  addUserFile,
-  openSettings: () => { showSettingsDialog.value = true },
-  toggleLockBackground: () => {
-    localLockBackgroundImages.value = !localLockBackgroundImages.value
-    saveSettings()
-  },
-  toggleGrid: () => {
-    localGridOptions.value.showGrid = !localGridOptions.value.showGrid
-    saveSettings()
-  },
-  addTextNode,
-  addShapeNode,
-  sendToBack: (item: DmScreenItem | null) => {
-    if (!item || !props.dmScreen.items) return
-    const updatedItems = props.dmScreen.items.map(i => {
-      if (i.id === item.id) {
-        return { ...i, nodeOptions: { ...i.nodeOptions, zIndex: -2 } }
-      }
-      return i
-    })
-    const currentScreen = dmScreensStore.dmScreens.find(ds => ds.id === props.dmScreen.id)
-    if (currentScreen) currentScreen.items = updatedItems
-    debouncedUpdate(updatedItems)
-  },
-  sendToFront: (item: DmScreenItem | null) => {
-    if (!item || !props.dmScreen.items) return
-    const updatedItems = props.dmScreen.items.map(i => {
-      if (i.id === item.id) {
-        return { ...i, nodeOptions: { ...i.nodeOptions, zIndex: 100 } }
-      }
-      return i
-    })
-    const currentScreen = dmScreensStore.dmScreens.find(ds => ds.id === props.dmScreen.id)
-    if (currentScreen) currentScreen.items = updatedItems
-    debouncedUpdate(updatedItems)
-  },
-  editShapeStyle: (item: DmScreenItem | null) => {
-    // Open shape style editor dialog
-    if (item?.type === 'ShapeNode') {
-      editingShapeItemId.value = item.id
-      editingShapeData.value = {
-        shape: item.data.shape as 'circle' | 'square' | 'triangle',
-        color: item.data.color || '#6366f1',
-        opacity: item.data.opacity ?? 1,
-        borderColor: item.data.borderColor || '#ffffff',
-        borderWidth: item.data.borderWidth || 0,
-        label: item.data.label || '',
-      }
-      showShapeStyleDialog.value = true
-    }
-  },
-  deleteItem: (itemId: string) => handleItemDelete(itemId),
-  rotateItem: (item: DmScreenItem | null, degrees: number) => {
-    if (!item || !props.dmScreen.items) return
-    
-    const currentRotation = item.nodeOptions?.rotation || 0
-    const newRotation = (currentRotation + degrees) % 360
-    
-    const updatedItem: DmScreenItem = {
-      ...item,
-      nodeOptions: {
-        ...item.nodeOptions,
-        rotation: newRotation,
-      },
-    }
-    
-    const updatedItems = props.dmScreen.items.map((i: DmScreenItem) =>
-      i.id === item.id ? updatedItem : i
-    )
-    
-    // Update node in store
-    vueFlowStore.updateNode(props.dmScreen.id, updatedItem)
-    
-    // Update local state immediately
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-    
-    // Debounced update
-    debouncedUpdate(updatedItems)
-  },
-  setItemRotation: (item: DmScreenItem | null, rotation: number) => {
-    if (!item || !props.dmScreen.items) return
-    
-    // Normalize rotation to 0-360
-    const normalizedRotation = ((rotation % 360) + 360) % 360
-    
-    const updatedItem: DmScreenItem = {
-      ...item,
-      nodeOptions: {
-        ...item.nodeOptions,
-        rotation: normalizedRotation,
-      },
-    }
-    
-    const updatedItems = props.dmScreen.items.map((i: DmScreenItem) =>
-      i.id === item.id ? updatedItem : i
-    )
-    
-    // Update node in store
-    vueFlowStore.updateNode(props.dmScreen.id, updatedItem)
-    
-    // Update local state immediately
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-    
-    // Debounced update
-    debouncedUpdate(updatedItems)
-  },
-  // DM Screen viewport controls for portal
-  handleDmScreenZoomIn: () => {
-    try {
-      const vueFlow = vueFlowRef.value
-      if (vueFlow && typeof vueFlow.zoomIn === 'function') {
-        vueFlow.zoomIn({ duration: 200 })
-      } else if (typeof zoomIn === 'function') {
-        zoomIn({ duration: 200 })
-      }
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to zoom in:', error)
-    }
-  },
-  handleDmScreenZoomOut: () => {
-    try {
-      const vueFlow = vueFlowRef.value
-      if (vueFlow && typeof vueFlow.zoomOut === 'function') {
-        vueFlow.zoomOut({ duration: 200 })
-      } else if (typeof zoomOut === 'function') {
-        zoomOut({ duration: 200 })
-      }
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to zoom out:', error)
-    }
-  },
-  handleDmScreenPan: (deltaX: number, deltaY: number) => {
-    try {
-      const vueFlow = vueFlowRef.value
-      let currentViewport
-      
-      if (vueFlow && typeof vueFlow.getViewport === 'function') {
-        currentViewport = vueFlow.getViewport()
-      } else if (typeof getViewport === 'function') {
-        currentViewport = getViewport()
-      }
-      
-      if (currentViewport) {
-        const newViewport = {
-          x: currentViewport.x + deltaX,
-          y: currentViewport.y + deltaY,
-          zoom: currentViewport.zoom,
-        }
-        
-        if (vueFlow && typeof vueFlow.setViewport === 'function') {
-          vueFlow.setViewport(newViewport, { duration: 200 })
-        } else if (typeof setViewport === 'function') {
-          setViewport(newViewport, { duration: 200 })
-        }
-      }
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to pan:', error)
-    }
-  },
-  handleDmScreenResetView: () => {
-    try {
-      const vueFlow = vueFlowRef.value
-      if (vueFlow && typeof vueFlow.setViewport === 'function') {
-        vueFlow.setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
-      } else if (typeof setViewport === 'function') {
-        setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
-      }
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to reset view:', error)
-    }
-  },
+const nodeTypes = markRaw({
+  dmScreenItem: DmScreenFlowNode,
 })
 
+// =====================================================
+// UI STATE (local only, no watchers)
+// =====================================================
 
 const showSettingsDialog = ref(false)
 const showFileManager = ref(false)
 const showItemSelector = ref(false)
-const showCanvasBackgroundSelector = ref(false) // For canvas background selection
+const showCanvasBackgroundSelector = ref(false)
 const showShapeStyleDialog = ref(false)
+const canvasBackgroundUrl = ref<string | null>(null)
 
-// Track dialog state to prevent updates when dialogs are opening/closing
-const isDialogOpen = computed(() => 
-  showSettingsDialog.value || 
-  showFileManager.value || 
-  showItemSelector.value || 
-  showCanvasBackgroundSelector.value || 
-  showShapeStyleDialog.value
-)
-const backgroundImageUrl = ref<string | null>(null)
-const canvasBackgroundUrl = ref<string | null>(null) // For canvas background
-const localBackgroundImageWidth = ref(props.dmScreen.settings?.backgroundImageWidth || 2500)
-const localLockBackgroundImages = ref(props.dmScreen.settings?.lockBackgroundImages || false)
-const localBackgroundOpacity = ref(props.dmScreen.settings?.backgroundOpacity ?? 1.0)
-const isUpdating = ref(false) // Track if we're currently updating to prevent feedback loops
-const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
+// Local settings for dialog editing
+const localGridOptions = ref<GridOptions>({
+  showGrid: true,
+  gridSize: 20,
+  gridColor: 'rgba(255, 255, 255, 0.1)',
+  gridLineWidth: 1,
+  gridOpacity: 0.3,
+  snapToGrid: false,
+})
+const localLockBackgroundImages = ref(false)
+const localBackgroundOpacity = ref(1)
 
-// Shape style editor state
+// Shape editor state
 const editingShapeData = ref({
   shape: 'circle' as 'circle' | 'square' | 'triangle',
   color: '#6366f1',
@@ -849,24 +436,20 @@ const editingShapeData = ref({
 })
 const editingShapeItemId = ref<string | null>(null)
 
-// Debug logging
-console.log('[DmScreenWrapper] Component setup, dmScreen:', props.dmScreen)
-console.log('[DmScreenWrapper] DmScreen items:', props.dmScreen?.items)
-console.log('[DmScreenWrapper] Initial background opacity:', localBackgroundOpacity.value)
+// =====================================================
+// COMPUTED (derived from props, no watchers needed)
+// =====================================================
 
-// Local grid options for editing
-const localGridOptions = ref<GridOptions>({
-  showGrid: true,
-  gridSize: 20,
-  gridColor: 'rgba(255, 255, 255, 0.1)',
-  gridLineWidth: 1,
-  gridOpacity: 0.3,
-  snapToGrid: false,
-})
-
-// Background image width from settings
-const backgroundImageWidth = computed(() => {
-  return props.dmScreen.settings?.backgroundImageWidth || 2500
+// Grid options from settings
+const gridOptions = computed<GridOptions>(() => {
+  return props.dmScreen.settings?.grid || {
+    showGrid: true,
+    gridSize: 20,
+    gridColor: 'rgba(255, 255, 255, 0.1)',
+    gridLineWidth: 1,
+    gridOpacity: 0.3,
+    snapToGrid: false,
+  }
 })
 
 // Lock background images setting
@@ -874,37 +457,23 @@ const lockBackgroundImages = computed(() => {
   return props.dmScreen.settings?.lockBackgroundImages || false
 })
 
-// Load background image (legacy)
-const loadBackgroundImage = async () => {
-  const imageId = props.dmScreen.settings?.backgroundImageId
-  if (imageId) {
-    try {
-      backgroundImageUrl.value = await filesStore.getDownloadUrl(imageId)
-      localBackgroundImageWidth.value = backgroundImageWidth.value
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to load background image:', error)
-    }
-  } else {
-    backgroundImageUrl.value = null
-  }
-}
+// Background opacity setting
+const backgroundOpacity = computed(() => {
+  return props.dmScreen.settings?.backgroundOpacity ?? 1
+})
 
-// Load canvas background image
-const loadCanvasBackgroundImage = async () => {
-  const imageId = props.dmScreen.settings?.canvasBackgroundImageId
-  if (imageId) {
-    try {
-      canvasBackgroundUrl.value = await filesStore.getDownloadUrl(imageId)
-    } catch (error) {
-      console.error('[DmScreenWrapper] Failed to load canvas background image:', error)
-      canvasBackgroundUrl.value = null
-    }
-  } else {
-    canvasBackgroundUrl.value = null
-  }
-}
+// Count background images
+const backgroundImageCount = computed(() => {
+  if (!props.dmScreen.items) return 0
+  return props.dmScreen.items.filter((item: DmScreenItem) => 
+    item.type === 'UserFileId' && item.data.isBackground === true
+  ).length
+})
 
-// Computed style for canvas background
+// Check if portal is active
+const hasActivePortal = computed(() => !!portalViewsStore.activePortal)
+
+// Canvas background style
 const canvasBackgroundStyle = computed(() => {
   if (canvasBackgroundUrl.value) {
     return {
@@ -917,511 +486,204 @@ const canvasBackgroundStyle = computed(() => {
   return {}
 })
 
-// Grid settings from DM screen settings
-const gridOptions = computed(() => {
-  return props.dmScreen.settings?.grid || {}
-})
+// =====================================================
+// NODES COMPUTED - Convert items to VueFlow nodes
+// This is the ONLY place where nodes are created
+// =====================================================
 
-const showGrid = computed(() => {
-  return gridOptions.value.showGrid !== false // Default to true
-})
-
-const gridSize = computed(() => {
-  return gridOptions.value.gridSize || 20
-})
-
-const gridColor = computed(() => {
-  return gridOptions.value.gridColor || 'rgba(255, 255, 255, 0.1)'
-})
-
-const gridLineWidth = computed(() => {
-  return gridOptions.value.gridLineWidth || 1
-})
-
-const snapToGrid = computed(() => {
-  return gridOptions.value.snapToGrid || false
-})
-
-// Initialize local grid options from settings
-watch(() => props.dmScreen.settings?.grid, (grid: GridOptions | undefined) => {
-  if (grid) {
-    localGridOptions.value = { ...grid }
-  }
-}, { immediate: true, deep: true })
-
-// Load background image when settings change
-watch(() => props.dmScreen.settings?.backgroundImageId, () => {
-  loadBackgroundImage()
-}, { immediate: true })
-
-watch(() => props.dmScreen.settings?.canvasBackgroundImageId, () => {
-  loadCanvasBackgroundImage()
-}, { immediate: true })
-
-watch(() => props.dmScreen.settings?.backgroundImageWidth, (value: number | undefined) => {
-  if (value !== undefined) {
-    localBackgroundImageWidth.value = value
-  }
-}, { immediate: true })
-
-watch(() => props.dmScreen.settings?.lockBackgroundImages, (value: boolean | undefined) => {
-  if (value !== undefined) {
-    localLockBackgroundImages.value = value
-  }
-}, { immediate: true })
-
-watch(() => props.dmScreen.settings?.backgroundOpacity, (value: number | undefined) => {
-  console.log('[DmScreenWrapper] Settings backgroundOpacity changed to:', value)
-  if (value !== undefined) {
-    localBackgroundOpacity.value = value
-  }
-}, { immediate: true })
-
-// Watch for local changes to background width and save
-watch(localBackgroundImageWidth, (newWidth, oldWidth) => {
-  if (newWidth !== oldWidth && props.dmScreen.settings?.backgroundImageWidth !== newWidth) {
-    const updatedSettings: DmScreenSettings = {
-      ...props.dmScreen.settings,
-      backgroundImageWidth: newWidth,
-    }
-    debouncedSettingsUpdate(updatedSettings)
-  }
-})
-
-// Watch for local changes to lock background and emit
-watch(localLockBackgroundImages, (newValue, oldValue) => {
-  if (newValue !== oldValue) {
-    emit('update:lock-background-images', newValue)
-  }
-})
-
-// Watch for local changes to opacity and save
-watch(localBackgroundOpacity, (newOpacity, oldOpacity) => {
-  console.log('[DmScreenWrapper] Local opacity changed from', oldOpacity, 'to', newOpacity)
-  if (newOpacity !== oldOpacity && props.dmScreen.settings?.backgroundOpacity !== newOpacity) {
-    const updatedSettings: DmScreenSettings = {
-      ...props.dmScreen.settings,
-      backgroundOpacity: newOpacity,
-    }
-    console.log('[DmScreenWrapper] Saving opacity to settings:', newOpacity)
-    debouncedSettingsUpdate(updatedSettings)
-  }
-})
-
-// Count background images
-const backgroundImageCount = computed(() => {
-  if (!props.dmScreen.items) return 0
+const nodes = computed<Node[]>(() => {
+  if (!props.dmScreen.items) return []
   
-  return props.dmScreen.items.filter((item: DmScreenItem) => 
-    item.type === 'UserFileId' && item.data.isBackground === true
-  ).length
-})
-
-// Get background image item (legacy - for backward compatibility)
-const backgroundImageItem = computed<DmScreenItem | null>(() => {
-  if (!props.dmScreen.items) return null
-  
-  const backgroundItems = props.dmScreen.items.filter((item: DmScreenItem) => 
-    item.type === 'UserFileId' && item.data.isBackground === true
-  )
-  
-  return backgroundItems.length > 0 ? backgroundItems[0] : null
-})
-
-// Get nodes from VueFlow store - reactive reference
-const allNodes = computed<Node[]>(() => {
-  return vueFlowStore.getNodes(props.dmScreen.id)
-})
-
-const edges = computed<Edge[]>(() => {
-  return []
-})
-
-// Initialize node options and create nodes when component mounts or items change
-onMounted(() => {
-  // Set node creation options
-  vueFlowStore.setNodeOptions(props.dmScreen.id, {
-    libraryId: props.dmScreen.libraryId,
-    dmScreenId: props.dmScreen.id,
-    snapToGrid: snapToGrid.value,
-    gridSize: gridSize.value,
-    backgroundOpacity: localBackgroundOpacity.value,
-    lockBackgroundImages: localLockBackgroundImages.value,
-    backgroundImageWidth: localBackgroundImageWidth.value,
-    onUpdate: handleItemUpdate,
-    onDelete: handleItemDelete,
-  })
-  
-  // Create initial nodes from items
-  if (props.dmScreen.items) {
-    vueFlowStore.createNodesFromItems(props.dmScreen.id, props.dmScreen.items)
-  }
-})
-
-// Clean up when component unmounts
-onUnmounted(() => {
-  vueFlowStore.clearNodes(props.dmScreen.id)
-})
-
-// Watch for items changes and update nodes
-watch(() => props.dmScreen.items, (newItems) => {
-  if (newItems) {
-    vueFlowStore.createNodesFromItems(props.dmScreen.id, newItems)
-  } else {
-    vueFlowStore.clearNodes(props.dmScreen.id)
-  }
-}, { deep: false }) // Only watch reference changes, not deep changes
-
-// Watch for options changes that affect node rendering
-watch([snapToGrid, gridSize, localBackgroundOpacity, localLockBackgroundImages, localBackgroundImageWidth], () => {
-  // Update node options
-  vueFlowStore.setNodeOptions(props.dmScreen.id, {
-    libraryId: props.dmScreen.libraryId,
-    dmScreenId: props.dmScreen.id,
-    snapToGrid: snapToGrid.value,
-    gridSize: gridSize.value,
-    backgroundOpacity: localBackgroundOpacity.value,
-    lockBackgroundImages: localLockBackgroundImages.value,
-    backgroundImageWidth: localBackgroundImageWidth.value,
-    onUpdate: handleItemUpdate,
-    onDelete: handleItemDelete,
-  })
-  
-  // Recreate nodes with new options
-  if (props.dmScreen.items) {
-    vueFlowStore.createNodesFromItems(props.dmScreen.id, props.dmScreen.items)
-  }
-})
-
-// Debounced update function
-const debouncedUpdate = debounce(async (updatedItems: DmScreenItem[]) => {
-  console.log('[DmScreenWrapper] debouncedUpdate FIRED - updating store and API with', updatedItems.length, 'items')
-  isUpdating.value = true
-  try {
-    // Update store (won't trigger watch since we're updating nodes directly in onNodesChange)
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      console.log('[DmScreenWrapper] Updating store items')
-      currentScreen.items = updatedItems
+  return props.dmScreen.items.map((item: DmScreenItem) => {
+    const nodeOptions = item.nodeOptions || {}
+    const position = nodeOptions.position || { x: nodeOptions.x || 0, y: nodeOptions.y || 0 }
+    const isBackground = item.data.isBackground === true
+    const isLocked = isBackground && lockBackgroundImages.value
+    const itemOpacity = isBackground ? backgroundOpacity.value : 1
+    const rotation = nodeOptions.rotation || 0
+    
+    // Determine dimensions
+    let width = nodeOptions.width || 300
+    let height = nodeOptions.height || 200
+    
+    if (item.isMinimized) {
+      width = item.minimizedDimensions?.width || 150
+      height = item.minimizedDimensions?.height || 150
     }
     
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-    console.log('[DmScreenWrapper] API update completed')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to update DM screen:', error)
-    toast.error('Failed to save changes')
-  } finally {
-    // Small delay to ensure the update propagates before we stop ignoring
-    setTimeout(() => {
-      isUpdating.value = false
-      console.log('[DmScreenWrapper] isUpdating set to false')
-    }, 100)
-  }
-}, 500)
-
-// Debounced settings update
-const debouncedSettingsUpdate = debounce(async (settings: DmScreenSettings) => {
-  isUpdating.value = true
-  try {
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { settings }
-    )
-    toast.success('Settings saved')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to update settings:', error)
-    toast.error('Failed to save settings')
-  } finally {
-    setTimeout(() => {
-      isUpdating.value = false
-    }, 100)
-  }
-}, 300)
-
-// Handle node changes (position and dimension updates)
-function onNodesChange(changes: NodeChange[]) {
-  // First, handle selection changes
-  const selectChanges = changes.filter((c) => c.type === 'select')
-  if (selectChanges.length > 0) {
-    const selectChange = selectChanges[0] as any
-    if (selectChange.selected) {
-      const selectedItem = props.dmScreen.items?.find((item: DmScreenItem) => item.id === selectChange.id)
-      console.log('[DmScreenWrapper] Selected item:', selectedItem)
-      // Update composable's selectedItem if available
-      if (dmScreenComposable) {
-        dmScreenComposable.selectedItem.value = selectedItem || null
-      }
-      emit('selected-item', selectedItem || null)
-    } else {
-      // Check if any other node is still selected
-      const hasSelectedNode = allNodes.value.some((n: Node) => (n as any).selected && n.id !== selectChange.id)
-      if (!hasSelectedNode) {
-        console.log('[DmScreenWrapper] No selected item')
-        // Update composable's selectedItem if available
-        if (dmScreenComposable) {
-          dmScreenComposable.selectedItem.value = null
-        }
-        emit('selected-item', null)
-      }
+    return {
+      id: item.id,
+      type: 'dmScreenItem',
+      position: {
+        x: position.x,
+        y: position.y,
+      },
+      data: {
+        item,
+        libraryId: props.dmScreen.libraryId,
+        dmScreenId: props.dmScreen.id,
+        snapToGrid: gridOptions.value.snapToGrid,
+        gridSize: gridOptions.value.gridSize,
+        backgroundOpacity: itemOpacity,
+        rotation,
+      },
+      draggable: !isLocked,
+      selectable: !isLocked,
+      width,
+      height,
+      style: {
+        opacity: itemOpacity,
+      },
+      zIndex: isBackground ? -1 : (nodeOptions.zIndex || 1),
     }
-  }
+  })
+})
 
-  // Then handle position/dimension changes
-  // CRITICAL: Only process if there are actual position/dimension changes AND we're not updating/dialogs open
-  if (!props.dmScreen.items || isUpdating.value || isDialogOpen.value) {
-    // Only log if there are non-selection changes
-    const nonSelectChanges = changes.filter(c => c.type !== 'select')
-    if (nonSelectChanges.length > 0) {
-      console.log('[DmScreenWrapper] onNodesChange: Skipping - no items, isUpdating, or dialog open', {
-        hasItems: !!props.dmScreen.items,
-        isUpdating: isUpdating.value,
-        isDialogOpen: isDialogOpen.value,
-        changes: changes.map(c => ({ type: c.type, hasId: 'id' in c }))
-      })
-    }
-    return // Don't process if we're updating or dialogs are open
-  }
+// =====================================================
+// LIFECYCLE
+// =====================================================
 
-  // Filter to only position and dimension changes (ignore everything else)
-  const positionChanges = changes.filter((c) => c.type === 'position' && 'position' in c && 'id' in c)
-  const dimensionChanges = changes.filter((c) => c.type === 'dimensions' && 'dimensions' in c && 'id' in c)
-  
-  // If no position or dimension changes, ignore completely
-  if (positionChanges.length === 0 && dimensionChanges.length === 0) {
-    // Only log if there are changes other than selection
-    const nonSelectChanges = changes.filter(c => c.type !== 'select')
-    if (nonSelectChanges.length > 0) {
-      console.log('[DmScreenWrapper] onNodesChange: No position/dimension changes, ignoring', {
-        totalChanges: changes.length,
-        changeTypes: changes.map(c => c.type)
-      })
+onMounted(async () => {
+  // Load canvas background if set
+  const canvasBackgroundId = props.dmScreen.settings?.canvasBackgroundImageId
+  if (canvasBackgroundId) {
+    try {
+      canvasBackgroundUrl.value = await filesStore.getDownloadUrl(canvasBackgroundId)
+    } catch (error) {
+      console.error('[DmScreenWrapper] Failed to load canvas background:', error)
     }
-    return
   }
   
-  console.log('[DmScreenWrapper] onNodesChange: Processing position/dimension changes', {
-    totalChanges: changes.length,
-    positionChanges: positionChanges.length,
-    dimensionChanges: dimensionChanges.length,
-    changeTypes: changes.map(c => c.type),
-    isUpdating: isUpdating.value
-  })
+  // Initialize local settings from props
+  initializeLocalSettings()
+})
 
-  const updatedItems = props.dmScreen.items.map((item: DmScreenItem) => {
-    let updated = false
-    const newOptions = { ...item.nodeOptions }
-    
-    // Handle position changes
-    const posChange = positionChanges.find((c) => 'id' in c && c.id === item.id)
-    if (posChange && 'position' in posChange && posChange.position) {
-      newOptions.x = posChange.position.x
-      newOptions.y = posChange.position.y
-      newOptions.position = posChange.position
-      updated = true
-    }
-    
-    // Handle dimension changes
-    const dimChange = dimensionChanges.find((c) => 'id' in c && c.id === item.id)
-    if (dimChange && 'dimensions' in dimChange && dimChange.dimensions) {
-      newOptions.width = dimChange.dimensions.width
-      newOptions.height = dimChange.dimensions.height
-      updated = true
-      
-      // If item is minimized, update minimizedDimensions too
-      if (item.isMinimized) {
-        const newItem = {
-          ...item,
-          nodeOptions: newOptions,
-          minimizedDimensions: {
-            width: dimChange.dimensions.width,
-            height: dimChange.dimensions.height,
-          }
-        }
-        return newItem
-      }
-    }
-    
-    if (updated) {
-      return {
-        ...item,
-        nodeOptions: newOptions,
-      }
-    }
-    return item
-  })
-
-  // Don't update store immediately during drag - only update on debounced save
-  console.log('[DmScreenWrapper] Calling debouncedUpdate with', updatedItems.length, 'items')
-  // Debounced API update (will update store when it fires)
-  debouncedUpdate(updatedItems)
+function initializeLocalSettings() {
+  localGridOptions.value = { ...gridOptions.value }
+  localLockBackgroundImages.value = lockBackgroundImages.value
+  localBackgroundOpacity.value = backgroundOpacity.value
 }
 
-// Handle node drag stop (snap to grid if enabled)
+// =====================================================
+// VUEFLOW EVENT HANDLERS
+// All handlers call store actions directly
+// =====================================================
+
+/**
+ * Handle node changes - resize is handled by @resize-end in DmScreenFlowNode
+ * This is left here for any other node changes VueFlow might emit
+ */
+function onNodesChange(_changes: NodeChange[]) {
+  // Resize is now handled by @resize-end event in DmScreenFlowNode
+  // This handler is kept for any other node changes if needed
+}
+
 function onNodeDragStop(event: NodeDragEvent) {
-  if (!snapToGrid.value || !gridSize.value) return
-  if (!props.dmScreen.items) return
-
   const node = event.node
-  const snappedX = Math.round(node.position.x / gridSize.value) * gridSize.value
-  const snappedY = Math.round(node.position.y / gridSize.value) * gridSize.value
-
-  // Update node position
-  node.position = { x: snappedX, y: snappedY }
-
-  // Update item
-  const updatedItems = props.dmScreen.items.map((item: DmScreenItem) => {
-    if (item.id === node.id) {
-      return {
-        ...item,
-        nodeOptions: {
-          ...item.nodeOptions,
-          x: snappedX,
-          y: snappedY,
-          position: { x: snappedX, y: snappedY },
-        },
-      }
-    }
-    return item
-  })
-
-  // Debounced update (snap happens on drag stop, so debounce is fine)
-  debouncedUpdate(updatedItems)
-}
-
-
-// Handle item update from child component
-function handleItemUpdate(updatedItem: DmScreenItem) {
-  if (!props.dmScreen.items) return
-
-  const updatedItems = props.dmScreen.items.map((item: DmScreenItem) =>
-    item.id === updatedItem.id ? updatedItem : item
-  )
-
-  // Update node in store
-  vueFlowStore.updateNode(props.dmScreen.id, updatedItem)
-
-  // Update local state immediately
-  const currentScreen = dmScreensStore.dmScreens.find(
-    (ds: DmScreen) => ds.id === props.dmScreen.id
-  )
-  if (currentScreen) {
-    currentScreen.items = updatedItems
-  }
-
-  // Debounced API update
-  debouncedUpdate(updatedItems)
-}
-
-// Handle item delete
-async function handleItemDelete(itemId: string) {
-  if (!props.dmScreen.items) return
-
-  const item = props.dmScreen.items.find((i: DmScreenItem) => i.id === itemId)
-  const isBackground = item?.data.isBackground === true
-
-  // Remove node from store
-  vueFlowStore.removeNode(props.dmScreen.id, itemId)
-
-  const updatedItems = props.dmScreen.items.filter((item: DmScreenItem) => item.id !== itemId)
-
-  // If deleting background image, also remove from settings
-  if (isBackground) {
-    const updatedSettings: DmScreenSettings = {
-      ...props.dmScreen.settings,
-      backgroundImageId: undefined,
-    }
-    
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.settings = updatedSettings
-    }
-    
-    debouncedSettingsUpdate(updatedSettings)
-  }
-
-  try {
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-    toast.success('Item removed from DM screen')
-  } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to delete item:', error)
-    toast.error('Failed to remove item')
-  }
-}
-
-// Update shape preview (visual only, no save yet)
-function updateShapePreview() {
-  // This is just for the preview, actual save happens in saveShapeStyle
-  // No need to do anything here as the preview binds directly to editingShapeData
-}
-
-// Save shape style
-function saveShapeStyle() {
-  if (!editingShapeItemId.value || !props.dmScreen.items) return
-
-  const updatedItems = props.dmScreen.items.map((item: DmScreenItem) => {
-    if (item.id === editingShapeItemId.value && item.type === 'ShapeNode') {
-      return {
-        ...item,
-        data: {
-          ...item.data,
-          color: editingShapeData.value.color,
-          opacity: editingShapeData.value.opacity,
-          borderColor: editingShapeData.value.borderColor,
-          borderWidth: editingShapeData.value.borderWidth,
-          label: editingShapeData.value.label,
-        },
-      }
-    }
-    return item
-  })
-
-  // Update local state
-  const currentScreen = dmScreensStore.dmScreens.find(
-    (ds: DmScreen) => ds.id === props.dmScreen.id
-  )
-  if (currentScreen) {
-    currentScreen.items = updatedItems
-  }
-
-  // Debounced update
-  debouncedUpdate(updatedItems)
+  let x = node.position.x
+  let y = node.position.y
   
-  showShapeStyleDialog.value = false
-  toast.success('Shape style updated')
+  // Snap to grid if enabled
+  if (gridOptions.value.snapToGrid && gridOptions.value.gridSize) {
+    x = Math.round(x / gridOptions.value.gridSize) * gridOptions.value.gridSize
+    y = Math.round(y / gridOptions.value.gridSize) * gridOptions.value.gridSize
+  }
+  
+  // Update position in store (debounced API call)
+  dmScreensStore.updateItemPosition(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    node.id,
+    x,
+    y
+  )
 }
 
-// Handle add library item
-async function handleAddLibraryItem(libraryItem: LibraryItem) {
-  if (!props.dmScreen.items) return
+function onNodeClick(event: any) {
+  const nodeId = event.node?.id
+  if (nodeId) {
+    dmScreensStore.selectItem(nodeId)
+  }
+}
 
+function onPaneClick() {
+  dmScreensStore.selectItem(null)
+}
+
+// =====================================================
+// ITEM EVENT HANDLERS (called from DmScreenFlowNode)
+// =====================================================
+
+function handleItemUpdate(updatedItem: DmScreenItem) {
+  dmScreensStore.updateItem(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    updatedItem.id,
+    updatedItem
+  )
+}
+
+function handleItemDelete(itemId: string) {
+  dmScreensStore.deleteItem(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    itemId
+  )
+  toast.success('Item removed')
+}
+
+function handleItemResize(itemId: string, width: number, height: number, x?: number, y?: number) {
+  dmScreensStore.updateItemDimensions(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    itemId,
+    width,
+    height,
+    x,
+    y
+  )
+}
+
+function handleItemRotate(itemId: string, rotation: number) {
+  dmScreensStore.updateItemRotation(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    itemId,
+    rotation
+  )
+}
+
+// =====================================================
+// ADD ITEM HANDLERS
+// =====================================================
+
+function getViewportCenter(itemWidth = 300, itemHeight = 200): { x: number; y: number } {
   try {
-    // Get featured image URL if available
+    const viewportCenterX = window.innerWidth / 2
+    const viewportCenterY = window.innerHeight / 2
+    const flowPosition = project({ x: viewportCenterX, y: viewportCenterY })
+    return {
+      x: flowPosition.x - itemWidth / 2,
+      y: flowPosition.y - itemHeight / 2,
+    }
+  } catch (error) {
+    return { x: 400, y: 300 }
+  }
+}
+
+async function handleAddLibraryItem(libraryItem: LibraryItem) {
+  try {
     let featuredImageUrl: string | null = null
     if (libraryItem.featuredImage) {
       featuredImageUrl = await filesStore.getDownloadUrl(libraryItem.featuredImage.id)
     }
 
-    // Convert library item to DM screen item
     const newItem = dmScreensStore.convertLibraryItemToDmScreenItem(
       libraryItem,
       featuredImageUrl
     )
     
-    // Center the item in the viewport
-    const center = getViewportCenter(300, 500) // 3:5 ratio
+    const center = getViewportCenter(300, 500)
     newItem.nodeOptions = {
       ...newItem.nodeOptions,
       x: center.x,
@@ -1429,23 +691,7 @@ async function handleAddLibraryItem(libraryItem: LibraryItem) {
       position: center,
     }
 
-    const updatedItems = [...(props.dmScreen.items || []), newItem]
-
-    // Update local state immediately
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-
-    // Save to API
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
-
+    dmScreensStore.addItem(props.dmScreen.id, props.dmScreen.libraryId, newItem)
     toast.success('Item added to DM screen')
   } catch (error: any) {
     console.error('[DmScreenWrapper] Failed to add item:', error)
@@ -1453,88 +699,26 @@ async function handleAddLibraryItem(libraryItem: LibraryItem) {
   }
 }
 
-// Helper function to get image dimensions and calculate height
-async function getImageDimensions(fileId: number): Promise<{ width: number; height: number }> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    filesStore.getDownloadUrl(fileId).then(url => {
-      img.onload = () => {
-        resolve({ width: img.naturalWidth, height: img.naturalHeight })
-      }
-      img.onerror = () => {
-        // Fallback to default aspect ratio (4:3)
-        resolve({ width: 500, height: 375 })
-      }
-      img.src = url
-    }).catch(() => {
-      resolve({ width: 500, height: 375 })
-    })
-  })
-}
-
-// Handle background image selection (supports multiple backgrounds)
 async function handleBackgroundImageSelect(fileId: number | number[] | string | string[]) {
-  // Convert to number if needed
-  let id: number
-  if (Array.isArray(fileId)) {
-    id = typeof fileId[0] === 'number' ? fileId[0] : parseInt(fileId[0] as string, 10)
-  } else {
-    id = typeof fileId === 'number' ? fileId : parseInt(fileId as string, 10)
-  }
+  const id = Array.isArray(fileId) 
+    ? (typeof fileId[0] === 'number' ? fileId[0] : parseInt(fileId[0] as string, 10))
+    : (typeof fileId === 'number' ? fileId : parseInt(fileId as string, 10))
 
   try {
-    // Get image dimensions to calculate correct aspect ratio
-    const { width: imgWidth, height: imgHeight } = await getImageDimensions(id)
-    const aspectRatio = imgHeight / imgWidth
+    // Get image dimensions
+    const dimensions = await getImageDimensions(id)
+    const aspectRatio = dimensions.height / dimensions.width
     const fixedWidth = 500
     const calculatedHeight = Math.round(fixedWidth * aspectRatio)
 
-    // Create new background image item (allow multiple backgrounds)
-    const existingBackgroundCount = props.dmScreen.items?.filter((item: DmScreenItem) => 
-      item.type === 'UserFileId' && item.data.isBackground === true
-    ).length || 0
-
-    console.log('[DmScreenWrapper] Adding background image:', {
-      fileId: id,
-      existingBackgroundCount,
-      currentItemsCount: props.dmScreen.items?.length || 0,
-      dimensions: { width: fixedWidth, height: calculatedHeight, aspectRatio }
-    })
-
-    const backgroundItem: DmScreenItem = {
-      id: `background-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: 'UserFileId',
-      data: {
-        id: id,
-        isBackground: true,
-      },
-      nodeOptions: {
-        x: 100 + (existingBackgroundCount * 50),
-        y: 100 + (existingBackgroundCount * 50),
-        position: { 
-          x: 100 + (existingBackgroundCount * 50), 
-          y: 100 + (existingBackgroundCount * 50)
-        },
-        width: fixedWidth,
-        height: calculatedHeight,
-        resizable: true,
-      },
-      isMinimized: false,
-    }
-
-    const updatedItems = [...(props.dmScreen.items || []), backgroundItem]
-
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
+    const center = getViewportCenter(fixedWidth, calculatedHeight)
+    
+    dmScreensStore.addBackgroundImage(
       props.dmScreen.id,
-      { items: updatedItems }
+      props.dmScreen.libraryId,
+      id,
+      center,
+      { width: fixedWidth, height: calculatedHeight }
     )
 
     toast.success('Background image added')
@@ -1545,38 +729,49 @@ async function handleBackgroundImageSelect(fileId: number | number[] | string | 
   }
 }
 
-// Remove background image
-async function removeBackgroundImage() {
-  if (!backgroundImageItem.value) return
-
-  await handleItemDelete(backgroundImageItem.value.id)
-
-  const updatedSettings: DmScreenSettings = {
-    ...props.dmScreen.settings,
-    backgroundImageId: undefined,
-    backgroundImageWidth: undefined,
-  }
-  
-  const currentScreen = dmScreensStore.dmScreens.find(
-    (ds: DmScreen) => ds.id === props.dmScreen.id
-  )
-  if (currentScreen) {
-    currentScreen.settings = updatedSettings
-  }
-  
-  backgroundImageUrl.value = null
-  debouncedSettingsUpdate(updatedSettings)
+async function getImageDimensions(fileId: number): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    filesStore.getDownloadUrl(fileId).then(url => {
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => {
+        resolve({ width: 500, height: 375 })
+      }
+      img.src = url
+    }).catch(() => {
+      resolve({ width: 500, height: 375 })
+    })
+  })
 }
 
-// Handle canvas background selection
-async function handleCanvasBackgroundSelect(fileId: number | number[] | string | string[]) {
-  // Convert to number if needed
-  let id: number
-  if (Array.isArray(fileId)) {
-    id = typeof fileId[0] === 'number' ? fileId[0] : parseInt(fileId[0] as string, 10)
-  } else {
-    id = typeof fileId === 'number' ? fileId : parseInt(fileId as string, 10)
+// =====================================================
+// SETTINGS HANDLERS
+// =====================================================
+
+function saveSettings() {
+  const updatedSettings: DmScreenSettings = {
+    ...props.dmScreen.settings,
+    grid: { ...localGridOptions.value },
+    lockBackgroundImages: localLockBackgroundImages.value,
+    backgroundOpacity: localBackgroundOpacity.value,
   }
+  
+  dmScreensStore.updateSettings(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    updatedSettings
+  )
+  
+  showSettingsDialog.value = false
+  toast.success('Settings saved')
+}
+
+async function handleCanvasBackgroundSelect(fileId: number | number[] | string | string[]) {
+  const id = Array.isArray(fileId) 
+    ? (typeof fileId[0] === 'number' ? fileId[0] : parseInt(fileId[0] as string, 10))
+    : (typeof fileId === 'number' ? fileId : parseInt(fileId as string, 10))
 
   try {
     const updatedSettings: DmScreenSettings = {
@@ -1584,19 +779,13 @@ async function handleCanvasBackgroundSelect(fileId: number | number[] | string |
       canvasBackgroundImageId: id,
     }
     
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.settings = updatedSettings
-    }
-
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
+    dmScreensStore.updateSettings(
       props.dmScreen.id,
-      { settings: updatedSettings }
+      props.dmScreen.libraryId,
+      updatedSettings
     )
-
+    
+    canvasBackgroundUrl.value = await filesStore.getDownloadUrl(id)
     toast.success('Canvas background set')
     showCanvasBackgroundSelector.value = false
   } catch (error: any) {
@@ -1605,26 +794,74 @@ async function handleCanvasBackgroundSelect(fileId: number | number[] | string |
   }
 }
 
-// Remove canvas background
 function removeCanvasBackground() {
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
     canvasBackgroundImageId: undefined,
   }
   
-  const currentScreen = dmScreensStore.dmScreens.find(
-    (ds: DmScreen) => ds.id === props.dmScreen.id
+  dmScreensStore.updateSettings(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    updatedSettings
   )
-  if (currentScreen) {
-    currentScreen.settings = updatedSettings
-  }
   
   canvasBackgroundUrl.value = null
-  debouncedSettingsUpdate(updatedSettings)
   toast.success('Canvas background removed')
 }
 
-// Handle drag over
+// =====================================================
+// SHAPE STYLE HANDLERS
+// =====================================================
+
+function openShapeStyleEditor(item: DmScreenItem) {
+  if (item.type !== 'ShapeNode') return
+  
+  editingShapeItemId.value = item.id
+  editingShapeData.value = {
+    shape: item.data.shape as 'circle' | 'square' | 'triangle',
+    color: item.data.color || '#6366f1',
+    opacity: item.data.opacity ?? 1,
+    borderColor: item.data.borderColor || '#ffffff',
+    borderWidth: item.data.borderWidth || 0,
+    label: item.data.label || '',
+  }
+  showShapeStyleDialog.value = true
+}
+
+function saveShapeStyle() {
+  if (!editingShapeItemId.value) return
+
+  const item = props.dmScreen.items?.find(i => i.id === editingShapeItemId.value)
+  if (!item) return
+
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      color: editingShapeData.value.color,
+      opacity: editingShapeData.value.opacity,
+      borderColor: editingShapeData.value.borderColor,
+      borderWidth: editingShapeData.value.borderWidth,
+      label: editingShapeData.value.label,
+    },
+  }
+
+  dmScreensStore.updateItem(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    editingShapeItemId.value,
+    updatedItem
+  )
+  
+  showShapeStyleDialog.value = false
+  toast.success('Shape style updated')
+}
+
+// =====================================================
+// DRAG & DROP HANDLERS
+// =====================================================
+
 function handleDragOver(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
@@ -1633,148 +870,60 @@ function handleDragOver(event: DragEvent) {
   }
 }
 
-// Handle drop from kitbashing drawers
 async function handleDrop(event: DragEvent) {
   event.preventDefault()
   event.stopPropagation()
   
-  console.log('[DmScreenWrapper] Drop event received', event)
-  
-  if (!event.dataTransfer) {
-    console.warn('[DmScreenWrapper] No dataTransfer in drop event')
-    return
-  }
+  if (!event.dataTransfer) return
   
   try {
-    // Try to get data from application/json first
     let data = event.dataTransfer.getData('application/json')
     let parsed: any = null
     
     if (data) {
       try {
         parsed = JSON.parse(data)
-        console.log('[DmScreenWrapper] Parsed JSON data:', parsed)
       } catch (e) {
-        console.warn('[DmScreenWrapper] Failed to parse JSON data:', e)
+        // Try text/plain fallback
       }
     }
     
-    // Fallback to text/plain format (file:123)
     if (!parsed || !parsed.fileId) {
       const textData = event.dataTransfer.getData('text/plain')
-      console.log('[DmScreenWrapper] Text data:', textData)
       if (textData && textData.startsWith('file:')) {
         const fileId = parseInt(textData.replace('file:', ''), 10)
         if (!isNaN(fileId)) {
           parsed = { type: 'user-file-background', fileId }
-          console.log('[DmScreenWrapper] Parsed from text data:', parsed)
         }
       }
     }
     
-    // Accept both 'user-file-background' and 'user-file' types
-    // (LazyFilePreview might override the type, but we can still process it)
-    if (!parsed || !parsed.fileId) {
-      console.warn('[DmScreenWrapper] Invalid drop data:', parsed)
-      return
-    }
-    
-    // Check if it's a user file (either type)
-    const isUserFile = parsed.type === 'user-file-background' || parsed.type === 'user-file'
-    if (!isUserFile) {
-      console.warn('[DmScreenWrapper] Drop data is not a user file:', parsed)
-      return
-    }
+    if (!parsed || !parsed.fileId) return
     
     const isBackground = parsed.type === 'user-file-background'
-    console.log('[DmScreenWrapper] Processing user file drop:', parsed.fileId, 'type:', parsed.type, 'isBackground:', isBackground)
-    
-    // Get drop position in flow coordinates
     const dropPosition = project({ x: event.clientX, y: event.clientY })
-    console.log('[DmScreenWrapper] Drop position:', { clientX: event.clientX, clientY: event.clientY, flow: dropPosition })
-    
-    let newItem: DmScreenItem
     
     if (isBackground) {
-      // Background image: fixed width with aspect ratio
-      // Get image dimensions to calculate correct aspect ratio
-      let imgWidth = 500
-      let imgHeight = 375
-      let aspectRatio = 0.75
-      
-      try {
-        const dimensions = await getImageDimensions(parsed.fileId)
-        imgWidth = dimensions.width
-        imgHeight = dimensions.height
-        aspectRatio = imgHeight / imgWidth
-      } catch (error) {
-        // Continue with default 4:3 aspect ratio
-      }
-      
+      const dimensions = await getImageDimensions(parsed.fileId)
+      const aspectRatio = dimensions.height / dimensions.width
       const fixedWidth = 500
       const calculatedHeight = Math.round(fixedWidth * aspectRatio)
       
-      newItem = {
-        id: `background-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'UserFileId',
-        data: {
-          id: parsed.fileId,
-          isBackground: true,
-        },
-        nodeOptions: {
-          x: dropPosition.x - fixedWidth / 2,
-          y: dropPosition.y - calculatedHeight / 2,
-          position: { 
-            x: dropPosition.x - fixedWidth / 2,
-            y: dropPosition.y - calculatedHeight / 2
-          },
-          width: fixedWidth,
-          height: calculatedHeight,
-          resizable: true,
-        },
-        isMinimized: false,
-      }
+      dmScreensStore.addBackgroundImage(
+        props.dmScreen.id,
+        props.dmScreen.libraryId,
+        parsed.fileId,
+        { x: dropPosition.x - fixedWidth / 2, y: dropPosition.y - calculatedHeight / 2 },
+        { width: fixedWidth, height: calculatedHeight }
+      )
     } else {
-      // Regular UserFile node: default size for MediaCard
-      const defaultWidth = 300
-      const defaultHeight = 400
-      
-      newItem = {
-        id: `userfile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'UserFileId',
-        data: {
-          id: parsed.fileId,
-          isBackground: false,
-        },
-        nodeOptions: {
-          x: dropPosition.x - defaultWidth / 2,
-          y: dropPosition.y - defaultHeight / 2,
-          position: { 
-            x: dropPosition.x - defaultWidth / 2,
-            y: dropPosition.y - defaultHeight / 2
-          },
-          width: defaultWidth,
-          height: defaultHeight,
-          resizable: true,
-        },
-        isMinimized: false,
-      }
+      dmScreensStore.addUserFile(
+        props.dmScreen.id,
+        props.dmScreen.libraryId,
+        parsed.fileId,
+        { x: dropPosition.x - 150, y: dropPosition.y - 200 }
+      )
     }
-    
-    const updatedItems = [...(props.dmScreen.items || []), newItem]
-    
-    const currentScreen = dmScreensStore.dmScreens.find(
-      (ds: DmScreen) => ds.id === props.dmScreen.id
-    )
-    if (currentScreen) {
-      currentScreen.items = updatedItems
-    }
-    
-    await dmScreensStore.updateDmScreen(
-      props.dmScreen.libraryId,
-      props.dmScreen.id,
-      { items: updatedItems }
-    )
     
     toast.success(isBackground ? 'Background image added' : 'File added to DM screen')
   } catch (error) {
@@ -1783,36 +932,13 @@ async function handleDrop(event: DragEvent) {
   }
 }
 
-// Save settings
-function saveSettings() {
-  const updatedSettings: DmScreenSettings = {
-    ...props.dmScreen.settings,
-    grid: { ...localGridOptions.value },
-    backgroundImageWidth: localBackgroundImageWidth.value,
-    lockBackgroundImages: localLockBackgroundImages.value,
-    backgroundOpacity: localBackgroundOpacity.value,
-  }
-  
-  // Update local state
-  const currentScreen = dmScreensStore.dmScreens.find(
-    (ds: DmScreen) => ds.id === props.dmScreen.id
-  )
-  if (currentScreen) {
-    currentScreen.settings = updatedSettings
-  }
-  
-  // Emit updates to parent
-  emit('update:lock-background-images', localLockBackgroundImages.value)
-  emit('update:show-grid', localGridOptions.value.showGrid || false)
-  
-  debouncedSettingsUpdate(updatedSettings)
-  showSettingsDialog.value = false
-}
+// =====================================================
+// PORTAL HANDLER
+// =====================================================
 
-// Send DM screen to portal
 async function handleSendToPortal() {
   if (!hasActivePortal.value) {
-    toast.error('No active portal. Please set an active portal first.')
+    toast.error('No active portal')
     return
   }
   
@@ -1821,10 +947,62 @@ async function handleSendToPortal() {
     toast.success('DM screen sent to portal')
     showSettingsDialog.value = false
   } catch (error: any) {
-    console.error('[DmScreenWrapper] Failed to send DM screen to portal:', error)
-    toast.error(error.message || 'Failed to send DM screen to portal')
+    console.error('[DmScreenWrapper] Failed to send to portal:', error)
+    toast.error(error.message || 'Failed to send to portal')
   }
 }
+
+// =====================================================
+// EXPOSE METHODS FOR PARENT/TOOLBAR
+// =====================================================
+
+defineExpose({
+  // Dialog controls
+  openSettings: () => {
+    initializeLocalSettings()
+    showSettingsDialog.value = true
+  },
+  openItemSelector: () => { showItemSelector.value = true },
+  openFileManager: () => { showFileManager.value = true },
+  openShapeStyleEditor,
+  
+  // Item actions (delegate to store)
+  addTextNode: () => {
+    const center = getViewportCenter(200, 100)
+    dmScreensStore.addTextNode(props.dmScreen.id, props.dmScreen.libraryId, center)
+    toast.success('Text node added')
+  },
+  addShapeNode: () => {
+    const center = getViewportCenter(150, 150)
+    dmScreensStore.addShapeNode(props.dmScreen.id, props.dmScreen.libraryId, center)
+    toast.success('Shape node added')
+  },
+  
+  // Toggle actions
+  toggleLockBackground: () => {
+    const updatedSettings: DmScreenSettings = {
+      ...props.dmScreen.settings,
+      lockBackgroundImages: !lockBackgroundImages.value,
+    }
+    dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
+  },
+  toggleGrid: () => {
+    const updatedSettings: DmScreenSettings = {
+      ...props.dmScreen.settings,
+      grid: {
+        ...gridOptions.value,
+        showGrid: !gridOptions.value.showGrid,
+      },
+    }
+    dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
+  },
+  
+  // Event handlers for node events
+  handleItemUpdate,
+  handleItemDelete,
+  handleItemResize,
+  handleItemRotate,
+})
 </script>
 
 <style scoped>
@@ -1849,7 +1027,6 @@ async function handleSendToPortal() {
   height: 100%;
   background: rgba(20, 20, 30, 0.5);
 }
-
 
 .empty-state-overlay {
   position: absolute;
@@ -1883,7 +1060,6 @@ async function handleSendToPortal() {
   margin-top: 8px;
 }
 
-/* Shape Style Editor Styles */
 .shape-color-picker {
   width: 50px;
   height: 40px;
@@ -1891,29 +1067,6 @@ async function handleSendToPortal() {
   border-radius: 6px;
   cursor: pointer;
 }
-
-.shape-preview-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.shape-preview-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.shape-preview {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 8px;
-}
 </style>
+
+
