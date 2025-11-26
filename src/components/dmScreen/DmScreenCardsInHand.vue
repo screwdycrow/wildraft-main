@@ -359,7 +359,8 @@ watch([() => props.leftSidebarWidth, () => props.rightSidebarWidth], () => {
 
 async function loadLibraryItems() {
   if (!activeDmScreen.value?.items) {
-    sortedDmScreenItems.value = []
+    sortedDmScreenItems.value = [] 
+    
     libraryItemsMap.value.clear()
     return
   }
