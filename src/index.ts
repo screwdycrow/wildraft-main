@@ -18,6 +18,9 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Initialize Fastify
 const fastify = Fastify({
   logger: true,
+  // Increase body limit for file uploads (base64 encoded files are ~33% larger)
+  // 50MB should handle most use cases
+  bodyLimit: 50 * 1024 * 1024, // 50MB
   ajv: {
     customOptions: {
       removeAdditional: false, // Don't strip additional properties - allow flexible JSON in data fields

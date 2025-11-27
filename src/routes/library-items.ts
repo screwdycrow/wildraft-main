@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess } from '../middleware/library-access';
-import { LibraryItemType } from '@prisma/client';
+import { LibraryItemType, Prisma } from '@prisma/client';
 import { incrementItemsVersion } from '../utils/library-version';
 import {
   createLibraryItemSchema,
@@ -46,35 +46,39 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Type, name, and data are required' };
         }
 
-        // Create the item
-        const item = await prisma.libraryItem.create({
-          data: {
-            libraryId,
-            type,
-            name,
-            description,
-            data, // Stores validated JSON with all fields (required + custom)
-            ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
-            ...(tagIds && {
-              tags: {
-                connect: tagIds.map(id => ({ id })),
-              },
-            }),
-            ...(userFileIds && {
-              userFiles: {
-                connect: userFileIds.map(id => ({ id })),
-              },
-            }),
-          },
-          include: {
-            tags: true,
-            featuredImage: true,
-            userFiles: true,
-          },
-        });
+        // Use transaction to create item and increment version in a single round-trip
+        const item = await prisma.$transaction(async (tx) => {
+          const created = await tx.libraryItem.create({
+            data: {
+              libraryId,
+              type,
+              name,
+              description,
+              data, // Stores validated JSON with all fields (required + custom)
+              ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
+              ...(tagIds && {
+                tags: {
+                  connect: tagIds.map(id => ({ id })),
+                },
+              }),
+              ...(userFileIds && {
+                userFiles: {
+                  connect: userFileIds.map(id => ({ id })),
+                },
+              }),
+            },
+            include: {
+              tags: true,
+              featuredImage: true,
+              userFiles: true,
+            },
+          });
 
-        // Increment items version
-        await incrementItemsVersion(libraryId);
+          // Increment items version within the same transaction
+          await incrementItemsVersion(libraryId, tx);
+
+          return created;
+        });
 
         // Add download URLs to featuredImage and userFiles
         const enrichedItem = {
@@ -214,46 +218,56 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
         const itemId = parseInt(request.params.itemId, 10);
         const { name, description, data, tagIds, userFileIds, featuredImageId } = request.body;
 
-        // Get existing item to validate type
-        const existingItem = await prisma.libraryItem.findFirst({
-          where: { id: itemId, libraryId },
+        // Use transaction to update item and increment version
+        const item = await prisma.$transaction(async (tx) => {
+          // Check existence and update in single query using updateMany with count check
+          // Or use findFirst + update for cases where we need the result
+          const existingItem = await tx.libraryItem.findFirst({
+            where: { id: itemId, libraryId },
+            select: { id: true }, // Only fetch what we need for validation
+          });
+
+          if (!existingItem) {
+            return null; // Will handle 404 outside transaction
+          }
+
+          const updated = await tx.libraryItem.update({
+            where: { id: itemId },
+            data: {
+              ...(name && { name }),
+              ...(description !== undefined && { description }),
+              ...(data && { data }),
+              ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
+              ...(tagIds && {
+                tags: {
+                  set: [], // Clear existing
+                  connect: tagIds.map(id => ({ id })),
+                },
+              }),
+              ...(userFileIds && {
+                userFiles: {
+                  set: [], // Clear existing
+                  connect: userFileIds.map(id => ({ id })),
+                },
+              }),
+            },
+            include: {
+              tags: true,
+              featuredImage: true,
+              userFiles: true,
+            },
+          });
+
+          // Increment items version within the same transaction
+          await incrementItemsVersion(libraryId, tx);
+
+          return updated;
         });
 
-        if (!existingItem) {
+        if (!item) {
           reply.code(404);
           return { error: 'Item not found' };
         }
-
-        // Update item
-        const item = await prisma.libraryItem.update({
-          where: { id: itemId },
-          data: {
-            ...(name && { name }),
-            ...(description !== undefined && { description }),
-            ...(data && { data }),
-            ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
-            ...(tagIds && {
-              tags: {
-                set: [], // Clear existing
-                connect: tagIds.map(id => ({ id })),
-              },
-            }),
-            ...(userFileIds && {
-              userFiles: {
-                set: [], // Clear existing
-                connect: userFileIds.map(id => ({ id })),
-              },
-            }),
-          },
-          include: {
-            tags: true,
-            featuredImage: true,
-            userFiles: true,
-          },
-        });
-
-        // Increment items version
-        await incrementItemsVersion(libraryId);
 
         // Add download URLs to featuredImage and userFiles
         const enrichedItem = {
@@ -289,22 +303,31 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
         const libraryId = parseInt(request.params.libraryId, 10);
         const itemId = parseInt(request.params.itemId, 10);
 
-        // Verify item exists in this library
-        const item = await prisma.libraryItem.findFirst({
-          where: { id: itemId, libraryId },
+        // Use transaction to delete and increment version together
+        // Also handles the "not found" case elegantly
+        const deleted = await prisma.$transaction(async (tx) => {
+          // Use deleteMany to avoid throwing on not found, returns count
+          const result = await tx.libraryItem.deleteMany({
+            where: { 
+              id: itemId, 
+              libraryId, // Ensures item belongs to this library
+            },
+          });
+
+          if (result.count === 0) {
+            return false; // Item not found
+          }
+
+          // Increment items version within the same transaction
+          await incrementItemsVersion(libraryId, tx);
+
+          return true;
         });
 
-        if (!item) {
+        if (!deleted) {
           reply.code(404);
           return { error: 'Item not found' };
         }
-
-        await prisma.libraryItem.delete({
-          where: { id: itemId },
-        });
-
-        // Increment items version
-        await incrementItemsVersion(libraryId);
 
         reply.code(204);
         return;
@@ -319,4 +342,3 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
     }
   );
 };
-

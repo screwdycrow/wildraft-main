@@ -214,16 +214,21 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Library name cannot be empty' };
         }
 
-        const library = await prisma.library.update({
-          where: { id },
-          data: {
-            ...(name !== undefined && { name: name.trim() }),
-            ...(description !== undefined && { description: description.trim() || null }),
-          },
-        });
+        // Use transaction to update library and increment version in a single round-trip
+        const library = await prisma.$transaction(async (tx) => {
+          const updated = await tx.library.update({
+            where: { id },
+            data: {
+              ...(name !== undefined && { name: name.trim() }),
+              ...(description !== undefined && { description: description.trim() || null }),
+            },
+          });
 
-        // Increment library version on update
-        await incrementLibraryVersion(id);
+          // Increment library version within the same transaction
+          await incrementLibraryVersion(id, tx);
+
+          return updated;
+        });
 
         return {
           message: 'Library updated successfully',

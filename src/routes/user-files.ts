@@ -29,8 +29,63 @@ const DEFAULT_CACHE_EXPIRES_IN = parseInt(
   10
 );
 
+// Simple in-memory cache for signed URLs to reduce S3 API calls
+// Cache expires 5 minutes before the actual URL expiration for safety
+interface CachedUrl {
+  url: string;
+  expiresAt: number;
+}
+const signedUrlCache = new Map<string, CachedUrl>();
+const CACHE_SAFETY_MARGIN = 5 * 60 * 1000; // 5 minutes in ms
+
+/**
+ * Get a cached signed URL or generate a new one
+ */
+async function getCachedSignedUrl(
+  fileUrl: string,
+  expiresIn: number
+): Promise<string> {
+  const cacheKey = `${fileUrl}:${expiresIn}`;
+  const now = Date.now();
+  
+  // Check cache
+  const cached = signedUrlCache.get(cacheKey);
+  if (cached && cached.expiresAt > now + CACHE_SAFETY_MARGIN) {
+    return cached.url;
+  }
+  
+  // Generate new URL
+  const downloadUrl = await getSignedDownloadUrl(fileUrl, expiresIn);
+  
+  // Cache it
+  signedUrlCache.set(cacheKey, {
+    url: downloadUrl,
+    expiresAt: now + expiresIn * 1000,
+  });
+  
+  // Cleanup old entries periodically (every 100 new entries)
+  if (signedUrlCache.size % 100 === 0) {
+    cleanupExpiredCache();
+  }
+  
+  return downloadUrl;
+}
+
+/**
+ * Remove expired entries from cache
+ */
+function cleanupExpiredCache(): void {
+  const now = Date.now();
+  for (const [key, value] of signedUrlCache.entries()) {
+    if (value.expiresAt <= now) {
+      signedUrlCache.delete(key);
+    }
+  }
+}
+
 /**
  * Helper function to add download URL to a UserFile object
+ * Uses caching to reduce S3 API calls for frequently accessed files
  * Exported for use in other route files
  */
 export async function enrichUserFileWithDownloadUrl(
@@ -41,7 +96,8 @@ export async function enrichUserFileWithDownloadUrl(
     return null;
   }
   try {
-    const downloadUrl = await getSignedDownloadUrl(userFile.fileUrl, expiresIn);
+    // Use cached URL to reduce S3 API calls
+    const downloadUrl = await getCachedSignedUrl(userFile.fileUrl, expiresIn);
     return {
       ...userFile,
       downloadUrl,
@@ -699,6 +755,12 @@ async function convertImageToWebP(
 
   if (!SUPPORTED_IMAGE_TYPES.has(normalisedMime)) {
     log.debug({ mimeType }, 'Skipping conversion for unsupported image mime type');
+    return { buffer, mimeType };
+  }
+
+  // Skip GIFs to preserve animation
+  if (normalisedMime === 'image/gif') {
+    log.debug({ mimeType }, 'Skipping conversion for GIF to preserve animation');
     return { buffer, mimeType };
   }
 
