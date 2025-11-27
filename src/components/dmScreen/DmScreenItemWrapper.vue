@@ -2,16 +2,16 @@
   <div 
     class="dm-screen-item-wrapper"
     :class="{ 
-      'minimized': item.isMinimized, 
-      'scaled': isScaled && !item.data.isBackground,
+      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode',
       'is-background': item.data.isBackground,
+      'is-token': item.type === 'TokenNode',
       'transparent': item.type === 'TextNode' || item.type === 'ShapeNode'
     }"
-    :style="item.isMinimized ? { width: '100%', height: '100%' } : wrapperStyle"
+    :style="wrapperStyle"
   >
-    <!-- Selection handle / toolbar for non-minimized items (not for text/shape nodes and background nodes) -->
+    <!-- Selection handle / toolbar for regular items (not tokens, text/shape nodes, or backgrounds) -->
     <div 
-      v-if="!item.isMinimized && item.type !== 'TextNode' && item.type !== 'ShapeNode' && !item.data.isBackground" 
+      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && !item.data.isBackground" 
       class="selection-handle"
       data-drag-handle
     >
@@ -21,23 +21,15 @@
       </div>
     </div>
 
-    <!-- Minimized View (Circle with featured image and title) -->
-    <div v-if="item.isMinimized" class="minimized-view" @dblclick="toggleMinimize">
-      <div class="minimized-image-container">
-        <div v-if="minimizedImageUrl" class="minimized-image-circle">
-          <img :src="minimizedImageUrl" :alt="itemTitle" />
-        </div>
-        <div v-else class="minimized-icon-circle">
-          <div class="icon-circle-inner" :style="{ backgroundColor: minimizedColor }">
-            <v-icon :icon="minimizedIcon" size="36" color="white" />
-          </div>
-        </div>
-      </div>
-      <div class="minimized-title">{{ itemTitle }}</div>
-    </div>
+    <!-- TokenNode Display (compact circular token) -->
+    <token-node-display
+      v-if="item.type === 'TokenNode'"
+      :item="item"
+      :library-id="libraryId"
+    />
 
-    <!-- Full View -->
-    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground }" :style="item.data.isBackground ? {} : contentStyle">
+    <!-- Full View (all other types) -->
+    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' }" :style="item.data.isBackground ? {} : contentStyle">
       <!-- LibraryItemId -->
       <div 
         v-if="item.type === 'LibraryItemId' && libraryItem" 
@@ -173,6 +165,7 @@ import type { UserFile } from '@/api/files'
 import ItemCardWrapper from '@/components/items/ItemCardWrapper.vue'
 import MediaCard from '@/components/files/MediaCard.vue'
 import TokenComponent from './TokenComponent.vue'
+import TokenNodeDisplay from './TokenNodeDisplay.vue'
 import QuickNoteComponent from './QuickNoteComponent.vue'
 import WebLinkComponent from './WebLinkComponent.vue'
 import ImageUrlComponent from './ImageUrlComponent.vue'
@@ -215,7 +208,6 @@ const isSendingToPortal = ref(false)
 
 const libraryItem = ref<LibraryItem | null>(null)
 const userFile = ref<UserFile | null>(null)
-const minimizedImageUrl = ref<string | null>(null)
 
 // Load library item if type is LibraryItemId (cached to prevent reloading)
 const loadLibraryItem = async () => {
@@ -259,7 +251,7 @@ const loadUserFile = async () => {
   }
 }
 
-// Get minimized view properties
+// Get item title for display
 const itemTitle = computed(() => {
   switch (props.item.type) {
     case 'LibraryItemId':
@@ -268,6 +260,8 @@ const itemTitle = computed(() => {
       return userFile.value?.fileName || 'File'
     case 'CombatantItemToken':
       return props.item.data.combatantName || 'Token'
+    case 'TokenNode':
+      return props.item.data.tokenLabel || 'Token'
     case 'quickNote':
       return props.item.data.title || 'Quick Note'
     case 'webLink':
@@ -277,29 +271,6 @@ const itemTitle = computed(() => {
     default:
       return 'Item'
   }
-})
-
-const minimizedIcon = computed(() => {
-  switch (props.item.type) {
-    case 'LibraryItemId':
-      return 'mdi-book-open-variant'
-    case 'UserFileId':
-      return 'mdi-file'
-    case 'CombatantItemToken':
-      return 'mdi-sword-cross'
-    case 'quickNote':
-      return 'mdi-note-text'
-    case 'webLink':
-      return 'mdi-link'
-    case 'ImageUrl':
-      return 'mdi-image'
-    default:
-      return 'mdi-file'
-  }
-})
-
-const minimizedColor = computed(() => {
-  return props.item.data.minimizedColor || '#6366f1'
 })
 
 // Get current node width from nodeOptions
@@ -335,22 +306,13 @@ const contentStyle = computed(() => {
 
 // Handle featured image URL from ItemCardWrapper
 function handleFeaturedImageUrl(url: string) {
-  minimizedImageUrl.value = url
-  // Update item data with the URL
+  // Update item data with the URL for caching
   const updatedItem = {
     ...props.item,
     data: {
       ...props.item.data,
       featuredImageUrl: url
     }
-  }
-  emit('update', updatedItem)
-}
-
-function toggleMinimize() {
-  const updatedItem = {
-    ...props.item,
-    isMinimized: !props.item.isMinimized
   }
   emit('update', updatedItem)
 }
@@ -441,17 +403,6 @@ onMounted(async () => {
     loadLibraryItem(),
     loadUserFile()
   ])
-  
-  // Load minimized image if available
-  if (props.item.data.featuredImageUrl) {
-    minimizedImageUrl.value = props.item.data.featuredImageUrl
-  } else if (libraryItem.value?.featuredImage) {
-    try {
-      minimizedImageUrl.value = await filesStore.getDownloadUrl(libraryItem.value.featuredImage.id)
-    } catch (error) {
-      console.error('[DmScreenItemWrapper] Failed to load featured image:', error)
-    }
-  }
   
   console.log('[DmScreenItemWrapper] Mounted item:', props.item.id, props.item.type)
 })
@@ -585,91 +536,17 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   opacity: 1;
 }
 
-.minimized-view {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: min(8px, 5%);
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-  padding: 5%;
-}
-
-.minimized-image-container {
-  flex-shrink: 0;
-
-  max-width: 70%;
-  max-height: 70%;
-  aspect-ratio: 1;
-}
-
-.minimized-image-circle,
-.minimized-icon-circle {
-  width: 100%;
-  height: 100%;
+/* Token node styles - circular display without background */
+.dm-screen-item-wrapper.is-token {
+  border: none;
+  background: transparent;
   border-radius: 50%;
-  position: relative;
+  overflow: visible;
 }
 
-.minimized-image-circle:hover,
-.minimized-icon-circle:hover {
-  filter: brightness(1.1);
-}
-
-.minimized-image-circle {
-  overflow: hidden;
-}
-
-.minimized-image-circle img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.minimized-icon-circle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.3));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
-              0 0 0 3px rgba(99, 102, 241, 0.4);
-}
-
-.icon-circle-inner {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.minimized-icon-circle .v-icon {
-  font-size: clamp(24px, 25%, 48px) !important;
-}
-
-.minimized-title {
-  font-size: clamp(6px, 8%, 14px);
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  text-align: center;
-  line-height: 1.2;
-  max-width: 90%;
-  padding: clamp(1px, 2%, 6px) clamp(2px, 3%, 8px);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8),
-               0 1px 2px rgba(0, 0, 0, 0.6);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
-  background: rgba(30, 30, 40, 0.8);
-  border-radius: clamp(3px, 1%, 6px);
-  backdrop-filter: blur(8px);
+.dm-screen-item-wrapper.is-token:hover {
+  border: none;
+  background: transparent;
 }
 
 .item-content {

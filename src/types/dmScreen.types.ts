@@ -9,6 +9,7 @@ export type DmScreenItemType =
   | 'ImageUrl'
   | 'TextNode'
   | 'ShapeNode'
+  | 'TokenNode' // Compact circular token view of LibraryItem or UserFile
 
 // Vue Flow node position and options
 export interface VueFlowNodeOptions {
@@ -77,6 +78,16 @@ export interface DmScreenItem {
     borderColor?: string
     borderWidth?: number
     label?: string
+    
+    // For TokenNode (compact circular token)
+    originalType?: DmScreenItemType // The original type before converting to token
+    originalData?: Record<string, any> // Original data to restore when converting back
+    tokenImageUrl?: string // Cached image URL for the token
+    tokenLabel?: string // Label to show on token (item name or filename)
+    tokenShowLabel?: boolean // Whether to show the label below the token (default: true)
+    tokenBorderColor?: string // Border color (default: transparent)
+    tokenBorderWidth?: number // Border width in pixels (default: 0)
+    tokenSize?: number // Token size in pixels (default: 100)
     
     // Background image flag (legacy - now use layer instead)
     isBackground?: boolean

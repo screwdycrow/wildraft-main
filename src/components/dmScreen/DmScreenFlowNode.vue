@@ -80,19 +80,124 @@
           </v-tooltip>
         </v-btn>
         
+        <!-- Convert to Token (for items that can become tokens) -->
         <v-btn
-          v-if="canMinimize"
+          v-if="canConvertToToken"
           icon
           size="x-small"
           variant="text"
           color="white"
-          @click.stop="toggleMinimize"
+          @click.stop="convertToToken"
         >
-          <v-icon size="small">{{ data.item.isMinimized ? 'mdi-window-maximize' : 'mdi-window-minimize' }}</v-icon>
+          <v-icon size="small">mdi-circle-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">
-            {{ data.item.isMinimized ? 'Maximize' : 'Minimize' }}
+            Convert to Token
           </v-tooltip>
         </v-btn>
+        
+        <!-- Restore from Token -->
+        <v-btn
+          v-if="isTokenNode"
+          icon
+          size="x-small"
+          variant="text"
+          color="white"
+          @click.stop="restoreFromToken"
+        >
+          <v-icon size="small">mdi-card-outline</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            Restore to Card
+          </v-tooltip>
+        </v-btn>
+        
+        <!-- Token Settings -->
+        <v-menu
+          v-if="isTokenNode"
+          :close-on-content-click="false"
+          location="bottom"
+        >
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              v-bind="menuProps"
+              icon
+              size="x-small"
+              variant="text"
+              color="white"
+              @click.stop
+            >
+              <v-icon size="small">mdi-cog</v-icon>
+              <v-tooltip activator="parent" location="bottom">
+                Token Settings
+              </v-tooltip>
+            </v-btn>
+          </template>
+          <v-card min-width="250" class="token-settings-menu">
+            <v-card-text class="pa-3">
+              <div class="text-subtitle-2 mb-3">Token Settings</div>
+              
+              <!-- Show Label -->
+              <v-switch
+                v-model="tokenShowLabel"
+                label="Show Name"
+                density="compact"
+                hide-details
+                color="primary"
+                class="mb-2"
+              />
+              
+              <!-- Border Width -->
+              <div class="text-caption mb-1">Border Width</div>
+              <v-slider
+                v-model="tokenBorderWidth"
+                :min="0"
+                :max="8"
+                :step="1"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-2"
+              />
+              
+              <!-- Border Color -->
+              <div class="text-caption mb-1">Border Color</div>
+              <div class="d-flex gap-1 flex-wrap mb-2">
+                <div
+                  v-for="color in borderColorPresets"
+                  :key="color"
+                  class="color-preset"
+                  :class="{ active: tokenBorderColor === color }"
+                  :style="{ backgroundColor: color }"
+                  @click="tokenBorderColor = color"
+                />
+              </div>
+              <v-text-field
+                v-model="tokenBorderColor"
+                label="Custom Color"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="mb-2"
+              >
+                <template #prepend-inner>
+                  <div 
+                    class="color-preview" 
+                    :style="{ backgroundColor: tokenBorderColor }"
+                  />
+                </template>
+              </v-text-field>
+              
+              <v-btn
+                block
+                size="small"
+                color="primary"
+                variant="tonal"
+                @click="saveTokenSettings"
+              >
+                Apply
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-menu>
         
         <v-btn
           icon
@@ -112,11 +217,11 @@
     <div 
       class="dm-screen-flow-node" 
       :class="{ 
-        'minimized': data.item.isMinimized, 
         'selected': isSelected,
         'is-dragging': props.dragging,
         'rotating': isRotating,
-        'resizing': isResizing
+        'resizing': isResizing,
+        'is-token': isTokenNode
       }"
     >
       <dm-screen-item-wrapper
@@ -190,12 +295,40 @@ const resizeStartPosition = ref({ x: 0, y: 0 })
 const currentDimensions = ref({ width: 0, height: 0 })
 const currentPosition = ref({ x: 0, y: 0 })
 
+// Token settings state (local state for editing)
+const tokenShowLabel = ref(true)
+const tokenBorderWidth = ref(0)
+const tokenBorderColor = ref('#6366f1')
+
+// Border color presets
+const borderColorPresets = [
+  '#6366f1', // Indigo
+  '#ef4444', // Red
+  '#22c55e', // Green
+  '#f59e0b', // Amber
+  '#3b82f6', // Blue
+  '#8b5cf6', // Purple
+  '#ec4899', // Pink
+  '#ffffff', // White
+  '#000000', // Black
+  'transparent',
+]
+
 // Sync rotation with props when not actively rotating
 watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
   if (!isRotating.value && newRotation !== undefined) {
     currentRotation.value = newRotation
   }
 }, { immediate: false })
+
+// Sync token settings from props
+watch(() => props.data.item, (item) => {
+  if (item.type === 'TokenNode') {
+    tokenShowLabel.value = item.data.tokenShowLabel !== false
+    tokenBorderWidth.value = item.data.tokenBorderWidth || 0
+    tokenBorderColor.value = item.data.tokenBorderColor || '#6366f1'
+  }
+}, { immediate: true, deep: true })
 
 // =====================================================
 // COMPUTED
@@ -217,20 +350,25 @@ const containerStyle = computed(() => {
   return {}
 })
 
-const canMinimize = computed(() => {
-  const item = props.data.item
-  return item.type !== 'CombatantItemToken' && 
-         !item.data.isBackground && 
-         item.type !== 'TextNode' && 
-         item.type !== 'ShapeNode'
-})
-
 const isBackgroundImage = computed(() => {
   return props.data.item.data.isBackground === true
 })
 
 const currentObjectFit = computed(() => {
   return props.data.item.data.objectFit || 'fill'
+})
+
+const isTokenNode = computed(() => {
+  return props.data.item.type === 'TokenNode'
+})
+
+// Items that can be converted to tokens (LibraryItemId and UserFileId, not backgrounds)
+const canConvertToToken = computed(() => {
+  const item = props.data.item
+  const convertibleTypes = ['LibraryItemId', 'UserFileId']
+  return convertibleTypes.includes(item.type) && 
+         !item.data.isBackground &&
+         item.type !== 'TokenNode'
 })
 
 // =====================================================
@@ -286,8 +424,8 @@ function toggleObjectFit() {
 // ROTATION-AWARE RESIZE HANDLERS
 // =====================================================
 
-const MIN_WIDTH = 100
-const MIN_HEIGHT = 100
+const MIN_WIDTH = 30
+const MIN_HEIGHT = 30
 
 function startResize(event: MouseEvent, handle: string) {
   console.log('[DmScreenFlowNode] Starting resize:', handle, 'rotation:', currentRotation.value)
@@ -506,44 +644,96 @@ function resetRotation() {
 }
 
 // =====================================================
-// MINIMIZE HANDLER
+// TOKEN CONVERSION HANDLERS
 // =====================================================
 
-function toggleMinimize() {
+function convertToToken() {
   const item = props.data.item
-  const isCurrentlyMinimized = item.isMinimized
+  
+  // Store original type and data for restoration
+  const tokenItem: DmScreenItem = {
+    ...item,
+    type: 'TokenNode',
+    data: {
+      ...item.data,
+      originalType: item.type,
+      originalData: { ...item.data },
+      tokenLabel: item.data.name || item.data.fileName || 'Token',
+      tokenShowLabel: true,
+      tokenBorderWidth: 3,
+      tokenBorderColor: '#6366f1',
+    },
+    nodeOptions: {
+      ...item.nodeOptions,
+      // Store original dimensions for restoration
+      fullWidth: item.nodeOptions?.width || 300,
+      fullHeight: item.nodeOptions?.height || 200,
+      // Set token size (circular)
+      width: 100,
+      height: 100,
+    },
+  }
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    tokenItem
+  )
+}
+
+function restoreFromToken() {
+  const item = props.data.item
+  
+  if (!item.data.originalType) {
+    console.warn('[DmScreenFlowNode] Cannot restore token: no original type stored')
+    return
+  }
+  
+  // Restore to original type
+  const restoredItem: DmScreenItem = {
+    ...item,
+    type: item.data.originalType,
+    data: {
+      ...item.data.originalData,
+    },
+    nodeOptions: {
+      ...item.nodeOptions,
+      // Restore original dimensions
+      width: item.nodeOptions?.fullWidth || 300,
+      height: item.nodeOptions?.fullHeight || 200,
+    },
+  }
+  
+  // Clean up token-specific fields
+  delete restoredItem.data.originalType
+  delete restoredItem.data.originalData
+  delete restoredItem.data.tokenLabel
+  delete restoredItem.data.tokenImageUrl
+  delete restoredItem.data.tokenShowLabel
+  delete restoredItem.data.tokenBorderColor
+  delete restoredItem.data.tokenBorderWidth
+  delete restoredItem.data.tokenSize
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    restoredItem
+  )
+}
+
+function saveTokenSettings() {
+  const item = props.data.item
   
   const updatedItem: DmScreenItem = {
     ...item,
-    isMinimized: !isCurrentlyMinimized,
-  }
-  
-  if (!isCurrentlyMinimized) {
-    // Minimizing: Store current dimensions
-    const currentWidth = props.width || item.nodeOptions?.width || 300
-    const currentHeight = props.height || item.nodeOptions?.height || 200
-    
-    updatedItem.nodeOptions = {
-      ...updatedItem.nodeOptions,
-      fullWidth: currentWidth,
-      fullHeight: currentHeight,
-      width: updatedItem.minimizedDimensions?.width || 150,
-      height: updatedItem.minimizedDimensions?.height || 150,
-    }
-    
-    if (!updatedItem.minimizedDimensions) {
-      updatedItem.minimizedDimensions = { width: 150, height: 150 }
-    }
-  } else {
-    // Maximizing: Restore full dimensions
-    const fullWidth = item.nodeOptions?.fullWidth || 300
-    const fullHeight = item.nodeOptions?.fullHeight || 200
-    
-    updatedItem.nodeOptions = {
-      ...updatedItem.nodeOptions,
-      width: fullWidth,
-      height: fullHeight,
-    }
+    data: {
+      ...item.data,
+      tokenShowLabel: tokenShowLabel.value,
+      tokenBorderWidth: tokenBorderWidth.value,
+      tokenBorderColor: tokenBorderColor.value,
+    },
   }
   
   dmScreensStore.updateItem(
@@ -590,16 +780,18 @@ onUnmounted(() => {
 .dm-screen-flow-node {
   width: 100%;
   height: 100%;
-  min-width: 100px;
-  min-height: 100px;
+  min-width: 30px;
+  min-height: 30px;
   position: relative;
 }
 
-.dm-screen-flow-node.minimized {
+.dm-screen-flow-node.is-token {
   width: 100%;
   height: 100%;
-  min-width: 10px;
-  min-height: 10px;
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .dm-screen-flow-node.selected {
@@ -776,5 +968,36 @@ onUnmounted(() => {
 
 :deep(.vue-flow__node.selected) {
   outline: none;
+}
+
+/* Token settings menu */
+.token-settings-menu {
+  background: rgba(30, 30, 40, 0.98) !important;
+  backdrop-filter: blur(10px);
+}
+
+.color-preset {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.color-preset:hover {
+  transform: scale(1.1);
+}
+
+.color-preset.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+}
+
+.color-preview {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 </style>

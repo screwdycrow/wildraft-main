@@ -583,9 +583,10 @@ const nodes = computed<Node[]>(() => {
       let width = nodeOptions.width || 300
       let height = nodeOptions.height || 200
       
-      if (item.isMinimized) {
-        width = item.minimizedDimensions?.width || 150
-        height = item.minimizedDimensions?.height || 150
+      // TokenNode uses smaller circular dimensions
+      if (item.type === 'TokenNode') {
+        width = nodeOptions.width || 100
+        height = nodeOptions.height || 100
       }
       
       // Calculate z-index based on layer order and item order
