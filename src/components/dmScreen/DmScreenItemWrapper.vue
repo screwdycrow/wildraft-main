@@ -3,7 +3,8 @@
     class="dm-screen-item-wrapper"
     :class="{ 
       'minimized': item.isMinimized, 
-      'scaled': isScaled,
+      'scaled': isScaled && !item.data.isBackground,
+      'is-background': item.data.isBackground,
       'transparent': item.type === 'TextNode' || item.type === 'ShapeNode'
     }"
     :style="item.isMinimized ? { width: '100%', height: '100%' } : wrapperStyle"
@@ -36,7 +37,7 @@
     </div>
 
     <!-- Full View -->
-    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground }" :style="contentStyle">
+    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground }" :style="item.data.isBackground ? {} : contentStyle">
       <!-- LibraryItemId -->
       <div 
         v-if="item.type === 'LibraryItemId' && libraryItem" 
@@ -59,14 +60,13 @@
         class="background-image-container"
         :style="{ opacity: props.backgroundOpacity ?? 1 }"
       >
-        <v-img
+        <img
           v-if="userFile.fileType.startsWith('image/') && userFile.downloadUrl"
-          :key="`bg-img-${userFile.id}`"
+          :key="`bg-img-${userFile.id}-${item.data.objectFit || 'fill'}`"
           :src="userFile.downloadUrl"
-          :width="nodeWidth"
-          cover
           class="background-image"
-          :eager="true"
+          :class="{ 'object-fit-cover': item.data.objectFit === 'cover' }"
+          alt="Background"
         />
         <media-card
           v-else
@@ -500,6 +500,24 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   background: transparent;
 }
 
+/* Background images - fill container completely, no scaling */
+.dm-screen-item-wrapper.is-background {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+}
+
+.dm-screen-item-wrapper.is-background:hover {
+  border: none;
+  background: transparent;
+}
+
+.dm-screen-item-wrapper.is-background .item-content {
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+  padding: 0 !important;
+}
 
 /* Selection handle toolbar - More discrete */
 .selection-handle {
@@ -713,15 +731,21 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 .background-image-container {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
 }
 
 .background-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  display: block;
+  object-fit: fill; /* Default: stretches to fit container */
+}
+
+.background-image.object-fit-cover {
+  object-fit: cover; /* Crops to fill while maintaining aspect ratio */
 }
 
 .background-portal-actions {

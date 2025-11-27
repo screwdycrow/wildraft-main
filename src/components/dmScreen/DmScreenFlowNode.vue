@@ -1,24 +1,44 @@
 <template>
   <div class="dm-screen-flow-node-container" :style="containerStyle">
-    <!-- NodeResizer - @resize-end triggers the store update -->
-    <NodeResizer
-      v-if="isSelected"
-      :min-width="data.item.isMinimized ? 20 : 100"
-      :min-height="data.item.isMinimized ? 20 : 100"
-      :color="'#6366f1'"
-      :handle-style="{ 
-        width: '12px', 
-        height: '12px', 
-        borderRadius: '2px',
-        border: '2px solid #fff',
-        background: '#6366f1'
-      }"
-      :line-style="{ 
-        borderWidth: '2px',
-        borderColor: '#6366f1'
-      }"
-      @resize-end="handleResizeEnd"
-    />
+    <!-- Custom Rotation-Aware Resize Handles -->
+    <template v-if="isSelected">
+      <!-- Corner handles -->
+      <div 
+        class="resize-handle corner top-left" 
+        @mousedown.stop="startResize($event, 'top-left')"
+      />
+      <div 
+        class="resize-handle corner top-right" 
+        @mousedown.stop="startResize($event, 'top-right')"
+      />
+      <div 
+        class="resize-handle corner bottom-left" 
+        @mousedown.stop="startResize($event, 'bottom-left')"
+      />
+      <div 
+        class="resize-handle corner bottom-right" 
+        @mousedown.stop="startResize($event, 'bottom-right')"
+      />
+      <!-- Edge handles -->
+      <div 
+        class="resize-handle edge top" 
+        @mousedown.stop="startResize($event, 'top')"
+      />
+      <div 
+        class="resize-handle edge bottom" 
+        @mousedown.stop="startResize($event, 'bottom')"
+      />
+      <div 
+        class="resize-handle edge left" 
+        @mousedown.stop="startResize($event, 'left')"
+      />
+      <div 
+        class="resize-handle edge right" 
+        @mousedown.stop="startResize($event, 'right')"
+      />
+      <!-- Selection border -->
+      <div class="selection-border" />
+    </template>
     
     <!-- Rotation Handle and Action Toolbar -->
     <div v-if="isSelected" class="top-controls">
@@ -42,6 +62,21 @@
           <v-icon size="small">mdi-rotate-left-variant</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Reset Rotation
+          </v-tooltip>
+        </v-btn>
+        
+        <!-- Object Fit Toggle (only for background images) -->
+        <v-btn
+          v-if="isBackgroundImage"
+          icon
+          size="x-small"
+          variant="text"
+          :color="currentObjectFit === 'cover' ? 'warning' : 'white'"
+          @click.stop="toggleObjectFit"
+        >
+          <v-icon size="small">{{ currentObjectFit === 'cover' ? 'mdi-crop' : 'mdi-arrow-expand-all' }}</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            {{ currentObjectFit === 'cover' ? 'Cover (cropped)' : 'Fill (stretched)' }} - Click to toggle
           </v-tooltip>
         </v-btn>
         
@@ -80,7 +115,8 @@
         'minimized': data.item.isMinimized, 
         'selected': isSelected,
         'is-dragging': props.dragging,
-        'rotating': isRotating
+        'rotating': isRotating,
+        'resizing': isResizing
       }"
     >
       <dm-screen-item-wrapper
@@ -100,7 +136,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { NodeResizer } from '@vue-flow/node-resizer'
 import { useVueFlow } from '@vue-flow/core'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 import DmScreenItemWrapper from './DmScreenItemWrapper.vue'
@@ -135,7 +170,7 @@ const props = defineProps<Props>()
 // =====================================================
 
 const dmScreensStore = useDmScreensStore()
-const { findNode } = useVueFlow()
+const { findNode, setNodes } = useVueFlow()
 
 // =====================================================
 // LOCAL STATE
@@ -145,6 +180,15 @@ const isRotating = ref(false)
 const rotationStartAngle = ref(0)
 const rotationStartMouseAngle = ref(0)
 const currentRotation = ref(props.data.rotation ?? props.data.item.nodeOptions?.rotation ?? 0)
+
+// Resize state
+const isResizing = ref(false)
+const resizeHandle = ref<string | null>(null)
+const resizeStartMouse = ref({ x: 0, y: 0 })
+const resizeStartDimensions = ref({ width: 0, height: 0 })
+const resizeStartPosition = ref({ x: 0, y: 0 })
+const currentDimensions = ref({ width: 0, height: 0 })
+const currentPosition = ref({ x: 0, y: 0 })
 
 // Sync rotation with props when not actively rotating
 watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
@@ -181,6 +225,14 @@ const canMinimize = computed(() => {
          item.type !== 'ShapeNode'
 })
 
+const isBackgroundImage = computed(() => {
+  return props.data.item.data.isBackground === true
+})
+
+const currentObjectFit = computed(() => {
+  return props.data.item.data.objectFit || 'fill'
+})
+
 // =====================================================
 // ITEM UPDATE HANDLER
 // =====================================================
@@ -207,26 +259,150 @@ function handleDelete() {
 }
 
 // =====================================================
-// RESIZE END HANDLER
+// OBJECT FIT TOGGLE (for background images)
 // =====================================================
 
-function handleResizeEnd(_event: any) {
-  // Get the actual node from VueFlow - this has the correct dimensions and position
-  const node = findNode(props.id)
-  if (!node) {
-    console.warn('[DmScreenFlowNode] Could not find node for resize end:', props.id)
-    return
+function toggleObjectFit() {
+  const item = props.data.item
+  const newFit = currentObjectFit.value === 'fill' ? 'cover' : 'fill'
+  
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      objectFit: newFit,
+    },
   }
   
-  // Get dimensions from VueFlow's node state
-  const width = node.dimensions?.width || props.data.item.nodeOptions?.width || 300
-  const height = node.dimensions?.height || props.data.item.nodeOptions?.height || 200
-  const x = node.position?.x ?? props.data.item.nodeOptions?.position?.x ?? 0
-  const y = node.position?.y ?? props.data.item.nodeOptions?.position?.y ?? 0
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
+}
+
+// =====================================================
+// ROTATION-AWARE RESIZE HANDLERS
+// =====================================================
+
+const MIN_WIDTH = 100
+const MIN_HEIGHT = 100
+
+function startResize(event: MouseEvent, handle: string) {
+  console.log('[DmScreenFlowNode] Starting resize:', handle, 'rotation:', currentRotation.value)
   
-  console.log('[DmScreenFlowNode] Resize end:', { id: props.id, width, height, x, y })
+  isResizing.value = true
+  resizeHandle.value = handle
+  resizeStartMouse.value = { x: event.clientX, y: event.clientY }
   
-  // Update dimensions in store (triggers debounced API call)
+  const node = findNode(props.id)
+  if (node) {
+    const w = node.dimensions?.width || props.data.item.nodeOptions?.width || 300
+    const h = node.dimensions?.height || props.data.item.nodeOptions?.height || 200
+    console.log('[DmScreenFlowNode] Start dimensions:', w, h, 'position:', node.position)
+    resizeStartDimensions.value = { width: w, height: h }
+    currentDimensions.value = { width: w, height: h }
+    resizeStartPosition.value = {
+      x: node.position?.x ?? 0,
+      y: node.position?.y ?? 0,
+    }
+    currentPosition.value = { ...resizeStartPosition.value }
+  }
+  
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function handleResizeMove(event: MouseEvent) {
+  if (!isResizing.value || !resizeHandle.value) return
+  
+  // Get raw mouse delta
+  const rawDx = event.clientX - resizeStartMouse.value.x
+  const rawDy = event.clientY - resizeStartMouse.value.y
+  
+  // Transform mouse delta by inverse of rotation to get local coordinates
+  const angleRad = -(currentRotation.value * Math.PI) / 180
+  const cos = Math.cos(angleRad)
+  const sin = Math.sin(angleRad)
+  
+  const dx = rawDx * cos - rawDy * sin
+  const dy = rawDx * sin + rawDy * cos
+  
+  let newWidth = resizeStartDimensions.value.width
+  let newHeight = resizeStartDimensions.value.height
+  let newX = resizeStartPosition.value.x
+  let newY = resizeStartPosition.value.y
+  
+  const handle = resizeHandle.value
+  
+  // Apply delta based on which handle is being dragged
+  if (handle.includes('right')) {
+    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + dx)
+  }
+  if (handle.includes('left')) {
+    const widthChange = -dx
+    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthChange)
+    if (newWidth > MIN_WIDTH) {
+      // Adjust position to keep right edge in place (in rotated space)
+      const actualWidthChange = newWidth - resizeStartDimensions.value.width
+      const posAngleRad = (currentRotation.value * Math.PI) / 180
+      newX = resizeStartPosition.value.x - actualWidthChange * Math.cos(posAngleRad)
+      newY = resizeStartPosition.value.y - actualWidthChange * Math.sin(posAngleRad)
+    }
+  }
+  if (handle.includes('bottom')) {
+    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + dy)
+  }
+  if (handle.includes('top')) {
+    const heightChange = -dy
+    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightChange)
+    if (newHeight > MIN_HEIGHT) {
+      // Adjust position to keep bottom edge in place (in rotated space)
+      const actualHeightChange = newHeight - resizeStartDimensions.value.height
+      const posAngleRad = (currentRotation.value * Math.PI) / 180
+      newX = resizeStartPosition.value.x + actualHeightChange * Math.sin(posAngleRad)
+      newY = resizeStartPosition.value.y - actualHeightChange * Math.cos(posAngleRad)
+    }
+  }
+  
+  // Store current values for visual feedback and final save
+  currentDimensions.value = { width: newWidth, height: newHeight }
+  currentPosition.value = { x: newX, y: newY }
+  
+  // Update the node in VueFlow for immediate visual feedback
+  setNodes((nodes) => 
+    nodes.map((node) => {
+      if (node.id === props.id) {
+        return {
+          ...node,
+          position: { x: newX, y: newY },
+          width: newWidth,
+          height: newHeight,
+          style: {
+            ...node.style,
+            width: `${newWidth}px`,
+            height: `${newHeight}px`,
+          },
+        }
+      }
+      return node
+    })
+  )
+}
+
+function handleResizeEnd() {
+  if (!isResizing.value) return
+  
+  const width = currentDimensions.value.width
+  const height = currentDimensions.value.height
+  const x = currentPosition.value.x
+  const y = currentPosition.value.y
+  
+  isResizing.value = false
+  resizeHandle.value = null
+  
+  // Save to store (triggers debounced API call)
   dmScreensStore.updateItemDimensions(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -382,14 +558,24 @@ function toggleMinimize() {
 // LIFECYCLE
 // =====================================================
 
+function handleGlobalMouseMove(event: MouseEvent) {
+  handleRotationMove(event)
+  handleResizeMove(event)
+}
+
+function handleGlobalMouseUp() {
+  handleRotationEnd()
+  handleResizeEnd()
+}
+
 onMounted(() => {
-  window.addEventListener('mousemove', handleRotationMove)
-  window.addEventListener('mouseup', handleRotationEnd)
+  window.addEventListener('mousemove', handleGlobalMouseMove)
+  window.addEventListener('mouseup', handleGlobalMouseUp)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', handleRotationMove)
-  window.removeEventListener('mouseup', handleRotationEnd)
+  window.removeEventListener('mousemove', handleGlobalMouseMove)
+  window.removeEventListener('mouseup', handleGlobalMouseUp)
 })
 </script>
 
@@ -417,8 +603,7 @@ onUnmounted(() => {
 }
 
 .dm-screen-flow-node.selected {
-  outline: 2px solid #6366f1;
-  outline-offset: 2px;
+  /* Selection border is now handled by .selection-border element */
 }
 
 .dm-screen-flow-node.is-dragging {
@@ -434,6 +619,10 @@ onUnmounted(() => {
 
 .dm-screen-flow-node.rotating {
   cursor: grabbing !important;
+}
+
+.dm-screen-flow-node.resizing {
+  cursor: nwse-resize !important;
 }
 
 .top-controls {
@@ -490,55 +679,102 @@ onUnmounted(() => {
   height: 28px !important;
 }
 
-/* Photoshop-style resize handles */
-:deep(.vue-flow__resize-control) {
+/* Custom rotation-aware resize handles */
+.resize-handle {
+  position: absolute;
+  background: #6366f1;
+  border: 2px solid #fff;
+  border-radius: 2px;
+  z-index: 1002;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.resize-handle:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+}
+
+.resize-handle.corner {
   width: 12px;
   height: 12px;
-  border: 2px solid #fff !important;
-  background: #6366f1 !important;
-  border-radius: 2px !important;
-  opacity: 1 !important;
-  transition: all 0.15s ease;
 }
 
-:deep(.vue-flow__resize-control:hover) {
-  width: 14px;
-  height: 14px;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+.resize-handle.edge {
+  background: #6366f1;
 }
 
-:deep(.vue-flow__resize-control.top.left),
-:deep(.vue-flow__resize-control.top.right),
-:deep(.vue-flow__resize-control.bottom.left),
-:deep(.vue-flow__resize-control.bottom.right) {
+.resize-handle.edge.top,
+.resize-handle.edge.bottom {
+  width: 40px;
+  height: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.resize-handle.edge.left,
+.resize-handle.edge.right {
+  width: 8px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.resize-handle.top-left {
+  top: -6px;
+  left: -6px;
   cursor: nwse-resize;
 }
 
-:deep(.vue-flow__resize-control.top.right),
-:deep(.vue-flow__resize-control.bottom.left) {
+.resize-handle.top-right {
+  top: -6px;
+  right: -6px;
   cursor: nesw-resize;
 }
 
-:deep(.vue-flow__resize-control.top),
-:deep(.vue-flow__resize-control.bottom) {
-  cursor: ns-resize;
-  width: 40px;
+.resize-handle.bottom-left {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
 }
 
-:deep(.vue-flow__resize-control.left),
-:deep(.vue-flow__resize-control.right) {
-  cursor: ew-resize;
-  height: 40px;
+.resize-handle.bottom-right {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
 }
 
-:deep(.vue-flow__resize-line) {
-  border-width: 2px !important;
-  border-color: #6366f1 !important;
-  opacity: 1 !important;
+.resize-handle.edge.top {
+  top: -4px;
+}
+
+.resize-handle.edge.bottom {
+  bottom: -4px;
+}
+
+.resize-handle.edge.left {
+  left: -4px;
+}
+
+.resize-handle.edge.right {
+  right: -4px;
+}
+
+.selection-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid #6366f1;
+  pointer-events: none;
+  z-index: 999;
 }
 
 :deep(.vue-flow__node.selected) {
-  outline: 2px solid #6366f1;
-  outline-offset: -2px;
+  outline: none;
 }
 </style>

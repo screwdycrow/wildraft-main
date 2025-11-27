@@ -1,21 +1,58 @@
 <template>
-  <div class="layer-control">
-    <div class="layer-control-header">
-      <span class="layer-control-title">Layers</span>
-      <v-btn
-        icon
-        size="x-small"
-        variant="text"
-        color="white"
-        @click="handleAddLayer"
-      >
-        <v-icon size="small">mdi-plus</v-icon>
-        <v-tooltip activator="parent" location="top">Add Layer</v-tooltip>
-      </v-btn>
+  <div class="layer-control" :class="{ 'layer-control--minimized': isMinimized }">
+    <!-- Minimized State - Compact bar with portal indicators -->
+    <div v-if="isMinimized" class="layer-control-minimized" @click="isMinimized = false">
+      <v-icon size="small" class="layer-icon">mdi-layers</v-icon>
+      <span class="layer-count">{{ localLayers.length }}</span>
+      
+      <!-- Portal indicators - dots showing which layers are on portal -->
+      <div class="portal-indicators">
+        <div
+          v-for="layer in localLayers"
+          :key="layer.id"
+          class="portal-dot"
+          :class="{ 
+            'portal-dot--active': layer.showOnPortal !== false,
+            'portal-dot--hidden': !layer.visible
+          }"
+          :title="`${layer.name}${layer.showOnPortal !== false ? ' (on portal)' : ''}`"
+        />
+      </div>
+      
+      <v-icon size="x-small" class="expand-icon">mdi-chevron-up</v-icon>
+      <v-tooltip activator="parent" location="top">Expand Layers</v-tooltip>
     </div>
     
-    <div class="layer-list">
-      <draggable
+    <!-- Expanded State -->
+    <template v-else>
+      <div class="layer-control-header">
+        <span class="layer-control-title">Layers</span>
+        <div class="header-actions">
+          <v-btn
+            icon
+            size="x-small"
+            variant="text"
+            color="white"
+            @click="handleAddLayer"
+          >
+            <v-icon size="small">mdi-plus</v-icon>
+            <v-tooltip activator="parent" location="top">Add Layer</v-tooltip>
+          </v-btn>
+          <v-btn
+            icon
+            size="x-small"
+            variant="text"
+            color="white"
+            @click="isMinimized = true"
+          >
+            <v-icon size="small">mdi-chevron-down</v-icon>
+            <v-tooltip activator="parent" location="top">Minimize</v-tooltip>
+          </v-btn>
+        </div>
+      </div>
+      
+      <div class="layer-list">
+        <draggable
         v-model="localLayers"
         item-key="id"
         handle=".layer-drag-handle"
@@ -35,6 +72,13 @@
             <div class="layer-drag-handle">
               <v-icon size="x-small" color="grey">mdi-drag</v-icon>
             </div>
+            
+            <!-- Portal indicator dot on each item -->
+            <div 
+              class="layer-portal-indicator"
+              :class="{ 'layer-portal-indicator--active': layer.showOnPortal !== false }"
+              :title="layer.showOnPortal !== false ? 'Showing on portal' : 'Hidden from portal'"
+            />
             
             <v-btn
               icon
@@ -132,9 +176,10 @@
           </div>
         </template>
       </draggable>
-    </div>
+      </div>
+    </template>
     
-    <!-- Opacity Dialog -->
+    <!-- Opacity Dialog (outside v-else so it can render when minimized) -->
     <v-dialog v-model="showOpacityDialog" max-width="300">
       <v-card class="glass-card">
         <v-card-title>Layer Opacity</v-card-title>
@@ -213,6 +258,9 @@ const emit = defineEmits<{
 }>()
 
 const dmScreensStore = useDmScreensStore()
+
+// Minimized state
+const isMinimized = ref(false)
 
 // Local state for draggable - reversed for UI (top = highest order)
 const localLayers = ref<DmScreenLayer[]>([])
@@ -361,8 +409,80 @@ function handleReorder() {
   overflow: hidden;
   min-width: 200px;
   max-width: 280px;
+  transition: all 0.2s ease;
 }
 
+.layer-control--minimized {
+  min-width: auto;
+  max-width: none;
+  border-radius: 14px;
+}
+
+/* Minimized State */
+.layer-control-minimized {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.layer-control-minimized:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.layer-icon {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.layer-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  min-width: 16px;
+  text-align: center;
+}
+
+.portal-indicators {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  margin-left: 4px;
+}
+
+.portal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.15s ease;
+}
+
+.portal-dot--active {
+  background: #6366f1;
+  border-color: #818cf8;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.5);
+}
+
+.portal-dot--hidden {
+  opacity: 0.4;
+}
+
+.portal-dot--active.portal-dot--hidden {
+  background: #4f46e5;
+  box-shadow: none;
+}
+
+.expand-icon {
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 4px;
+}
+
+/* Expanded State */
 .layer-control-header {
   display: flex;
   align-items: center;
@@ -370,6 +490,12 @@ function handleReorder() {
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.03);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .layer-control-title {
@@ -421,6 +547,21 @@ function handleReorder() {
 
 .layer-drag-handle:active {
   cursor: grabbing;
+}
+
+/* Portal indicator on each layer item */
+.layer-portal-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.layer-portal-indicator--active {
+  background: #6366f1;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);
 }
 
 .layer-name {

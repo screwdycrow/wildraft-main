@@ -24,7 +24,7 @@
         @pane-click="onPaneClick"
       >
         <Controls />
-        <MiniMap v-if="!isPortalMode" />
+        <MiniMap v-if="!isPortalMode" class="minimap-top-right" />
         
         <!-- Grid Overlay - on top of everything, non-selectable -->
         <GridNode
@@ -36,7 +36,7 @@
         />
       </VueFlow>
       
-      <!-- Layer Control - positioned above MiniMap -->
+      <!-- Layer Control - positioned next to floating toolbar at bottom -->
       <LayerControl
         v-if="!isPortalMode"
         :dm-screen-id="dmScreen.id"
@@ -1172,12 +1172,23 @@ defineExpose({
   cursor: pointer;
 }
 
-/* Layer Control Panel - positioned above MiniMap */
+/* MiniMap - positioned top right, smaller */
+.minimap-top-right {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 120px !important;
+  height: 80px !important;
+}
+
+/* Layer Control Panel - positioned at bottom right edge */
 .layer-control-panel {
   position: absolute;
-  bottom: 140px; /* Above the MiniMap */
-  right: 10px;
-  z-index: 100;
+  bottom: 16px;
+  right: 16px;
+  z-index: 1000;
 }
 </style>
 
