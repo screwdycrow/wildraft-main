@@ -388,7 +388,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, markRaw, onMounted } from 'vue'
+import { ref, computed, markRaw, onMounted, onUnmounted, watch } from 'vue'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
@@ -403,6 +403,7 @@ import FileManager from '@/components/files/FileManager.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
+import { usePortalSocket } from '@/composables/usePortalSocket'
 import { useToast } from 'vue-toastification'
 
 // =====================================================
@@ -423,7 +424,11 @@ const portalViewsStore = usePortalViewsStore()
 const filesStore = useFilesStore()
 const toast = useToast()
 
-const { project } = useVueFlow()
+// Portal socket for receiving commands in portal mode
+const { on: onPortalEvent, off: offPortalEvent, isConnected } = usePortalSocket()
+
+// VueFlow composable with viewport controls
+const { project, zoomIn, zoomOut, setViewport, getViewport, fitView } = useVueFlow()
 const vueFlowRef = ref<any>(null)
 
 // =====================================================
@@ -641,7 +646,99 @@ onMounted(async () => {
   
   // Initialize local settings from props
   initializeLocalSettings()
+  
+  // Set up portal command listeners if in portal mode
+  if (props.isPortalMode) {
+    setupPortalCommandListeners()
+  }
 })
+
+onUnmounted(() => {
+  // Clean up portal command listeners
+  cleanupPortalCommandListeners()
+})
+
+// Watch for portal mode changes
+watch(() => props.isPortalMode, (isPortalMode) => {
+  if (isPortalMode) {
+    setupPortalCommandListeners()
+  } else {
+    cleanupPortalCommandListeners()
+  }
+})
+
+
+// =====================================================
+// PORTAL COMMAND HANDLERS (for portal mode)
+// =====================================================
+
+function handlePortalViewUpdate(data: any) {
+  console.log('[DmScreenWrapper] Received portal-view-updated:', data, 'isPortalMode:', props.isPortalMode)
+  
+  if (!props.isPortalMode) return
+  
+  const { command, deltaX, deltaY } = data
+  
+  console.log('[DmScreenWrapper] Processing command:', command)
+  
+  switch (command) {
+    case 'dm-screen-zoom-in':
+      console.log('[DmScreenWrapper] Zoom in')
+      handlePortalZoomIn()
+      break
+    case 'dm-screen-zoom-out':
+      console.log('[DmScreenWrapper] Zoom out')
+      handlePortalZoomOut()
+      break
+    case 'dm-screen-pan':
+      console.log('[DmScreenWrapper] Pan:', deltaX, deltaY)
+      handlePortalPan(deltaX || 0, deltaY || 0)
+      break
+    case 'dm-screen-reset-view':
+      console.log('[DmScreenWrapper] Reset view')
+      handlePortalResetView()
+      break
+    default:
+      console.log('[DmScreenWrapper] Unknown command:', command)
+  }
+}
+
+function setupPortalCommandListeners() {
+  // Subscribe to portal-view-updated events via store's event system
+  onPortalEvent('portal-view-updated', handlePortalViewUpdate)
+  console.log('[DmScreenWrapper] Portal command listeners set up')
+}
+
+function cleanupPortalCommandListeners() {
+  offPortalEvent('portal-view-updated', handlePortalViewUpdate)
+  console.log('[DmScreenWrapper] Portal command listeners cleaned up')
+}
+
+function handlePortalZoomIn() {
+  const viewport = getViewport()
+  const newZoom = Math.min(viewport.zoom * 1.2, 4) // Max zoom 4x
+  setViewport({ ...viewport, zoom: newZoom }, { duration: 300 })
+}
+
+function handlePortalZoomOut() {
+  const viewport = getViewport()
+  const newZoom = Math.max(viewport.zoom / 1.2, 0.2) // Min zoom 0.2x
+  setViewport({ ...viewport, zoom: newZoom }, { duration: 300 })
+}
+
+function handlePortalPan(deltaX: number, deltaY: number) {
+  const viewport = getViewport()
+  setViewport({
+    ...viewport,
+    x: viewport.x + deltaX,
+    y: viewport.y + deltaY,
+  }, { duration: 150 })
+}
+
+function handlePortalResetView() {
+  // Fit all nodes in view with some padding
+  fitView({ padding: 0.2, duration: 500 })
+}
 
 function initializeLocalSettings() {
   localGridOptions.value = { ...gridOptions.value }
@@ -1107,6 +1204,12 @@ defineExpose({
   handleItemDelete,
   handleItemResize,
   handleItemRotate,
+  
+  // Portal control methods (called by PortalViewItem)
+  handleDmScreenZoomIn: handlePortalZoomIn,
+  handleDmScreenZoomOut: handlePortalZoomOut,
+  handleDmScreenPan: handlePortalPan,
+  handleDmScreenResetView: handlePortalResetView,
 })
 </script>
 
