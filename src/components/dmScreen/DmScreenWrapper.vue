@@ -44,6 +44,12 @@
         class="layer-control-panel"
         @layer-select="handleLayerSelect"
       />
+      
+      <!-- Effects Panel - for adding particle/lighting effects -->
+      <EffectsPanel
+        v-if="!isPortalMode"
+        @add-effect="handleAddEffect"
+      />
     </div>
 
     <!-- Settings Dialog -->
@@ -400,6 +406,8 @@ import GridNode from './GridNode.vue'
 import LayerControl from './LayerControl.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
+import EffectsPanel from './EffectsPanel.vue'
+import type { EffectPreset } from '@/types/dmScreen.types'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
@@ -592,6 +600,12 @@ const nodes = computed<Node[]>(() => {
       if (item.type === 'TokenNode') {
         width = nodeOptions.width || 100
         height = nodeOptions.height || 100
+      }
+      
+      // EffectNode uses square dimensions
+      if (item.type === 'EffectNode') {
+        width = nodeOptions.width || 150
+        height = nodeOptions.height || 150
       }
       
       // Calculate z-index based on layer order and item order
@@ -1077,8 +1091,54 @@ async function handleDrop(event: DragEvent) {
       }
     }
     
+    // Handle effect drops
+    if (parsed && parsed.type === 'effect-node') {
+      const dropPosition = project({ x: event.clientX, y: event.clientY })
+      const effectSize = 150
+      
+      dmScreensStore.addEffectNode(
+        props.dmScreen.id,
+        props.dmScreen.libraryId,
+        parsed.effectPreset,
+        { x: dropPosition.x - effectSize / 2, y: dropPosition.y - effectSize / 2 },
+        parsed.targetLayer || 'screen'
+      )
+      
+      toast.success(`Added ${parsed.effectPreset.name} effect`)
+      return
+    }
+    
+    // Handle text/plain effect format
+    const textData = event.dataTransfer.getData('text/plain')
+    if (textData && textData.startsWith('effect:')) {
+      // Parse format: effect:effectId:layerId
+      const parts = textData.split(':')
+      const effectId = parts[1]
+      const targetLayer = parts[2] || 'screen'
+      
+      // Find the effect preset
+      const { EFFECT_PRESETS } = await import('@/types/dmScreen.types')
+      const preset = EFFECT_PRESETS.find(p => p.id === effectId)
+      
+      if (preset) {
+        const dropPosition = project({ x: event.clientX, y: event.clientY })
+        const effectSize = 150
+        
+        dmScreensStore.addEffectNode(
+          props.dmScreen.id,
+          props.dmScreen.libraryId,
+          preset,
+          { x: dropPosition.x - effectSize / 2, y: dropPosition.y - effectSize / 2 },
+          targetLayer
+        )
+        
+        toast.success(`Added ${preset.name} effect`)
+        return
+      }
+    }
+    
+    // Handle file drops (existing logic)
     if (!parsed || !parsed.fileId) {
-      const textData = event.dataTransfer.getData('text/plain')
       if (textData && textData.startsWith('file:')) {
         // Parse format: file:123:layerId
         const parts = textData.split(':')
@@ -1130,8 +1190,24 @@ async function handleDrop(event: DragEvent) {
     toast.success(`Added to ${layerName} layer`)
   } catch (error) {
     console.error('[DmScreenWrapper] Failed to handle drop:', error)
-    toast.error('Failed to add image')
+    toast.error('Failed to add item')
   }
+}
+
+// Handle adding effect from click (adds at viewport center)
+function handleAddEffect(preset: EffectPreset, layerId: string) {
+  const effectSize = 150
+  const center = getViewportCenter(effectSize, effectSize)
+  
+  dmScreensStore.addEffectNode(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    preset,
+    center,
+    layerId
+  )
+  
+  toast.success(`Added ${preset.name} effect`)
 }
 
 // =====================================================

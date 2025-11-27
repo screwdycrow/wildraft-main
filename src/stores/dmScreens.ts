@@ -561,6 +561,43 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     return newItem
   }
   
+  function addEffectNode(
+    dmScreenId: string, 
+    libraryId: number, 
+    preset: { id: string; name: string; effectType: string; defaultConfig: any },
+    position: { x: number; y: number }, 
+    targetLayer?: string
+  ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
+    const newItem: DmScreenItem = {
+      id: `effect-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'EffectNode',
+      layer: layerId,
+      order: maxOrder + 1,
+      data: {
+        effectConfig: { ...preset.defaultConfig },
+      },
+      nodeOptions: {
+        x: position.x,
+        y: position.y,
+        position: position,
+        width: 150,
+        height: 150,
+        resizable: true,
+      },
+      isMinimized: false,
+    }
+    
+    addItem(dmScreenId, libraryId, newItem)
+    return newItem
+  }
+  
   function addBackgroundImage(
     dmScreenId: string, 
     libraryId: number, 
@@ -1223,6 +1260,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     // Add Item Helpers
     addTextNode,
     addShapeNode,
+    addEffectNode,
     addBackgroundImage,
     addUserFile,
     

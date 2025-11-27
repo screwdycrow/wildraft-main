@@ -31,6 +31,8 @@
     "konva": "^10.0.9",
     "pinia": "^3.0.3",
     "pinia-plugin-persistedstate": "^4.7.1",
+    "pixi-filters": "^6.1.4",
+    "pixi.js": "^8.14.3",
     "socket.io-client": "^4.8.1",
     "vee-validate": "^4.15.1",
     "vite-plugin-vuetify": "^2.1.2",

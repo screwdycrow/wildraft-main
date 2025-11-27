@@ -5,13 +5,14 @@
       'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode',
       'is-background': item.data.isBackground,
       'is-token': item.type === 'TokenNode',
-      'transparent': item.type === 'TextNode' || item.type === 'ShapeNode'
+      'is-effect': item.type === 'EffectNode',
+      'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode'
     }"
     :style="wrapperStyle"
   >
-    <!-- Selection handle / toolbar for regular items (not tokens, text/shape nodes, or backgrounds) -->
+    <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
     <div 
-      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && !item.data.isBackground" 
+      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && !item.data.isBackground" 
       class="selection-handle"
       data-drag-handle
     >
@@ -148,6 +149,13 @@
         @update:data="handleShapeDataUpdate"
       />
 
+      <!-- EffectNode (particle/lighting effects) -->
+      <effect-node-display
+        v-else-if="item.type === 'EffectNode'"
+        :item="item"
+        :library-id="libraryId"
+      />
+
       <!-- Fallback for unknown types -->
       <div v-else class="unknown-item-type">
         <v-icon icon="mdi-alert" size="48" color="warning" />
@@ -171,6 +179,7 @@ import WebLinkComponent from './WebLinkComponent.vue'
 import ImageUrlComponent from './ImageUrlComponent.vue'
 import TextNode from './TextNode.vue'
 import ShapeNode from './ShapeNode.vue'
+import EffectNodeDisplay from './EffectNodeDisplay.vue'
 import { useItemsStore } from '@/stores/items'
 import { useFilesStore } from '@/stores/files'
 import { useDmScreensStore } from '@/stores/dmScreens'
@@ -268,6 +277,8 @@ const itemTitle = computed(() => {
       return props.item.data.title || 'Web Link'
     case 'ImageUrl':
       return props.item.data.title || 'Image'
+    case 'EffectNode':
+      return props.item.data.effectConfig?.effectType || 'Effect'
     default:
       return 'Item'
   }
@@ -547,6 +558,29 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 .dm-screen-item-wrapper.is-token:hover {
   border: none;
   background: transparent;
+}
+
+/* Effect node styles - transparent, allows blend modes to work with content below */
+.dm-screen-item-wrapper.is-effect {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+  pointer-events: none; /* Allow clicks to pass through effect */
+  /* Critical: don't isolate stacking context so blend modes affect content below */
+  isolation: auto;
+  mix-blend-mode: normal;
+}
+
+.dm-screen-item-wrapper.is-effect:hover {
+  border: none;
+  background: transparent;
+}
+
+.dm-screen-item-wrapper.is-effect .item-content {
+  overflow: visible;
+  pointer-events: none;
+  isolation: auto;
 }
 
 .item-content {

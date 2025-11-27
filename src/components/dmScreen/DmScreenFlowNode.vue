@@ -199,6 +199,222 @@
           </v-card>
         </v-menu>
         
+        <!-- Effect Settings -->
+        <v-menu
+          v-if="isEffectNode"
+          :close-on-content-click="false"
+          location="bottom"
+        >
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              v-bind="menuProps"
+              icon
+              size="x-small"
+              variant="text"
+              color="white"
+              @click.stop
+            >
+              <v-icon size="small">mdi-tune-variant</v-icon>
+              <v-tooltip activator="parent" location="bottom">
+                Effect Settings
+              </v-tooltip>
+            </v-btn>
+          </template>
+          <v-card min-width="300" max-width="350" class="effect-settings-menu">
+            <v-card-text class="pa-3">
+              <div class="text-subtitle-2 mb-3 d-flex align-center">
+                <v-icon :icon="currentEffectIcon" size="small" class="mr-2" :color="effectColor" />
+                {{ effectTypeName }} Settings
+              </div>
+              
+              <!-- Intensity -->
+              <div class="text-caption mb-1">Intensity</div>
+              <v-slider
+                v-model="effectIntensity"
+                :min="0.1"
+                :max="1.5"
+                :step="0.1"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-3"
+              />
+              
+              <!-- Speed -->
+              <div class="text-caption mb-1">Animation Speed</div>
+              <v-slider
+                v-model="effectSpeed"
+                :min="0.2"
+                :max="3"
+                :step="0.1"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-3"
+              />
+              
+              <!-- Scale -->
+              <div class="text-caption mb-1">Effect Scale</div>
+              <v-slider
+                v-model="effectScale"
+                :min="0.3"
+                :max="2"
+                :step="0.1"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-3"
+              />
+              
+              <!-- Primary Color -->
+              <div class="text-caption mb-1">Primary Color</div>
+              <div class="d-flex gap-1 flex-wrap mb-2">
+                <div
+                  v-for="color in effectColorPresets"
+                  :key="color"
+                  class="color-preset"
+                  :class="{ active: effectColor === color }"
+                  :style="{ backgroundColor: color }"
+                  @click="effectColor = color"
+                />
+              </div>
+              <v-text-field
+                v-model="effectColor"
+                label="Custom"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="mb-3"
+              >
+                <template #prepend-inner>
+                  <div 
+                    class="color-preview" 
+                    :style="{ backgroundColor: effectColor }"
+                  />
+                </template>
+              </v-text-field>
+              
+              <!-- Secondary Color -->
+              <div class="text-caption mb-1">Secondary Color</div>
+              <div class="d-flex gap-1 flex-wrap mb-2">
+                <div
+                  v-for="color in effectColorPresets"
+                  :key="'sec-' + color"
+                  class="color-preset"
+                  :class="{ active: effectSecondaryColor === color }"
+                  :style="{ backgroundColor: color }"
+                  @click="effectSecondaryColor = color"
+                />
+              </div>
+              <v-text-field
+                v-model="effectSecondaryColor"
+                label="Custom"
+                density="compact"
+                hide-details
+                variant="outlined"
+                class="mb-3"
+              >
+                <template #prepend-inner>
+                  <div 
+                    class="color-preview" 
+                    :style="{ backgroundColor: effectSecondaryColor }"
+                  />
+                </template>
+              </v-text-field>
+              
+              <!-- Particle Count (for particle effects) -->
+              <template v-if="isParticleEffect">
+                <div class="text-caption mb-1">Particle Density</div>
+                <v-slider
+                  v-model="effectParticleCount"
+                  :min="10"
+                  :max="100"
+                  :step="5"
+                  thumb-label
+                  density="compact"
+                  hide-details
+                  class="mb-3"
+                />
+              </template>
+              
+              <!-- Pulse Speed (for light effects) -->
+              <template v-if="isLightEffect">
+                <div class="text-caption mb-1">Pulse Speed</div>
+                <v-slider
+                  v-model="effectPulseSpeed"
+                  :min="0.5"
+                  :max="4"
+                  :step="0.25"
+                  thumb-label
+                  density="compact"
+                  hide-details
+                  class="mb-3"
+                />
+                
+                <div class="text-caption mb-1">Glow Intensity</div>
+                <v-slider
+                  v-model="effectGlowIntensity"
+                  :min="0.2"
+                  :max="1.5"
+                  :step="0.1"
+                  thumb-label
+                  density="compact"
+                  hide-details
+                  class="mb-3"
+                />
+              </template>
+              
+              <!-- Light Pool Settings (screen blend lighting) -->
+              <v-divider class="my-3" />
+              <div class="text-caption font-weight-medium mb-2 d-flex align-center">
+                <v-icon icon="mdi-lightbulb-on" size="small" class="mr-1" />
+                Light Pool (Illumination)
+              </div>
+              
+              <div class="text-caption mb-1">Light Intensity</div>
+              <v-slider
+                v-model="effectLightPoolIntensity"
+                :min="0"
+                :max="1"
+                :step="0.05"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-3"
+              >
+                <template #prepend>
+                  <span class="text-caption">Off</span>
+                </template>
+                <template #append>
+                  <span class="text-caption">Max</span>
+                </template>
+              </v-slider>
+              
+              <div class="text-caption mb-1">Light Size</div>
+              <v-slider
+                v-model="effectLightPoolSize"
+                :min="0.5"
+                :max="2.5"
+                :step="0.1"
+                thumb-label
+                density="compact"
+                hide-details
+                class="mb-3"
+              />
+              
+              <v-btn
+                block
+                size="small"
+                color="primary"
+                variant="tonal"
+                @click="saveEffectSettings"
+              >
+                Apply
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-menu>
+        
         <v-btn
           icon
           size="x-small"
@@ -221,7 +437,8 @@
         'is-dragging': props.dragging,
         'rotating': isRotating,
         'resizing': isResizing,
-        'is-token': isTokenNode
+        'is-token': isTokenNode,
+        'is-effect': isEffectNode
       }"
     >
       <dm-screen-item-wrapper
@@ -314,6 +531,32 @@ const borderColorPresets = [
   'transparent',
 ]
 
+// Effect settings state (local state for editing)
+const effectIntensity = ref(0.7)
+const effectSpeed = ref(1)
+const effectScale = ref(1)
+const effectColor = ref('#ff6600')
+const effectSecondaryColor = ref('#ffcc00')
+const effectParticleCount = ref(50)
+const effectPulseSpeed = ref(2)
+const effectGlowIntensity = ref(0.8)
+const effectLightPoolIntensity = ref(0.5)
+const effectLightPoolSize = ref(1.0)
+
+// Effect color presets
+const effectColorPresets = [
+  '#ff6600', // Fire Orange
+  '#ffcc00', // Yellow
+  '#ff4444', // Red
+  '#44aaff', // Cyan
+  '#6666ff', // Blue
+  '#aa66ff', // Purple
+  '#ff66aa', // Pink
+  '#66ff66', // Green
+  '#ffffff', // White
+  '#aabbcc', // Fog Gray
+]
+
 // Sync rotation with props when not actively rotating
 watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
   if (!isRotating.value && newRotation !== undefined) {
@@ -327,6 +570,20 @@ watch(() => props.data.item, (item) => {
     tokenShowLabel.value = item.data.tokenShowLabel !== false
     tokenBorderWidth.value = item.data.tokenBorderWidth || 0
     tokenBorderColor.value = item.data.tokenBorderColor || '#6366f1'
+  }
+  // Sync effect settings from props
+  if (item.type === 'EffectNode' && item.data.effectConfig) {
+    const config = item.data.effectConfig
+    effectIntensity.value = config.intensity ?? 0.7
+    effectSpeed.value = config.speed ?? 1
+    effectScale.value = config.scale ?? 1
+    effectColor.value = config.color || '#ff6600'
+    effectSecondaryColor.value = config.secondaryColor || '#ffcc00'
+    effectParticleCount.value = config.particleCount ?? 50
+    effectPulseSpeed.value = config.pulseSpeed ?? 2
+    effectGlowIntensity.value = config.glowIntensity ?? 0.8
+    effectLightPoolIntensity.value = config.lightPoolIntensity ?? 0.5
+    effectLightPoolSize.value = config.lightPoolSize ?? 1.0
   }
 }, { immediate: true, deep: true })
 
@@ -360,6 +617,66 @@ const currentObjectFit = computed(() => {
 
 const isTokenNode = computed(() => {
   return props.data.item.type === 'TokenNode'
+})
+
+const isEffectNode = computed(() => {
+  return props.data.item.type === 'EffectNode'
+})
+
+const currentEffectConfig = computed(() => {
+  return props.data.item.data.effectConfig || {}
+})
+
+const currentEffectIcon = computed(() => {
+  const effectType = currentEffectConfig.value.effectType
+  const iconMap: Record<string, string> = {
+    fire: 'mdi-fire',
+    torch: 'mdi-torch',
+    campfire: 'mdi-campfire',
+    snow: 'mdi-snowflake',
+    rain: 'mdi-weather-rainy',
+    fog: 'mdi-weather-fog',
+    smoke: 'mdi-smoke',
+    sparkles: 'mdi-shimmer',
+    lightRing: 'mdi-circle-outline',
+    aura: 'mdi-blur-radial',
+    magicCircle: 'mdi-star-circle-outline',
+    fireflies: 'mdi-bee',
+    dust: 'mdi-grain',
+    embers: 'mdi-flare',
+  }
+  return iconMap[effectType] || 'mdi-creation'
+})
+
+const effectTypeName = computed(() => {
+  const effectType = currentEffectConfig.value.effectType
+  const nameMap: Record<string, string> = {
+    fire: 'Fire',
+    torch: 'Torch',
+    campfire: 'Campfire',
+    snow: 'Snow',
+    rain: 'Rain',
+    fog: 'Fog',
+    smoke: 'Smoke',
+    sparkles: 'Sparkles',
+    lightRing: 'Light Ring',
+    aura: 'Aura',
+    magicCircle: 'Magic Circle',
+    fireflies: 'Fireflies',
+    dust: 'Dust',
+    embers: 'Embers',
+  }
+  return nameMap[effectType] || 'Effect'
+})
+
+const isParticleEffect = computed(() => {
+  const particleTypes = ['fire', 'torch', 'campfire', 'snow', 'rain', 'fog', 'smoke', 'sparkles', 'fireflies', 'dust', 'embers']
+  return particleTypes.includes(currentEffectConfig.value.effectType)
+})
+
+const isLightEffect = computed(() => {
+  const lightTypes = ['lightRing', 'aura', 'magicCircle']
+  return lightTypes.includes(currentEffectConfig.value.effectType)
 })
 
 // Items that can be converted to tokens (LibraryItemId and UserFileId, not backgrounds)
@@ -744,6 +1061,39 @@ function saveTokenSettings() {
   )
 }
 
+function saveEffectSettings() {
+  const item = props.data.item
+  
+  const updatedConfig = {
+    ...item.data.effectConfig,
+    intensity: effectIntensity.value,
+    speed: effectSpeed.value,
+    scale: effectScale.value,
+    color: effectColor.value,
+    secondaryColor: effectSecondaryColor.value,
+    particleCount: effectParticleCount.value,
+    pulseSpeed: effectPulseSpeed.value,
+    glowIntensity: effectGlowIntensity.value,
+    lightPoolIntensity: effectLightPoolIntensity.value,
+    lightPoolSize: effectLightPoolSize.value,
+  }
+  
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      effectConfig: updatedConfig,
+    },
+  }
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
+}
+
 // =====================================================
 // LIFECYCLE
 // =====================================================
@@ -792,6 +1142,22 @@ onUnmounted(() => {
   min-height: 20px;
   border-radius: 50%;
   overflow: hidden;
+}
+
+.dm-screen-flow-node.is-effect {
+  width: 100%;
+  height: 100%;
+  min-width: 50px;
+  min-height: 50px;
+  overflow: visible;
+  background: transparent;
+  border: none;
+  /* Don't isolate - allow blend modes to work */
+  isolation: auto;
+}
+
+.dm-screen-flow-node.is-effect:hover {
+  background: transparent;
 }
 
 .dm-screen-flow-node.selected {
@@ -971,9 +1337,15 @@ onUnmounted(() => {
 }
 
 /* Token settings menu */
-.token-settings-menu {
+.token-settings-menu,
+.effect-settings-menu {
   background: rgba(30, 30, 40, 0.98) !important;
   backdrop-filter: blur(10px);
+}
+
+.effect-settings-menu {
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
 .color-preset {
