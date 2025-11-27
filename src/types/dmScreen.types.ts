@@ -27,11 +27,29 @@ export interface VueFlowNodeOptions {
   [key: string]: any // Allow additional Vue Flow properties
 }
 
+  // Layer definition for organizing items
+export interface DmScreenLayer {
+  id: string // Unique layer ID
+  name: string // Display name
+  order: number // Higher order = rendered on top
+  visible: boolean // Toggle layer visibility
+  opacity: number // Layer opacity (0-1)
+  locked?: boolean // Prevent editing items in this layer
+  showOnPortal?: boolean // Whether to show this layer in portal mode (default: true)
+}
+
+// Default layer IDs
+export const DEFAULT_LAYERS = {
+  BACKGROUND: 'background',
+  SCREEN: 'screen',
+} as const
+
 // DM Screen Item
 export interface DmScreenItem {
   id: string
   type: DmScreenItemType
-  order?: number // Order for cards in hand
+  layer?: string // Layer ID this item belongs to (default: 'screen')
+  order?: number // Order within the layer (higher = on top within layer)
   data: {
     // For LibraryItemId: just the id number
     id?: number
@@ -60,7 +78,7 @@ export interface DmScreenItem {
     borderWidth?: number
     label?: string
     
-    // Background image flag
+    // Background image flag (legacy - now use layer instead)
     isBackground?: boolean
     featuredImageUrl?: string
     
@@ -92,10 +110,11 @@ export interface DmScreenSettings {
   theme?: string
   autoSave?: boolean
   grid?: GridOptions
+  layers?: DmScreenLayer[] // Layer definitions with order, visibility, opacity
   backgroundImageId?: number // UserFile ID for background image (legacy, kept for backward compatibility)
   backgroundImageWidth?: number // Width of background image in pixels (default: 2500)
-  lockBackgroundImages?: boolean // Lock all background image nodes
-  backgroundOpacity?: number // Opacity for background image nodes (0-1, default: 1.0)
+  lockBackgroundImages?: boolean // Lock all background image nodes (legacy - use layer.locked instead)
+  backgroundOpacity?: number // Opacity for background image nodes (legacy - use layer.opacity instead)
   canvasBackgroundImageId?: number // UserFile ID for fixed canvas background (non-scaling)
   pinnedCategories?: Array<{ id: number; name: string; libraryId: number; fileCount?: number; createdAt: string; updatedAt: string }> // Pinned file categories for kitbashing drawers
   [key: string]: any
@@ -138,3 +157,26 @@ export interface DmScreenResponse {
   dmScreen: DmScreen
 }
 
+// Helper function to get default layers
+export function getDefaultLayers(): DmScreenLayer[] {
+  return [
+    {
+      id: DEFAULT_LAYERS.BACKGROUND,
+      name: 'Background',
+      order: 0,
+      visible: true,
+      opacity: 1,
+      locked: false,
+      showOnPortal: true,
+    },
+    {
+      id: DEFAULT_LAYERS.SCREEN,
+      name: 'Screen',
+      order: 1,
+      visible: true,
+      opacity: 1,
+      locked: false,
+      showOnPortal: true,
+    },
+  ]
+}

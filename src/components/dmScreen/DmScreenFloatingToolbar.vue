@@ -156,6 +156,40 @@
           </v-tooltip>
         </v-btn>
 
+        <!-- Move to Layer -->
+        <v-menu v-if="layers && layers.length > 1">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              color="purple"
+              class="toolbar-btn"
+              v-bind="menuProps"
+            >
+              <v-icon size="20">mdi-layers-outline</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Move to Layer
+              </v-tooltip>
+            </v-btn>
+          </template>
+          <v-list density="compact" class="layer-menu">
+            <v-list-item
+              v-for="layer in layers"
+              :key="layer.id"
+              :disabled="isCurrentLayer(layer.id)"
+              @click="handleMoveToLayer(layer.id)"
+            >
+              <template #prepend>
+                <v-icon size="small" :color="isCurrentLayer(layer.id) ? 'primary' : undefined">
+                  {{ isCurrentLayer(layer.id) ? 'mdi-check' : 'mdi-layers' }}
+                </v-icon>
+              </template>
+              <v-list-item-title>{{ layer.name }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
         <!-- Rotate Left -->
         <v-btn
           icon
@@ -257,21 +291,24 @@
 </template>
 
 <script setup lang="ts">
-import type { DmScreenItem } from '@/types/dmScreen.types'
+import type { DmScreenItem, DmScreenLayer } from '@/types/dmScreen.types'
+import { DEFAULT_LAYERS } from '@/types/dmScreen.types'
 
 interface Props {
   lockBackgroundImages?: boolean
   showGrid?: boolean
   selectedItem?: DmScreenItem | null
+  layers?: DmScreenLayer[]
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   lockBackgroundImages: false,
   showGrid: true,
   selectedItem: null,
+  layers: () => [],
 })
 
-defineEmits<{
+const emit = defineEmits<{
   'add-item': []
   'add-background': []
   'add-file': []
@@ -288,7 +325,23 @@ defineEmits<{
   'edit-text': []
   'edit-shape-style': []
   'delete-selected': []
+  'move-to-layer': [layerId: string]
 }>()
+
+// Check if the selected item is in the given layer
+function isCurrentLayer(layerId: string): boolean {
+  if (!props.selectedItem) return false
+  const itemLayer = props.selectedItem.layer || DEFAULT_LAYERS.SCREEN
+  return itemLayer === layerId
+}
+
+// Handle move to layer click
+function handleMoveToLayer(layerId: string) {
+  console.log('[FloatingToolbar] Move to layer clicked:', layerId, 'item:', props.selectedItem?.id)
+  if (!isCurrentLayer(layerId)) {
+    emit('move-to-layer', layerId)
+  }
+}
 </script>
 
 <style scoped>
@@ -352,6 +405,12 @@ defineEmits<{
 
 .toolbar-btn :deep(.v-icon) {
   font-size: 20px;
+}
+
+.layer-menu {
+  background: rgba(22, 22, 32, 0.98) !important;
+  backdrop-filter: blur(12px);
+  min-width: 150px;
 }
 </style>
 

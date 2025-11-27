@@ -28,6 +28,7 @@
       :lock-background-images="lockBackgroundImages"
       :show-grid="showGrid"
       :selected-item="selectedItem"
+      :layers="layers"
       @add-item="handleAddItem"
       @add-background="handleAddBackground"
       @add-file="handleAddFile"
@@ -43,6 +44,7 @@
       @rotate-right="handleRotateRight"
       @edit-shape-style="handleEditShapeStyle"
       @delete-selected="handleDeleteSelected"
+      @move-to-layer="handleMoveToLayer"
     />
 
     <!-- File Manager Dialog -->
@@ -121,6 +123,11 @@ const showGrid = computed(() => {
   return dmScreen.value?.settings?.grid?.showGrid !== false
 })
 
+const layers = computed(() => {
+  if (!dmScreen.value) return []
+  return dmScreensStore.getLayers(dmScreen.value.id)
+})
+
 // =====================================================
 // LIFECYCLE
 // =====================================================
@@ -188,22 +195,24 @@ function handleDuplicateItem() {
 
 function handleSendToBack() {
   if (!dmScreen.value || !selectedItem.value) return
-  dmScreensStore.sendToBack(
+  // Use layer-aware version - sends to back within the item's layer
+  dmScreensStore.sendToBackInLayer(
     dmScreen.value.id,
     dmScreen.value.libraryId,
     selectedItem.value.id
   )
-  toast.success('Sent to back')
+  toast.success('Sent to back of layer')
 }
 
 function handleSendToFront() {
   if (!dmScreen.value || !selectedItem.value) return
-  dmScreensStore.sendToFront(
+  // Use layer-aware version - sends to front within the item's layer
+  dmScreensStore.sendToFrontInLayer(
     dmScreen.value.id,
     dmScreen.value.libraryId,
     selectedItem.value.id
   )
-  toast.success('Sent to front')
+  toast.success('Sent to front of layer')
 }
 
 function handleRotateLeft() {
@@ -243,6 +252,18 @@ function handleDeleteSelected() {
     selectedItem.value.id
   )
   toast.success('Item deleted')
+}
+
+function handleMoveToLayer(layerId: string) {
+  if (!dmScreen.value || !selectedItem.value) return
+  dmScreensStore.moveItemToLayer(
+    dmScreen.value.id,
+    dmScreen.value.libraryId,
+    selectedItem.value.id,
+    layerId
+  )
+  const layer = layers.value.find(l => l.id === layerId)
+  toast.success(`Moved to ${layer?.name || layerId} layer`)
 }
 
 // =====================================================

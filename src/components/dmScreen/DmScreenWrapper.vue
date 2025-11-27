@@ -35,6 +35,15 @@
           :line-width="gridOptions.gridLineWidth"
         />
       </VueFlow>
+      
+      <!-- Layer Control - positioned above MiniMap -->
+      <LayerControl
+        v-if="!isPortalMode"
+        :dm-screen-id="dmScreen.id"
+        :library-id="dmScreen.libraryId"
+        class="layer-control-panel"
+        @layer-select="handleLayerSelect"
+      />
     </div>
 
     <!-- Settings Dialog -->
@@ -60,26 +69,48 @@
               hide-details
               class="mb-3"
             />
-            <v-slider
-              v-model.number="localGridOptions.gridSize"
-              label="Grid Size"
-              min="10"
-              max="100"
-              step="5"
-              thumb-label
-              hide-details
-              class="mb-3"
-            />
-            <v-slider
-              v-model.number="localGridOptions.gridOpacity"
-              label="Grid Opacity"
-              min="0.1"
-              max="1"
-              step="0.1"
-              thumb-label
-              hide-details
-              class="mb-3"
-            />
+            <div class="d-flex align-center gap-2 mb-3">
+              <v-slider
+                v-model.number="localGridOptions.gridSize"
+                label="Grid Size"
+                min="10"
+                max="200"
+                step="5"
+                thumb-label
+                hide-details
+                class="flex-grow-1"
+              />
+              <v-text-field
+                v-model.number="localGridOptions.gridSize"
+                type="number"
+                density="compact"
+                hide-details
+                style="max-width: 80px;"
+                suffix="px"
+              />
+            </div>
+            <div class="d-flex align-center gap-2 mb-3">
+              <v-slider
+                v-model.number="localGridOptions.gridOpacity"
+                label="Grid Opacity"
+                min="0.05"
+                max="1"
+                step="0.05"
+                thumb-label
+                hide-details
+                class="flex-grow-1"
+              />
+              <v-text-field
+                v-model.number="localGridOptions.gridOpacity"
+                type="number"
+                density="compact"
+                hide-details
+                style="max-width: 80px;"
+                :min="0.05"
+                :max="1"
+                :step="0.05"
+              />
+            </div>
             <v-switch
               v-model="localGridOptions.snapToGrid"
               label="Snap to Grid"
@@ -362,10 +393,11 @@ import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import type { Node, NodeDragEvent, NodeChange } from '@vue-flow/core'
-import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions } from '@/types/dmScreen.types'
+import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions, DmScreenLayer } from '@/types/dmScreen.types'
 import type { LibraryItem } from '@/types/item.types'
 import DmScreenFlowNode from './DmScreenFlowNode.vue'
 import GridNode from './GridNode.vue'
+import LayerControl from './LayerControl.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
@@ -487,56 +519,108 @@ const canvasBackgroundStyle = computed(() => {
 })
 
 // =====================================================
+// LAYERS - Get layers from store
+// =====================================================
+
+const layers = computed(() => {
+  return dmScreensStore.getLayers(props.dmScreen.id)
+})
+
+// =====================================================
 // NODES COMPUTED - Convert items to VueFlow nodes
-// This is the ONLY place where nodes are created
+// Items are sorted by layer order, then by item order within layer
 // =====================================================
 
 const nodes = computed<Node[]>(() => {
   if (!props.dmScreen.items) return []
   
-  return props.dmScreen.items.map((item: DmScreenItem) => {
-    const nodeOptions = item.nodeOptions || {}
-    const position = nodeOptions.position || { x: nodeOptions.x || 0, y: nodeOptions.y || 0 }
-    const isBackground = item.data.isBackground === true
-    const isLocked = isBackground && lockBackgroundImages.value
-    const itemOpacity = isBackground ? backgroundOpacity.value : 1
-    const rotation = nodeOptions.rotation || 0
-    
-    // Determine dimensions
-    let width = nodeOptions.width || 300
-    let height = nodeOptions.height || 200
-    
-    if (item.isMinimized) {
-      width = item.minimizedDimensions?.width || 150
-      height = item.minimizedDimensions?.height || 150
-    }
-    
-    return {
-      id: item.id,
-      type: 'dmScreenItem',
-      position: {
-        x: position.x,
-        y: position.y,
-      },
-      data: {
-        item,
-        libraryId: props.dmScreen.libraryId,
-        dmScreenId: props.dmScreen.id,
-        snapToGrid: gridOptions.value.snapToGrid,
-        gridSize: gridOptions.value.gridSize,
-        backgroundOpacity: itemOpacity,
-        rotation,
-      },
-      draggable: !isLocked,
-      selectable: !isLocked,
-      width,
-      height,
-      style: {
-        opacity: itemOpacity,
-      },
-      zIndex: isBackground ? -1 : (nodeOptions.zIndex || 1),
-    }
-  })
+  // Get items sorted by layer order
+  const sortedItems = dmScreensStore.getItemsSortedByLayer(props.dmScreen.id)
+  
+  // Create a map of layer order for z-index calculation
+  const layerOrderMap = new Map(layers.value.map((l: DmScreenLayer) => [l.id, l.order]))
+  const layerVisibilityMap = new Map(layers.value.map((l: DmScreenLayer) => [l.id, l.visible]))
+  const layerOpacityMap = new Map(layers.value.map((l: DmScreenLayer) => [l.id, l.opacity]))
+  const layerLockedMap = new Map(layers.value.map((l: DmScreenLayer) => [l.id, l.locked]))
+  
+  // Create showOnPortal map
+  const layerShowOnPortalMap = new Map(layers.value.map((l: DmScreenLayer) => [l.id, l.showOnPortal]))
+  
+  return sortedItems
+    .filter(item => {
+      // Filter out items in hidden layers
+      const layerId = item.layer || 'screen'
+      const isVisible = layerVisibilityMap.get(layerId) !== false
+      
+      // In portal mode, also filter by showOnPortal
+      if (props.isPortalMode) {
+        const showOnPortal = layerShowOnPortalMap.get(layerId)
+        return isVisible && showOnPortal !== false
+      }
+      
+      return isVisible
+    })
+    .map((item: DmScreenItem, index: number) => {
+      const nodeOptions = item.nodeOptions || {}
+      const position = nodeOptions.position || { x: nodeOptions.x || 0, y: nodeOptions.y || 0 }
+      const layerId = item.layer || 'screen'
+      const layerOrder = layerOrderMap.get(layerId) ?? 1
+      const layerOpacity = layerOpacityMap.get(layerId) ?? 1
+      const layerLocked = layerLockedMap.get(layerId) ?? false
+      
+      // Legacy support for isBackground flag
+      const isBackground = item.data.isBackground === true || layerId === 'background'
+      const isLocked = layerLocked || (isBackground && lockBackgroundImages.value)
+      
+      // Calculate opacity: layer opacity * item opacity (if background)
+      const itemOpacity = isBackground 
+        ? layerOpacity * backgroundOpacity.value 
+        : layerOpacity
+      
+      const rotation = nodeOptions.rotation || 0
+      
+      // Determine dimensions
+      let width = nodeOptions.width || 300
+      let height = nodeOptions.height || 200
+      
+      if (item.isMinimized) {
+        width = item.minimizedDimensions?.width || 150
+        height = item.minimizedDimensions?.height || 150
+      }
+      
+      // Calculate z-index based on layer order and item order
+      // Layer order * 1000 + item order within layer
+      const baseZIndex = layerOrder * 1000
+      const itemZIndex = baseZIndex + (item.order || index)
+      
+      return {
+        id: item.id,
+        type: 'dmScreenItem',
+        position: {
+          x: position.x,
+          y: position.y,
+        },
+        data: {
+          item,
+          libraryId: props.dmScreen.libraryId,
+          dmScreenId: props.dmScreen.id,
+          snapToGrid: gridOptions.value.snapToGrid,
+          gridSize: gridOptions.value.gridSize,
+          backgroundOpacity: itemOpacity,
+          rotation,
+          layerId,
+          layerLocked,
+        },
+        draggable: !isLocked,
+        selectable: !isLocked,
+        width,
+        height,
+        style: {
+          opacity: itemOpacity,
+        },
+        zIndex: itemZIndex,
+      }
+    })
 })
 
 // =====================================================
@@ -608,6 +692,13 @@ function onNodeClick(event: any) {
 
 function onPaneClick() {
   dmScreensStore.selectItem(null)
+}
+
+// Selected layer for adding new items
+const selectedLayerId = ref<string>('screen')
+
+function handleLayerSelect(layerId: string) {
+  selectedLayerId.value = layerId
 }
 
 // =====================================================
@@ -891,19 +982,26 @@ async function handleDrop(event: DragEvent) {
     if (!parsed || !parsed.fileId) {
       const textData = event.dataTransfer.getData('text/plain')
       if (textData && textData.startsWith('file:')) {
-        const fileId = parseInt(textData.replace('file:', ''), 10)
+        // Parse format: file:123:layerId
+        const parts = textData.split(':')
+        const fileId = parseInt(parts[1], 10)
+        const targetLayer = parts[2] || 'background'
         if (!isNaN(fileId)) {
-          parsed = { type: 'user-file-background', fileId }
+          parsed = { type: 'user-file-background', fileId, targetLayer }
         }
       }
     }
     
     if (!parsed || !parsed.fileId) return
     
-    const isBackground = parsed.type === 'user-file-background'
+    const isBackgroundType = parsed.type === 'user-file-background'
+    const isBackgroundNode = parsed.isBackground === true || isBackgroundType // Explicitly check for isBackground flag
+    const targetLayer = parsed.targetLayer || (isBackgroundType ? 'background' : 'screen')
     const dropPosition = project({ x: event.clientX, y: event.clientY })
     
-    if (isBackground) {
+    console.log('[DmScreenWrapper] Drop:', { isBackgroundType, isBackgroundNode, targetLayer, parsed })
+    
+    if (isBackgroundType) {
       const dimensions = await getImageDimensions(parsed.fileId)
       const aspectRatio = dimensions.height / dimensions.width
       const fixedWidth = 500
@@ -914,18 +1012,24 @@ async function handleDrop(event: DragEvent) {
         props.dmScreen.libraryId,
         parsed.fileId,
         { x: dropPosition.x - fixedWidth / 2, y: dropPosition.y - calculatedHeight / 2 },
-        { width: fixedWidth, height: calculatedHeight }
+        { width: fixedWidth, height: calculatedHeight },
+        targetLayer,
+        isBackgroundNode // Pass the isBackground flag
       )
     } else {
       dmScreensStore.addUserFile(
         props.dmScreen.id,
         props.dmScreen.libraryId,
         parsed.fileId,
-        { x: dropPosition.x - 150, y: dropPosition.y - 200 }
+        { x: dropPosition.x - 150, y: dropPosition.y - 200 },
+        targetLayer
       )
     }
     
-    toast.success(isBackground ? 'Background image added' : 'File added to DM screen')
+    // Get layer name for toast message
+    const layer = layers.value.find((l: DmScreenLayer) => l.id === targetLayer)
+    const layerName = layer?.name || targetLayer
+    toast.success(`Added to ${layerName} layer`)
   } catch (error) {
     console.error('[DmScreenWrapper] Failed to handle drop:', error)
     toast.error('Failed to add image')
@@ -1066,6 +1170,14 @@ defineExpose({
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* Layer Control Panel - positioned above MiniMap */
+.layer-control-panel {
+  position: absolute;
+  bottom: 140px; /* Above the MiniMap */
+  right: 10px;
+  z-index: 100;
 }
 </style>
 

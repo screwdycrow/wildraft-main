@@ -5,9 +5,11 @@ import type {
   DmScreen,
   DmScreenItem,
   DmScreenSettings,
+  DmScreenLayer,
   CreateDmScreenPayload,
   UpdateDmScreenPayload,
 } from '@/types/dmScreen.types'
+import { DEFAULT_LAYERS, getDefaultLayers } from '@/types/dmScreen.types'
 import type { LibraryItem } from '@/types/item.types'
 import type { UserFile } from '@/api/files'
 
@@ -488,10 +490,19 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
   // ADD ITEM HELPERS
   // =====================================================
   
-  function addTextNode(dmScreenId: string, libraryId: number, position: { x: number; y: number }) {
+  function addTextNode(dmScreenId: string, libraryId: number, position: { x: number; y: number }, targetLayer?: string) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
     const newItem: DmScreenItem = {
       id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'TextNode',
+      layer: layerId,
+      order: maxOrder + 1,
       data: {
         text: 'Double-click to edit',
         fontSize: 16,
@@ -514,10 +525,19 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     return newItem
   }
   
-  function addShapeNode(dmScreenId: string, libraryId: number, position: { x: number; y: number }) {
+  function addShapeNode(dmScreenId: string, libraryId: number, position: { x: number; y: number }, targetLayer?: string) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
     const newItem: DmScreenItem = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'ShapeNode',
+      layer: layerId,
+      order: maxOrder + 1,
       data: {
         shape: 'circle',
         color: '#6366f1',
@@ -546,14 +566,25 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     libraryId: number, 
     fileId: number, 
     position: { x: number; y: number },
-    dimensions: { width: number; height: number }
+    dimensions: { width: number; height: number },
+    targetLayer?: string,
+    isBackground: boolean = true // Always true for background images from kitbashing
   ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.BACKGROUND
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
     const newItem: DmScreenItem = {
       id: `background-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'UserFileId',
+      layer: layerId,
+      order: maxOrder + 1,
       data: {
         id: fileId,
-        isBackground: true,
+        isBackground: isBackground, // Use the parameter, always true from kitbashing
       },
       nodeOptions: {
         x: position.x,
@@ -574,11 +605,21 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     dmScreenId: string, 
     libraryId: number, 
     fileId: number, 
-    position: { x: number; y: number }
+    position: { x: number; y: number },
+    targetLayer?: string
   ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
     const newItem: DmScreenItem = {
       id: `userfile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'UserFileId',
+      layer: layerId,
+      order: maxOrder + 1,
       data: {
         id: fileId,
         isBackground: false,
@@ -831,6 +872,325 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     cardsInHandEnabled.value = !cardsInHandEnabled.value
   }
 
+  // =====================================================
+  // LAYER MANAGEMENT
+  // =====================================================
+  
+  /**
+   * Get layers from a DM screen, creating defaults if none exist
+   */
+  function getLayers(dmScreenId: string): DmScreenLayer[] {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) return getDefaultLayers()
+    
+    // If no layers defined, return defaults
+    if (!screen.settings?.layers || screen.settings.layers.length === 0) {
+      return getDefaultLayers()
+    }
+    
+    return screen.settings.layers
+  }
+  
+  /**
+   * Ensure a DM screen has layers initialized
+   */
+  function ensureLayers(dmScreenId: string, libraryId: number): DmScreenLayer[] {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) return getDefaultLayers()
+    
+    if (!screen.settings?.layers || screen.settings.layers.length === 0) {
+      const defaultLayers = getDefaultLayers()
+      updateSettings(dmScreenId, libraryId, {
+        ...screen.settings,
+        layers: defaultLayers,
+      })
+      return defaultLayers
+    }
+    
+    return screen.settings.layers
+  }
+  
+  /**
+   * Add a new layer
+   */
+  function addLayer(dmScreenId: string, libraryId: number, name: string): DmScreenLayer {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) throw new Error('DM Screen not found')
+    
+    // Get current layers - if none exist, this returns defaults
+    let currentLayers = getLayers(dmScreenId)
+    
+    // If settings don't have layers yet, we need to initialize with defaults first
+    if (!screen.settings?.layers || screen.settings.layers.length === 0) {
+      currentLayers = getDefaultLayers()
+    }
+    
+    const maxOrder = currentLayers.reduce((max, l) => Math.max(max, l.order), 0)
+    
+    const newLayer: DmScreenLayer = {
+      id: `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      order: maxOrder + 1,
+      visible: true,
+      opacity: 1,
+      locked: false,
+      showOnPortal: true,
+    }
+    
+    const updatedLayers = [...currentLayers, newLayer]
+    
+    // Update settings with the new layers array
+    const updatedSettings = {
+      ...screen.settings,
+      layers: updatedLayers,
+    }
+    
+    // Immediate local update
+    screen.settings = updatedSettings
+    
+    // Queue API update
+    queueApiUpdate(libraryId, dmScreenId, { settings: updatedSettings })
+    
+    console.log('[DmScreensStore] addLayer: Added new layer', newLayer.name, 'total layers:', updatedLayers.length)
+    
+    return newLayer
+  }
+  
+  /**
+   * Remove a layer and all items in it
+   */
+  function removeLayer(dmScreenId: string, libraryId: number, layerId: string) {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) return
+    
+    // Don't allow removing default layers
+    if (layerId === DEFAULT_LAYERS.BACKGROUND || layerId === DEFAULT_LAYERS.SCREEN) {
+      console.warn('Cannot remove default layers')
+      return
+    }
+    
+    const layers = getLayers(dmScreenId)
+    const updatedLayers = layers.filter(l => l.id !== layerId)
+    
+    // Remove all items in this layer
+    const items = screen.items || []
+    const updatedItems = items.filter(item => item.layer !== layerId)
+    
+    // Clear selection if selected item was in deleted layer
+    if (selectedItemId.value) {
+      const selectedItem = items.find(i => i.id === selectedItemId.value)
+      if (selectedItem?.layer === layerId) {
+        selectedItemId.value = null
+      }
+    }
+    
+    // Update both settings and items
+    screen.settings = { ...screen.settings, layers: updatedLayers }
+    screen.items = updatedItems
+    
+    queueApiUpdate(libraryId, dmScreenId, { 
+      settings: screen.settings,
+      items: screen.items,
+    })
+  }
+  
+  /**
+   * Update layer properties (name, opacity, visibility, locked, showOnPortal)
+   */
+  function updateLayer(
+    dmScreenId: string, 
+    libraryId: number, 
+    layerId: string, 
+    updates: Partial<Omit<DmScreenLayer, 'id'>>
+  ) {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) return
+    
+    // Get current layers - if none exist in settings, use defaults
+    let currentLayers = screen.settings?.layers || []
+    if (currentLayers.length === 0) {
+      currentLayers = getDefaultLayers()
+    }
+    
+    const layerIndex = currentLayers.findIndex(l => l.id === layerId)
+    if (layerIndex === -1) {
+      console.warn('[DmScreensStore] updateLayer: layer not found:', layerId)
+      return
+    }
+    
+    const updatedLayers = [...currentLayers]
+    updatedLayers[layerIndex] = { ...updatedLayers[layerIndex], ...updates }
+    
+    // Immediate local update
+    screen.settings = { ...screen.settings, layers: updatedLayers }
+    
+    // Queue API update
+    queueApiUpdate(libraryId, dmScreenId, { settings: screen.settings })
+    
+    console.log('[DmScreensStore] updateLayer:', layerId, updates)
+  }
+  
+  /**
+   * Reorder layers (drag and drop)
+   */
+  function reorderLayers(dmScreenId: string, libraryId: number, newLayerOrder: string[]) {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen) return
+    
+    // Get current layers - if none exist in settings, use defaults
+    let currentLayers = screen.settings?.layers || []
+    if (currentLayers.length === 0) {
+      currentLayers = getDefaultLayers()
+    }
+    
+    const updatedLayers = newLayerOrder.map((layerId, index) => {
+      const layer = currentLayers.find(l => l.id === layerId)
+      if (!layer) return null
+      return { ...layer, order: index }
+    }).filter((l): l is DmScreenLayer => l !== null)
+    
+    // Immediate local update
+    screen.settings = { ...screen.settings, layers: updatedLayers }
+    
+    // Queue API update
+    queueApiUpdate(libraryId, dmScreenId, { settings: screen.settings })
+  }
+  
+  /**
+   * Move item to a different layer
+   */
+  function moveItemToLayer(
+    dmScreenId: string, 
+    libraryId: number, 
+    itemId: string, 
+    targetLayerId: string
+  ) {
+    console.log('[DmScreensStore] moveItemToLayer called:', { dmScreenId, libraryId, itemId, targetLayerId })
+    
+    const screen = findDmScreen(dmScreenId)
+    if (!screen || !screen.items) {
+      console.warn('[DmScreensStore] moveItemToLayer: screen or items not found')
+      return
+    }
+    
+    const itemIndex = screen.items.findIndex(i => i.id === itemId)
+    if (itemIndex === -1) {
+      console.warn('[DmScreensStore] moveItemToLayer: item not found:', itemId)
+      return
+    }
+    
+    const currentItem = screen.items[itemIndex]
+    console.log('[DmScreensStore] moveItemToLayer: current item:', { 
+      id: currentItem.id, 
+      currentLayer: currentItem.layer,
+      targetLayer: targetLayerId 
+    })
+    
+    // Get items in target layer to determine order
+    const targetLayerItems = screen.items.filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === targetLayerId)
+    const maxOrder = targetLayerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
+    // Update item's layer and order
+    screen.items[itemIndex] = {
+      ...screen.items[itemIndex],
+      layer: targetLayerId,
+      order: maxOrder + 1,
+    }
+    
+    console.log('[DmScreensStore] moveItemToLayer: updated item:', screen.items[itemIndex])
+    
+    queueApiUpdate(libraryId, dmScreenId, { items: screen.items })
+  }
+  
+  /**
+   * Send item to back within its layer
+   */
+  function sendToBackInLayer(dmScreenId: string, libraryId: number, itemId: string) {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen || !screen.items) return
+    
+    const item = screen.items.find(i => i.id === itemId)
+    if (!item) return
+    
+    const layerId = item.layer || DEFAULT_LAYERS.SCREEN
+    const layerItems = screen.items.filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const minOrder = layerItems.reduce((min, i) => Math.min(min, i.order || 0), 0)
+    
+    updateItem(dmScreenId, libraryId, itemId, { order: minOrder - 1 })
+  }
+  
+  /**
+   * Send item to front within its layer
+   */
+  function sendToFrontInLayer(dmScreenId: string, libraryId: number, itemId: string) {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen || !screen.items) return
+    
+    const item = screen.items.find(i => i.id === itemId)
+    if (!item) return
+    
+    const layerId = item.layer || DEFAULT_LAYERS.SCREEN
+    const layerItems = screen.items.filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
+    updateItem(dmScreenId, libraryId, itemId, { order: maxOrder + 1 })
+  }
+  
+  /**
+   * Get items sorted by layer order then item order
+   * This is the order items should be rendered
+   */
+  function getItemsSortedByLayer(dmScreenId: string): DmScreenItem[] {
+    const screen = findDmScreen(dmScreenId)
+    if (!screen || !screen.items) return []
+    
+    const layers = getLayers(dmScreenId)
+    const layerOrderMap = new Map(layers.map(l => [l.id, l.order]))
+    
+    // Sort items: first by layer order, then by item order within layer
+    return [...screen.items].sort((a, b) => {
+      const aLayerId = a.layer || DEFAULT_LAYERS.SCREEN
+      const bLayerId = b.layer || DEFAULT_LAYERS.SCREEN
+      const aLayerOrder = layerOrderMap.get(aLayerId) ?? 1
+      const bLayerOrder = layerOrderMap.get(bLayerId) ?? 1
+      
+      // First sort by layer order
+      if (aLayerOrder !== bLayerOrder) {
+        return aLayerOrder - bLayerOrder
+      }
+      
+      // Then sort by item order within layer
+      return (a.order || 0) - (b.order || 0)
+    })
+  }
+  
+  /**
+   * Check if a layer is visible
+   */
+  function isLayerVisible(dmScreenId: string, layerId: string): boolean {
+    const layers = getLayers(dmScreenId)
+    const layer = layers.find(l => l.id === layerId)
+    return layer?.visible ?? true
+  }
+  
+  /**
+   * Get layer opacity
+   */
+  function getLayerOpacity(dmScreenId: string, layerId: string): number {
+    const layers = getLayers(dmScreenId)
+    const layer = layers.find(l => l.id === layerId)
+    return layer?.opacity ?? 1
+  }
+  
+  /**
+   * Check if a layer is locked
+   */
+  function isLayerLocked(dmScreenId: string, layerId: string): boolean {
+    const layers = getLayers(dmScreenId)
+    const layer = layers.find(l => l.id === layerId)
+    return layer?.locked ?? false
+  }
+
   return {
     // State
     dmScreens,
@@ -865,6 +1225,21 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     addShapeNode,
     addBackgroundImage,
     addUserFile,
+    
+    // Layer Management
+    getLayers,
+    ensureLayers,
+    addLayer,
+    removeLayer,
+    updateLayer,
+    reorderLayers,
+    moveItemToLayer,
+    sendToBackInLayer,
+    sendToFrontInLayer,
+    getItemsSortedByLayer,
+    isLayerVisible,
+    getLayerOpacity,
+    isLayerLocked,
     
     // API Actions
     fetchDmScreens,

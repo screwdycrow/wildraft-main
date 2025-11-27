@@ -45,6 +45,25 @@
               </div>
             </div>
             
+            <!-- Layer Selector -->
+            <div class="drawer-layer-selector">
+              <v-select
+                v-model="drawerLayerSelections[pinnedCategory.id]"
+                :items="availableLayers"
+                item-title="name"
+                item-value="id"
+                label="Drop to layer"
+                density="compact"
+                variant="outlined"
+                hide-details
+                class="layer-select"
+              >
+                <template #prepend-inner>
+                  <v-icon size="small" color="grey">mdi-layers</v-icon>
+                </template>
+              </v-select>
+            </div>
+            
             <div 
               class="drawer-content" 
               :ref="(el) => setDrawerContentRef(pinnedCategory.id, el)"
@@ -65,7 +84,7 @@
                     :file="file"
                     :scroll-container="drawerContentRefs[pinnedCategory.id]"
                     @click="handleFileClick(file)"
-                    @dragstart="handleFileDragStart($event, file)"
+                    @dragstart="handleFileDragStart($event, file, pinnedCategory.id)"
                   />
                 </MasonryGridItem>
               </MasonryGrid>
@@ -130,6 +149,8 @@ import { useFileCategoriesStore } from '@/stores/fileCategories'
 import { useRoute } from 'vue-router'
 import type { FileCategory } from '@/api/files'
 import type { UserFile } from '@/api/files'
+import type { DmScreenLayer } from '@/types/dmScreen.types'
+import { DEFAULT_LAYERS } from '@/types/dmScreen.types'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
 import LazyFilePreview from './LazyFilePreview.vue'
 
@@ -196,6 +217,25 @@ const showAddDialog = ref(false)
 const categoryFiles = ref<Record<number, UserFile[]>>({})
 const loadingFiles = ref<Record<number, boolean>>({})
 const drawerContentRefs = ref<Record<number, HTMLElement | null>>({})
+
+// Layer selection per drawer (categoryId -> layerId)
+const drawerLayerSelections = ref<Record<number, string>>({})
+
+// Available layers from the current DM screen
+const availableLayers = computed<DmScreenLayer[]>(() => {
+  if (!dmScreen.value) return []
+  return dmScreensStore.getLayers(dmScreen.value.id)
+})
+
+// Initialize drawer layer selections when drawers open
+watch(openDrawerIds, (newIds) => {
+  for (const categoryId of Array.from(newIds)) {
+    // Default to 'background' layer for kitbashing drawers
+    if (!drawerLayerSelections.value[categoryId]) {
+      drawerLayerSelections.value[categoryId] = DEFAULT_LAYERS.BACKGROUND
+    }
+  }
+}, { deep: true })
 
 // Function to set drawer content ref
 function setDrawerContentRef(categoryId: number, el: any) {
@@ -303,19 +343,24 @@ async function unpinCategory(categoryId: number) {
   closeDrawer(categoryId)
 }
 
-function handleFileDragStart(event: DragEvent, file: UserFile) {
+function handleFileDragStart(event: DragEvent, file: UserFile, categoryId: number) {
   if (!event.dataTransfer) return
+  
+  // Get the selected layer for this drawer
+  const targetLayer = drawerLayerSelections.value[categoryId] || DEFAULT_LAYERS.BACKGROUND
   
   // Don't prevent default - we need the drag to start
   // Just override the data that LazyFilePreview set
   event.dataTransfer.effectAllowed = 'copy'
   event.dataTransfer.setData('application/json', JSON.stringify({
-    type: 'user-file-background',
+    type: 'user-file-background', // Always background type from kitbashing drawers
     fileId: file.id,
+    targetLayer: targetLayer,
+    isBackground: true, // Always mark as background node from kitbashing
   }))
-  event.dataTransfer.setData('text/plain', `file:${file.id}`)
+  event.dataTransfer.setData('text/plain', `file:${file.id}:${targetLayer}:background`)
   
-  console.log('[KitbashingDrawers] Drag started for file:', file.id, 'with type: user-file-background')
+  console.log('[KitbashingDrawers] Drag started for file:', file.id, 'to layer:', targetLayer)
 }
 
 // Close drawer when clicking outside
@@ -461,6 +506,32 @@ onUnmounted(() => {
 .drawer-actions {
   display: flex;
   gap: 4px;
+}
+
+.drawer-layer-selector {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.layer-select {
+  font-size: 12px;
+}
+
+.layer-select :deep(.v-field) {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.layer-select :deep(.v-field__input) {
+  font-size: 12px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  min-height: 32px;
+}
+
+.layer-select :deep(.v-field__outline) {
+  --v-field-border-opacity: 0.2;
 }
 
 .drawer-content {

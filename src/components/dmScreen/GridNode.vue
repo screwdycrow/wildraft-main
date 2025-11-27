@@ -1,37 +1,35 @@
 <template>
-  <div 
-    class="grid-overlay"
-    :style="gridStyle"
-  >
-    <!-- SVG pattern for the grid -->
+  <Panel position="top-left" class="grid-panel">
     <svg 
       class="grid-svg" 
-      width="100%" 
-      height="100%"
+      :width="viewportWidth"
+      :height="viewportHeight"
+      :style="gridTransformStyle"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <pattern 
           :id="patternId" 
-          :width="gridSize" 
-          :height="gridSize" 
+          :width="scaledGridSize" 
+          :height="scaledGridSize" 
           patternUnits="userSpaceOnUse"
+          :patternTransform="`translate(${patternOffset.x}, ${patternOffset.y})`"
         >
           <!-- Horizontal line -->
           <line 
             x1="0" 
-            :y1="gridSize" 
-            :x2="gridSize" 
-            :y2="gridSize" 
+            :y1="scaledGridSize" 
+            :x2="scaledGridSize" 
+            :y2="scaledGridSize" 
             :stroke="gridColor" 
             :stroke-width="lineWidth"
           />
           <!-- Vertical line -->
           <line 
-            :x1="gridSize" 
+            :x1="scaledGridSize" 
             y1="0" 
-            :x2="gridSize" 
-            :y2="gridSize" 
+            :x2="scaledGridSize" 
+            :y2="scaledGridSize" 
             :stroke="gridColor" 
             :stroke-width="lineWidth"
           />
@@ -41,13 +39,15 @@
         width="100%" 
         height="100%" 
         :fill="`url(#${patternId})`"
+        :opacity="gridOpacity"
       />
     </svg>
-  </div>
+  </Panel>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { Panel, useVueFlow } from '@vue-flow/core'
 
 interface Props {
   gridSize?: number
@@ -63,24 +63,54 @@ const props = withDefaults(defineProps<Props>(), {
   lineWidth: 1,
 })
 
+const { viewport, dimensions } = useVueFlow()
+
 // Unique ID for the SVG pattern to avoid conflicts
 const patternId = computed(() => `grid-pattern-${Math.random().toString(36).substr(2, 9)}`)
 
-const gridStyle = computed(() => ({
-  opacity: props.gridOpacity,
+// Viewport dimensions
+const viewportWidth = computed(() => dimensions.value.width || 2000)
+const viewportHeight = computed(() => dimensions.value.height || 2000)
+
+// Scale grid size based on zoom
+const scaledGridSize = computed(() => {
+  return props.gridSize * (viewport.value.zoom || 1)
+})
+
+// Calculate pattern offset to align grid with viewport pan
+const patternOffset = computed(() => {
+  const zoom = viewport.value.zoom || 1
+  const x = (viewport.value.x || 0) * zoom % scaledGridSize.value
+  const y = (viewport.value.y || 0) * zoom % scaledGridSize.value
+  return { x, y }
+})
+
+// Transform style for the grid
+const gridTransformStyle = computed(() => ({
+  position: 'absolute' as const,
+  top: 0,
+  left: 0,
+  pointerEvents: 'none' as const,
+  zIndex: 9999,
 }))
 </script>
 
 <style scoped>
-.grid-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 9999;
-  overflow: hidden;
+.grid-panel {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .grid-svg {
@@ -89,6 +119,6 @@ const gridStyle = computed(() => ({
   left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 </style>
-
