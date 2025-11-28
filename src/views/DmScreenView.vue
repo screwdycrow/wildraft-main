@@ -19,33 +19,33 @@
       <dm-screen-wrapper
         ref="wrapperRef"
         :dm-screen="dmScreen"
-      />
+      >
+        <template #toolbar-actions>
+          <dm-screen-floating-toolbar
+            :lock-background-images="lockBackgroundImages"
+            :show-grid="showGrid"
+            :selected-item="selectedItem"
+            :layers="layers"
+            @add-item="handleAddItem"
+            @add-background="handleAddBackground"
+            @add-file="handleAddFile"
+            @add-text-node="handleAddTextNode"
+            @add-shape-node="handleAddShapeNode"
+            @open-settings="handleOpenSettings"
+            @toggle-lock-background="handleToggleLockBackground"
+            @toggle-grid="handleToggleGrid"
+            @duplicate-item="handleDuplicateItem"
+            @send-to-back="handleSendToBack"
+            @send-to-front="handleSendToFront"
+            @rotate-left="handleRotateLeft"
+            @rotate-right="handleRotateRight"
+            @edit-shape-style="handleEditShapeStyle"
+            @delete-selected="handleDeleteSelected"
+            @move-to-layer="handleMoveToLayer"
+          />
+        </template>
+      </dm-screen-wrapper>
     </div>
-
-    <!-- Floating Toolbar -->
-    <dm-screen-floating-toolbar
-      v-if="dmScreen"
-      :lock-background-images="lockBackgroundImages"
-      :show-grid="showGrid"
-      :selected-item="selectedItem"
-      :layers="layers"
-      @add-item="handleAddItem"
-      @add-background="handleAddBackground"
-      @add-file="handleAddFile"
-      @add-text-node="handleAddTextNode"
-      @add-shape-node="handleAddShapeNode"
-      @open-settings="handleOpenSettings"
-      @toggle-lock-background="handleToggleLockBackground"
-      @toggle-grid="handleToggleGrid"
-      @duplicate-item="handleDuplicateItem"
-      @send-to-back="handleSendToBack"
-      @send-to-front="handleSendToFront"
-      @rotate-left="handleRotateLeft"
-      @rotate-right="handleRotateRight"
-      @edit-shape-style="handleEditShapeStyle"
-      @delete-selected="handleDeleteSelected"
-      @move-to-layer="handleMoveToLayer"
-    />
 
     <!-- File Manager Dialog -->
     <file-manager
@@ -54,12 +54,6 @@
       :multiple="true"
       return-type="id"
       @select="handleFilesSelected"
-    />
-
-    <!-- Kitbashing Drawers -->
-    <kitbashing-drawers
-      v-if="dmScreen"
-      @add-file="handleAddFileFromDrawer"
     />
   </div>
 </template>
@@ -71,7 +65,6 @@ import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import DmScreenFloatingToolbar from '@/components/dmScreen/DmScreenFloatingToolbar.vue'
-import KitbashingDrawers from '@/components/dmScreen/KitbashingDrawers.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 
@@ -269,22 +262,6 @@ function handleMoveToLayer(layerId: string) {
 // =====================================================
 // FILE HANDLERS
 // =====================================================
-
-function handleAddFileFromDrawer(file: any) {
-  if (!dmScreen.value) return
-  
-  // Use default position
-  const position = { x: 400, y: 300 }
-  
-  dmScreensStore.addUserFile(
-    dmScreen.value.id,
-    dmScreen.value.libraryId,
-    file.id,
-    position
-  )
-  
-  toast.success('File added to DM screen')
-}
 
 async function handleFilesSelected(fileIds: number | number[] | string | string[]) {
   if (!dmScreen.value) return

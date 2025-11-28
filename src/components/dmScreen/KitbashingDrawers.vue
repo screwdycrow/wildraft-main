@@ -23,45 +23,39 @@
             @click.stop
           >
             <div class="drawer-header">
-              <h3 class="drawer-title">{{ pinnedCategory.name }}</h3>
-              <div class="drawer-actions">
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  @click="unpinCategory(pinnedCategory.id)"
-                  title="Unpin category"
-                >
-                  <v-icon>mdi-pin-off</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  @click="closeDrawer(pinnedCategory.id)"
-                >
-                  <v-icon>mdi-close</v-icon>
-                </v-btn>
-              </div>
-            </div>
-            
-            <!-- Layer Selector -->
-            <div class="drawer-layer-selector">
               <v-select
                 v-model="drawerLayerSelections[pinnedCategory.id]"
                 :items="availableLayers"
                 item-title="name"
                 item-value="id"
-                label="Drop to layer"
                 density="compact"
-                variant="outlined"
+                variant="plain"
                 hide-details
-                class="layer-select"
+                class="header-layer-select"
               >
                 <template #prepend-inner>
-                  <v-icon size="small" color="grey">mdi-layers</v-icon>
+                  <v-icon size="x-small" color="grey">mdi-layers</v-icon>
                 </template>
               </v-select>
+              <div class="drawer-actions">
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="unpinCategory(pinnedCategory.id)"
+                  title="Unpin category"
+                >
+                  <v-icon size="small">mdi-pin-off</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  @click="closeDrawer(pinnedCategory.id)"
+                >
+                  <v-icon size="small">mdi-close</v-icon>
+                </v-btn>
+              </div>
             </div>
             
             <div 
@@ -248,16 +242,16 @@ const masonryColumns = {
   default: 3,
   1920: 4,
   1280: 3,
-  960: 2,
+  960: 3,
   600: 2,
 }
 
 const masonryGutter = {
-  default: '8px',
-  1920: '10px',
-  1280: '8px',
-  960: '8px',
-  600: '6px',
+  default: '4px',
+  1920: '4px',
+  1280: '4px',
+  960: '4px',
+  600: '3px',
 }
 
 // Watch for drawer opening to load files
@@ -382,27 +376,20 @@ onUnmounted(() => {
 
 <style scoped>
 .kitbashing-drawers-container {
-  position: absolute;
-  left: 56px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 100;
-  pointer-events: none;
-  max-height: 90vh;
   display: flex;
   flex-direction: row;
+  max-height: 80vh;
 }
 
 .drawers-column {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: flex-start;
-  pointer-events: auto;
-  max-height: 90vh;
+  max-height: 80vh;
   overflow-y: auto;
   overflow-x: visible;
-  padding-right: 8px;
+  padding-right: 6px;
 }
 
 .category-button-wrapper {
@@ -413,14 +400,14 @@ onUnmounted(() => {
 }
 
 .category-button {
-  width: 48px;
-  height: 500px;
-  padding: 16px 0;
+  width: 36px;
+  height: 280px;
+  padding: 12px 0;
   background: rgba(22, 22, 32, 0.8);
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -445,7 +432,7 @@ onUnmounted(() => {
 
 .category-button-text {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
   writing-mode: vertical-rl;
@@ -453,10 +440,10 @@ onUnmounted(() => {
 }
 
 .category-button--add {
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border-radius: 10px;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -468,15 +455,15 @@ onUnmounted(() => {
 
 .drawer {
   position: relative;
-  margin-left: 8px;
-  width: 400px;
-  height: 500px;
-  max-height: 90vh;
+  margin-left: 6px;
+  width: 280px;
+  height: 280px;
+  max-height: 80vh;
   background: rgba(22, 22, 32, 0.95);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
               0 2px 8px rgba(0, 0, 0, 0.3),
               inset 0 1px 0 rgba(255, 255, 255, 0.1);
@@ -491,53 +478,46 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 4px 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.drawer-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
+.header-layer-select {
+  flex: 1;
+  max-width: 140px;
+}
+
+.header-layer-select :deep(.v-field) {
+  padding: 0 4px;
+}
+
+.header-layer-select :deep(.v-field__input) {
+  font-size: 10px;
+  padding: 2px 0;
+  min-height: 24px;
+}
+
+.header-layer-select :deep(.v-field__prepend-inner) {
+  padding-right: 4px;
 }
 
 .drawer-actions {
   display: flex;
-  gap: 4px;
+  gap: 0;
 }
 
-.drawer-layer-selector {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.layer-select {
-  font-size: 12px;
-}
-
-.layer-select :deep(.v-field) {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.layer-select :deep(.v-field__input) {
-  font-size: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  min-height: 32px;
-}
-
-.layer-select :deep(.v-field__outline) {
-  --v-field-border-opacity: 0.2;
+.drawer-actions .v-btn {
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .drawer-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 4px;
   min-height: 0;
 }
 
@@ -547,8 +527,16 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: 24px 16px;
   text-align: center;
+}
+
+.drawer-empty .v-icon {
+  font-size: 36px !important;
+}
+
+.drawer-empty .text-body-2 {
+  font-size: 11px !important;
 }
 
 .files-grid {
@@ -556,7 +544,7 @@ onUnmounted(() => {
 }
 
 .file-item {
-  margin-bottom: 8px;
+  margin-bottom: 3px;
 }
 
 

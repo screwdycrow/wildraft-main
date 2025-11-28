@@ -21,6 +21,22 @@
           </v-btn>
         <v-icon icon="mdi-folder-multiple" class="mr-2" />
           <span>{{ currentCategoryName || (selectMode ? 'Select Files' : 'File Manager') }}</span>
+          
+          <!-- Delete All from Folder Button -->
+          <v-btn
+            v-if="currentCategoryId !== null && categoryFiles.length > 0 && canManage"
+            icon
+            size="small"
+            variant="text"
+            color="error"
+            class="ml-2"
+            @click="showDeleteAllFromFolderDialog = true"
+          >
+            <v-icon>mdi-delete-sweep</v-icon>
+            <v-tooltip activator="parent" location="bottom">
+              Delete All Files ({{ categoryFiles.length }})
+            </v-tooltip>
+          </v-btn>
         </div>
         
         <v-spacer />
@@ -403,6 +419,27 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+
+  <!-- Delete All Files from Folder Confirmation -->
+  <v-dialog v-model="showDeleteAllFromFolderDialog" max-width="400">
+    <v-card>
+      <v-card-title class="text-error">Delete All Files from Folder?</v-card-title>
+      <v-card-text>
+        Are you sure you want to delete <strong>all {{ categoryFiles.length }} file{{ categoryFiles.length > 1 ? 's' : '' }}</strong> from <strong>{{ currentCategoryName }}</strong>?
+        <br /><br />
+        <v-alert type="error" variant="tonal" density="compact">
+          This will permanently delete all files in this folder. This action cannot be undone.
+        </v-alert>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn @click="showDeleteAllFromFolderDialog = false">Cancel</v-btn>
+        <v-btn color="error" @click="confirmDeleteAllFromFolder" :loading="deletingAllFromFolder">
+          Delete All
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -473,6 +510,10 @@ const deletingFolder = ref(false)
 const showBulkMoveDialog = ref(false)
 const showBulkDeleteDialog = ref(false)
 const bulkDeleting = ref(false)
+
+// Delete all from folder
+const showDeleteAllFromFolderDialog = ref(false)
+const deletingAllFromFolder = ref(false)
 
 // Get library ID from route or store
 const libraryId = computed(() => {
@@ -613,9 +654,29 @@ const confirmDelete = (file: UserFile) => {
 const deleteFileConfirmed = async () => {
   if (!fileToDelete.value) return
 
+  const fileId = fileToDelete.value.id
+  const fileCategoryId = fileToDelete.value.categoryId
+  
   deleting.value = true
   try {
-    await filesStore.deleteFile(fileToDelete.value.id)
+    await filesStore.deleteFile(fileId)
+    
+    // If we're viewing a folder, also remove from categoryFiles
+    if (currentCategoryId.value !== null) {
+      categoryFiles.value = categoryFiles.value.filter(f => f.id !== fileId)
+    }
+    
+    // Update category file count locally
+    if (fileCategoryId !== null) {
+      const categoryIndex = fileCategoriesStore.categories.findIndex(c => c.id === fileCategoryId)
+      if (categoryIndex !== -1) {
+        const category = fileCategoriesStore.categories[categoryIndex]
+        if (category.fileCount !== undefined) {
+          category.fileCount = Math.max(0, (category.fileCount || 0) - 1)
+        }
+      }
+    }
+    
     toast.success('File deleted successfully')
     deleteDialog.value = false
     fileToDelete.value = null
@@ -1070,6 +1131,41 @@ const confirmBulkDelete = async () => {
     toast.error(error.response?.data?.error || 'Failed to delete files')
   } finally {
     bulkDeleting.value = false
+  }
+}
+
+// Delete all files from current folder
+const confirmDeleteAllFromFolder = async () => {
+  if (currentCategoryId.value === null || categoryFiles.value.length === 0) return
+
+  const filesToDelete = [...categoryFiles.value]
+  const categoryId = currentCategoryId.value
+  const fileCount = filesToDelete.length
+
+  deletingAllFromFolder.value = true
+  try {
+    // Delete all files in parallel
+    await Promise.all(
+      filesToDelete.map(file => filesStore.deleteFile(file.id))
+    )
+
+    // Clear category files
+    categoryFiles.value = []
+
+    // Update category file count locally
+    const categoryIndex = fileCategoriesStore.categories.findIndex(c => c.id === categoryId)
+    if (categoryIndex !== -1) {
+      const category = fileCategoriesStore.categories[categoryIndex]
+      category.fileCount = 0
+    }
+
+    toast.success(`Deleted ${fileCount} file${fileCount > 1 ? 's' : ''} from folder`)
+    showDeleteAllFromFolderDialog.value = false
+  } catch (error: any) {
+    console.error('Failed to delete all files from folder:', error)
+    toast.error(error.response?.data?.error || 'Failed to delete files')
+  } finally {
+    deletingAllFromFolder.value = false
   }
 }
 </script>

@@ -18,48 +18,10 @@
       <v-card-subtitle v-if="!compact" class="pb-3" :style="{ color: textColor, opacity: 0.9 }">
         {{ characterData.race }} {{ characterData.class }}
         <span v-if="characterData.subclass">({{ characterData.subclass }})</span>
-        (CR: {{ characterData.level || 1 }})
+        (Level {{ characterData.level || 1 }})
       </v-card-subtitle>
 
-      <!-- Stats Row -->
-      <div class="stats-row mb-2" :style="{ opacity: 0.95 }">
-        <div class="stat-item">
-          <div class="stat-label" :style="{ color: textColor }">AC</div>
-          <div class="stat-value" :style="{ color: textColor }">{{ characterData.ac || '10' }}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label" :style="{ color: textColor }">HP</div>
-          <div class="stat-value" :style="{ color: textColor }">{{ characterData.maxHp || '10' }}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label" :style="{ color: textColor }">SPEED</div>
-          <div class="stat-value" :style="{ color: textColor }">{{ characterData.speed || '30 ft.' }}</div>
-        </div>
-      </div>
-
-      <!-- Ability Scores -->
-      <div class="abilities-row mb-3" :style="{ opacity: 0.95 }">
-        <div v-for="ability in abilities" :key="ability.key" class="ability-item">
-          <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
-          <div class="ability-value" :style="{ color: textColor }">
-            {{ getAbilityScore(ability.key) }}
-          </div>
-          <div class="ability-modifier" :style="{ color: textColor }">
-            {{ getAbilityModifier(ability.key) }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Description -->
-      <div
-        v-if="item.description && !compact"
-        class="description-wrapper mb-3"
-        :style="{ color: textColor, opacity: 0.95 }"
-      >
-        <div class="description-text" v-html="resolvedDescription" />
-      </div>
-
-      <!-- Actions/Features (if any) -->
+      <!-- Actions (if any) -->
       <div v-if="characterData.actions && characterData.actions.length > 0" class="features-list">
         <action-chip
           v-for="(action, index) in characterData.actions"
@@ -92,7 +54,6 @@ import { computed } from 'vue'
 import type { LibraryItem, CharacterData } from '@/types/item.types'
 import ActionChip from '../common/ActionChip.vue'
 import { getFileDownloadUrl } from '@/config/api'
-import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 
 interface Props {
   item: LibraryItem
@@ -114,15 +75,6 @@ defineEmits<{
 
 const characterData = computed<CharacterData>(() => props.item.data as CharacterData)
 
-const abilities = [
-  { key: 'str', label: 'STR' },
-  { key: 'dex', label: 'DEX' },
-  { key: 'con', label: 'CON' },
-  { key: 'int', label: 'INT' },
-  { key: 'wis', label: 'WIS' },
-  { key: 'cha', label: 'CHA' },
-]
-
 // Get featured image URL directly from the file object
 const backgroundStyle = computed(() => {
   if (props.item.featuredImage?.downloadUrl) {
@@ -135,33 +87,12 @@ const backgroundStyle = computed(() => {
     background: 'linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(155, 89, 182, 0.3))',
   }
 })
-
-
-function getAbilityScore(key: string): number {
-  return (characterData.value as any)[key] || 10
-}
-
-function getAbilityModifier(key: string): string {
-  const score = getAbilityScore(key)
-  const modifier = Math.floor((score - 10) / 2)
-  return modifier >= 0 ? `+${modifier}` : `${modifier}`
-}
-
-// Resolve image URLs in description
-const resolvedDescription = computed(() => {
-  if (!props.item.description) return ''
-  if (props.item.userFiles?.length) {
-    return resolveImageUrlsInHtml(props.item.description, props.item.userFiles)
-  }
-  return props.item.description
-})
 </script>
 
 <style scoped>
 .character-card {
   position: relative;
   overflow: hidden;
-  min-height: 300px;
   cursor: pointer;
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   background-color: rgba(var(--v-theme-card-background), 0.8) !important;
@@ -183,7 +114,7 @@ const resolvedDescription = computed(() => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity 0.3s ease;
 }
 
@@ -204,136 +135,11 @@ const resolvedDescription = computed(() => {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 
-.stats-row {
-  display: flex;
-  justify-content: space-around;
-  gap: 8px;
-  padding: 8px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.stat-item {
-  text-align: center;
-  flex: 1;
-}
-
-.stat-label {
-  font-size: 0.7rem;
-  font-weight: 500;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
-  line-height: 1.2;
-  opacity: 0.9;
-}
-
-.abilities-row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
-}
-
-.ability-item {
-  text-align: center;
-  padding: 4px;
-}
-
-.ability-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  opacity: 0.9;
-}
-
-.ability-value {
-  font-size: 1.1rem;
-  font-weight: bold;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.ability-modifier {
-  font-size: 0.7rem;
-  opacity: 0.9;
-}
-
-.description-wrapper {
-  max-height: 120px;
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-  opacity: 0.9;
-}
-
-.description-wrapper::-webkit-scrollbar {
-  width: 2px;
-}
-
-.description-wrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.description-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-}
-
-.description-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.description-text {
-  font-size: 0.75rem;
-  line-height: 1.6;
-  opacity: 0.95;
-  font-weight: 400;
-}
-
-.description-text :deep(p) {
-  margin: 0 0 0.5rem;
-  font-size: 0.75rem;
-}
-
-.description-text :deep(h1),
-.description-text :deep(h2),
-.description-text :deep(h3),
-.description-text :deep(h4),
-.description-text :deep(h5),
-.description-text :deep(h6) {
-  font-size: 0.8rem;
-  margin: 0.5rem 0 0.25rem;
-  font-weight: 600;
-}
-
-.description-text :deep(ul),
-.description-text :deep(ol) {
-  padding-left: 1.1rem;
-  margin: 0 0 0.5rem;
-}
-
-.description-text :deep(li) {
-  margin-bottom: 0.25rem;
-  font-size: 0.75rem;
-}
-
 .features-list {
-  display: flex;
+  display: grid;
   flex-direction: column;
   gap: 4px;
   margin-top: auto;
-  max-height: 100px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -393,37 +199,6 @@ const resolvedDescription = computed(() => {
 
 .character-card.compact .card-title .text-h6 {
   font-size: 0.875rem !important;
-}
-
-.character-card.compact .stats-row {
-  padding: 4px 0;
-  margin-bottom: 4px;
-}
-
-.character-card.compact .stat-label {
-  font-size: 0.6rem;
-}
-
-.character-card.compact .stat-value {
-  font-size: 1rem;
-}
-
-.character-card.compact .abilities-row {
-  padding: 4px;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.character-card.compact .ability-label {
-  font-size: 0.55rem;
-}
-
-.character-card.compact .ability-value {
-  font-size: 0.85rem;
-}
-
-.character-card.compact .ability-modifier {
-  font-size: 0.6rem;
 }
 
 .character-card.compact .features-list {

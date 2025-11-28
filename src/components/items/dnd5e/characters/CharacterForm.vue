@@ -346,6 +346,22 @@
         </v-window-item>
       </v-window>
     </template>
+
+    <template #sidebar>
+      <div class="sidebar-section">
+        <h3 class="text-subtitle-1 font-weight-bold mb-2 d-flex align-center">
+          <v-icon icon="mdi-paperclip" size="small" class="mr-2" />
+          Quick Upload
+        </h3>
+        <p class="text-caption text-grey-lighten-1 mb-3">
+          Drop files to attach to this character.
+        </p>
+        <drag-drop-upload
+          compact
+          @uploaded="handleFileUploaded"
+        />
+      </div>
+    </template>
   </item-form-layout>
 
   <!-- Tag Creation Dialog -->
@@ -363,6 +379,8 @@ import { useFilesStore } from '@/stores/files'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
+import DragDropUpload from '@/components/files/DragDropUpload.vue'
+import type { UserFile } from '@/api/files'
 import TraitListEditor from '../common/TraitListEditor.vue'
 import ActionListEditor from '../common/ActionListEditor.vue'
 import SpellListEditor from '../common/SpellListEditor.vue'
@@ -554,6 +572,12 @@ function calculateSkillBonusValue(skillDef: typeof DND5E_SKILLS[0]): number {
 function handleTagCreated(tagId: number) {
   if (!formData.value.tagIds.includes(tagId)) {
     formData.value.tagIds.push(tagId)
+  }
+}
+
+function handleFileUploaded(file: UserFile) {
+  if (!formData.value.userFileIds.includes(file.id)) {
+    formData.value.userFileIds.push(file.id)
   }
 }
 
@@ -779,6 +803,10 @@ async function handleSubmit() {
   min-height: 48px;
   text-transform: none;
   letter-spacing: normal;
+}
+
+.sidebar-section {
+  margin-bottom: 24px;
 }
 </style>
 

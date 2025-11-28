@@ -22,6 +22,8 @@
         @node-drag-stop="onNodeDragStop"
         @node-click="onNodeClick"
         @pane-click="onPaneClick"
+        @pane-context-menu="handlePaneContextMenu"
+        @node-context-menu="(event: any) => handleNodeContextMenu(event.event, event.node.id)"
       >
         <Controls />
         <MiniMap v-if="!isPortalMode" class="minimap-top-right" />
@@ -34,22 +36,36 @@
           :grid-opacity="gridOptions.gridOpacity"
           :line-width="gridOptions.gridLineWidth"
         />
+        
+        <!-- Kitbashing Drawers - left side vertical -->
+        <Panel v-if="!isPortalMode" position="top-left" class="kitbashing-panel">
+          <KitbashingDrawers @add-file="handleAddFileFromDrawer" />
+        </Panel>
+        
+        <!-- Unified Bottom Toolbar -->
+        <Panel v-if="!isPortalMode" position="bottom-center" class="unified-bottom-panel">
+          <div class="unified-toolbar">
+            <!-- Left: Effects Panel -->
+            <div class="toolbar-left">
+              <EffectsPanel @add-effect="handleAddEffect" />
+            </div>
+            
+            <!-- Center: Main Actions (slot for toolbar from parent) -->
+            <div class="toolbar-center">
+              <slot name="toolbar-actions" />
+            </div>
+            
+            <!-- Right: Layer Control -->
+            <div class="toolbar-right">
+              <LayerControl
+                :dm-screen-id="dmScreen.id"
+                :library-id="dmScreen.libraryId"
+                @layer-select="handleLayerSelect"
+              />
+            </div>
+          </div>
+        </Panel>
       </VueFlow>
-      
-      <!-- Layer Control - positioned next to floating toolbar at bottom -->
-      <LayerControl
-        v-if="!isPortalMode"
-        :dm-screen-id="dmScreen.id"
-        :library-id="dmScreen.libraryId"
-        class="layer-control-panel"
-        @layer-select="handleLayerSelect"
-      />
-      
-      <!-- Effects Panel - for adding particle/lighting effects -->
-      <EffectsPanel
-        v-if="!isPortalMode"
-        @add-effect="handleAddEffect"
-      />
     </div>
 
     <!-- Settings Dialog -->
@@ -362,6 +378,166 @@
       </v-card>
     </v-dialog>
 
+    <!-- Node Context Menu (right-click on node) -->
+    <div
+      v-if="showNodeContextMenu"
+      class="context-menu-overlay"
+      @click="closeContextMenus"
+      @contextmenu.prevent="closeContextMenus"
+    />
+    <div
+      v-if="showNodeContextMenu"
+      class="context-menu-container"
+      :style="{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }"
+    >
+      <v-card min-width="200" class="context-menu-card">
+        <v-list density="compact" class="py-1">
+          <!-- Duplicate -->
+          <v-list-item
+            prepend-icon="mdi-content-copy"
+            title="Duplicate"
+            @click="contextMenuDuplicate"
+          />
+          
+          <v-divider class="my-1" />
+          
+          <!-- Layer ordering -->
+          <v-list-item
+            prepend-icon="mdi-arrange-bring-to-front"
+            title="Bring to Front"
+            @click="contextMenuBringToFront"
+          />
+          <v-list-item
+            prepend-icon="mdi-arrange-send-to-back"
+            title="Send to Back"
+            @click="contextMenuSendToBack"
+          />
+          
+          <v-divider class="my-1" />
+          
+          <!-- Move to Layer submenu -->
+          <v-menu location="end" open-on-hover :close-on-content-click="true">
+            <template #activator="{ props: menuProps }">
+              <v-list-item
+                v-bind="menuProps"
+                prepend-icon="mdi-layers-outline"
+                title="Move to Layer"
+                append-icon="mdi-chevron-right"
+              />
+            </template>
+            <v-card min-width="180" class="context-menu-card">
+              <v-list density="compact" class="py-1">
+                <v-list-item
+                  v-for="layer in layers"
+                  :key="layer.id"
+                  :title="layer.name"
+                  :prepend-icon="layer.id === contextMenuItemLayer ? 'mdi-check' : 'mdi-layers'"
+                  :disabled="layer.id === contextMenuItemLayer"
+                  @click="contextMenuMoveToLayer(layer.id)"
+                />
+              </v-list>
+            </v-card>
+          </v-menu>
+          
+          <v-divider class="my-1" />
+          
+          <!-- Delete -->
+          <v-list-item
+            prepend-icon="mdi-delete"
+            title="Delete"
+            class="text-error"
+            @click="contextMenuDeleteItem"
+          />
+        </v-list>
+      </v-card>
+    </div>
+
+    <!-- Pane Context Menu (right-click on canvas) -->
+    <div
+      v-if="showPaneContextMenu"
+      class="context-menu-overlay"
+      @click="closeContextMenus"
+      @contextmenu.prevent="closeContextMenus"
+    />
+    <div
+      v-if="showPaneContextMenu"
+      class="context-menu-container"
+      :style="{ left: `${contextMenuPosition.x}px`, top: `${contextMenuPosition.y}px` }"
+    >
+      <v-card min-width="220" class="context-menu-card">
+        <v-list density="compact" class="py-1">
+          <!-- Add Library Item -->
+          <v-list-item
+            prepend-icon="mdi-card-plus-outline"
+            title="Add Library Item"
+            @click="contextMenuAddLibraryItem"
+          />
+          
+          <v-divider class="my-1" />
+          
+          <!-- Add Text Note -->
+          <v-list-item
+            prepend-icon="mdi-text-box-plus-outline"
+            title="Add Text Note"
+            @click="contextMenuAddTextNode"
+          />
+          
+          <!-- Add Shape -->
+          <v-list-item
+            prepend-icon="mdi-shape-plus"
+            title="Add Shape"
+            @click="contextMenuAddShapeNode"
+          />
+          
+          <!-- Add User File -->
+          <v-list-item
+            prepend-icon="mdi-file-image-plus"
+            title="Add File/Image"
+            @click="contextMenuAddUserFile"
+          />
+          
+          <v-divider class="my-1" />
+          
+          <!-- Add Effect submenu -->
+          <v-menu location="end" open-on-hover :close-on-content-click="true">
+            <template #activator="{ props: menuProps }">
+              <v-list-item
+                v-bind="menuProps"
+                prepend-icon="mdi-creation"
+                title="Add Effect"
+                append-icon="mdi-chevron-right"
+              />
+            </template>
+            <v-card min-width="200" max-height="400" class="context-menu-card overflow-y-auto">
+              <v-list density="compact" class="py-1">
+                <v-list-subheader class="text-caption">Particle Effects</v-list-subheader>
+                <v-list-item
+                  v-for="preset in EFFECT_PRESETS.filter(p => ['fire', 'torch', 'campfire', 'snow', 'rain', 'fog', 'smoke', 'sparkles', 'fireflies', 'dust', 'embers'].includes(p.effectType))"
+                  :key="preset.id"
+                  :prepend-icon="preset.icon"
+                  :title="preset.name"
+                  :subtitle="preset.description"
+                  @click="contextMenuAddEffect(preset)"
+                />
+                
+                <v-divider class="my-1" />
+                
+                <v-list-subheader class="text-caption">Light Effects</v-list-subheader>
+                <v-list-item
+                  v-for="preset in EFFECT_PRESETS.filter(p => ['lightRing', 'aura', 'magicCircle'].includes(p.effectType))"
+                  :key="preset.id"
+                  :prepend-icon="preset.icon"
+                  :title="preset.name"
+                  :subtitle="preset.description"
+                  @click="contextMenuAddEffect(preset)"
+                />
+              </v-list>
+            </v-card>
+          </v-menu>
+        </v-list>
+      </v-card>
+    </div>
+
     <!-- Empty State -->
     <div v-if="!dmScreen.items || dmScreen.items.length === 0" class="empty-state-overlay">
       <div class="empty-state-content">
@@ -395,11 +571,12 @@
 
 <script setup lang="ts">
 import { ref, computed, markRaw, onMounted, onUnmounted, watch } from 'vue'
-import { VueFlow, useVueFlow } from '@vue-flow/core'
+import { VueFlow, useVueFlow, Panel } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import type { Node, NodeDragEvent, NodeChange } from '@vue-flow/core'
 import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions, DmScreenLayer } from '@/types/dmScreen.types'
+import { EFFECT_PRESETS } from '@/types/dmScreen.types'
 import type { LibraryItem } from '@/types/item.types'
 import DmScreenFlowNode from './DmScreenFlowNode.vue'
 import GridNode from './GridNode.vue'
@@ -407,6 +584,7 @@ import LayerControl from './LayerControl.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import EffectsPanel from './EffectsPanel.vue'
+import KitbashingDrawers from './KitbashingDrawers.vue'
 import type { EffectPreset } from '@/types/dmScreen.types'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
@@ -457,6 +635,13 @@ const showItemSelector = ref(false)
 const showCanvasBackgroundSelector = ref(false)
 const showShapeStyleDialog = ref(false)
 const canvasBackgroundUrl = ref<string | null>(null)
+
+// Context menu state
+const showNodeContextMenu = ref(false)
+const showPaneContextMenu = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuFlowPosition = ref({ x: 0, y: 0 })
+const contextMenuNodeId = ref<string | null>(null)
 
 // Local settings for dialog editing
 const localGridOptions = ref<GridOptions>({
@@ -647,6 +832,13 @@ const nodes = computed<Node[]>(() => {
 // LIFECYCLE
 // =====================================================
 
+// Handle escape key to close context menus
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeContextMenus()
+  }
+}
+
 onMounted(async () => {
   // Load canvas background if set
   const canvasBackgroundId = props.dmScreen.settings?.canvasBackgroundImageId
@@ -665,11 +857,17 @@ onMounted(async () => {
   if (props.isPortalMode) {
     setupPortalCommandListeners()
   }
+  
+  // Add keyboard listener for context menu
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
   // Clean up portal command listeners
   cleanupPortalCommandListeners()
+  
+  // Clean up keyboard listener
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 // Watch for portal mode changes
@@ -806,6 +1004,138 @@ function onPaneClick() {
   dmScreensStore.selectItem(null)
 }
 
+// =====================================================
+// CONTEXT MENU HANDLERS
+// =====================================================
+
+function handlePaneContextMenu(event: MouseEvent) {
+  if (props.isPortalMode) return
+  
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // Close any open menus first
+  showNodeContextMenu.value = false
+  
+  // Get screen position for menu
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+  
+  // Convert to flow coordinates for item placement
+  contextMenuFlowPosition.value = project({ x: event.clientX, y: event.clientY })
+  
+  // Show pane context menu
+  showPaneContextMenu.value = true
+}
+
+function handleNodeContextMenu(event: MouseEvent, nodeId: string) {
+  if (props.isPortalMode) return
+  
+  event.preventDefault()
+  event.stopPropagation()
+  
+  // Close any open menus first
+  showPaneContextMenu.value = false
+  
+  // Store node ID and position
+  contextMenuNodeId.value = nodeId
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+  
+  // Select the node
+  dmScreensStore.selectItem(nodeId)
+  
+  // Show node context menu
+  showNodeContextMenu.value = true
+}
+
+function closeContextMenus() {
+  showNodeContextMenu.value = false
+  showPaneContextMenu.value = false
+  contextMenuNodeId.value = null
+}
+
+// Context menu actions for nodes
+function contextMenuDuplicate() {
+  if (!contextMenuNodeId.value) return
+  dmScreensStore.duplicateItem(props.dmScreen.id, props.dmScreen.libraryId, contextMenuNodeId.value)
+  toast.success('Item duplicated')
+  closeContextMenus()
+}
+
+function contextMenuBringToFront() {
+  if (!contextMenuNodeId.value) return
+  dmScreensStore.sendToFrontInLayer(props.dmScreen.id, props.dmScreen.libraryId, contextMenuNodeId.value)
+  toast.success('Moved to front')
+  closeContextMenus()
+}
+
+function contextMenuSendToBack() {
+  if (!contextMenuNodeId.value) return
+  dmScreensStore.sendToBackInLayer(props.dmScreen.id, props.dmScreen.libraryId, contextMenuNodeId.value)
+  toast.success('Moved to back')
+  closeContextMenus()
+}
+
+function contextMenuMoveToLayer(layerId: string) {
+  if (!contextMenuNodeId.value) return
+  dmScreensStore.moveItemToLayer(props.dmScreen.id, props.dmScreen.libraryId, contextMenuNodeId.value, layerId)
+  const layer = layers.value.find((l: DmScreenLayer) => l.id === layerId)
+  toast.success(`Moved to ${layer?.name || layerId} layer`)
+  closeContextMenus()
+}
+
+function contextMenuDeleteItem() {
+  if (!contextMenuNodeId.value) return
+  dmScreensStore.deleteItem(props.dmScreen.id, props.dmScreen.libraryId, contextMenuNodeId.value)
+  toast.success('Item deleted')
+  closeContextMenus()
+}
+
+// Context menu actions for pane (adding items)
+function contextMenuAddLibraryItem() {
+  // Store position before opening selector
+  lastContextMenuFlowPosition.value = { ...contextMenuFlowPosition.value }
+  showItemSelector.value = true
+  closeContextMenus()
+}
+
+function contextMenuAddTextNode() {
+  dmScreensStore.addTextNode(props.dmScreen.id, props.dmScreen.libraryId, contextMenuFlowPosition.value, selectedLayerId.value)
+  toast.success('Text node added')
+  closeContextMenus()
+}
+
+function contextMenuAddShapeNode() {
+  dmScreensStore.addShapeNode(props.dmScreen.id, props.dmScreen.libraryId, contextMenuFlowPosition.value, selectedLayerId.value)
+  toast.success('Shape node added')
+  closeContextMenus()
+}
+
+function contextMenuAddUserFile() {
+  // Store position before opening file manager
+  lastContextMenuFlowPosition.value = { ...contextMenuFlowPosition.value }
+  showFileManager.value = true
+  closeContextMenus()
+}
+
+function contextMenuAddEffect(preset: typeof EFFECT_PRESETS[0]) {
+  dmScreensStore.addEffectNode(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    preset,
+    contextMenuFlowPosition.value,
+    selectedLayerId.value
+  )
+  toast.success(`Added ${preset.name} effect`)
+  closeContextMenus()
+}
+
+// Get current item's layer for display
+const contextMenuItemLayer = computed(() => {
+  if (!contextMenuNodeId.value) return null
+  const item = props.dmScreen.items?.find((i: DmScreenItem) => i.id === contextMenuNodeId.value)
+  return item?.layer || 'screen'
+})
+
 // Selected layer for adding new items
 const selectedLayerId = ref<string>('screen')
 
@@ -874,6 +1204,9 @@ function getViewportCenter(itemWidth = 300, itemHeight = 200): { x: number; y: n
   }
 }
 
+// Store last context menu position for adding items from item selector
+const lastContextMenuFlowPosition = ref<{ x: number; y: number } | null>(null)
+
 async function handleAddLibraryItem(libraryItem: LibraryItem) {
   try {
     let featuredImageUrl: string | null = null
@@ -886,13 +1219,22 @@ async function handleAddLibraryItem(libraryItem: LibraryItem) {
       featuredImageUrl
     )
     
-    const center = getViewportCenter(300, 500)
+    // Use stored context menu position if available, otherwise viewport center
+    const position = lastContextMenuFlowPosition.value || getViewportCenter(300, 500)
     newItem.nodeOptions = {
       ...newItem.nodeOptions,
-      x: center.x,
-      y: center.y,
-      position: center,
+      x: position.x,
+      y: position.y,
+      position: position,
     }
+    
+    // Set layer if from context menu
+    if (lastContextMenuFlowPosition.value) {
+      newItem.layer = selectedLayerId.value
+    }
+    
+    // Clear stored position
+    lastContextMenuFlowPosition.value = null
 
     dmScreensStore.addItem(props.dmScreen.id, props.dmScreen.libraryId, newItem)
     toast.success('Item added to DM screen')
@@ -914,13 +1256,22 @@ async function handleBackgroundImageSelect(fileId: number | number[] | string | 
     const fixedWidth = 500
     const calculatedHeight = Math.round(fixedWidth * aspectRatio)
 
-    const center = getViewportCenter(fixedWidth, calculatedHeight)
+    // Use stored context menu position if available, otherwise viewport center
+    const position = lastContextMenuFlowPosition.value 
+      ? {
+          x: lastContextMenuFlowPosition.value.x - fixedWidth / 2,
+          y: lastContextMenuFlowPosition.value.y - calculatedHeight / 2,
+        }
+      : getViewportCenter(fixedWidth, calculatedHeight)
+    
+    // Clear stored position
+    lastContextMenuFlowPosition.value = null
     
     dmScreensStore.addBackgroundImage(
       props.dmScreen.id,
       props.dmScreen.libraryId,
       id,
-      center,
+      position,
       { width: fixedWidth, height: calculatedHeight }
     )
 
@@ -1210,6 +1561,22 @@ function handleAddEffect(preset: EffectPreset, layerId: string) {
   toast.success(`Added ${preset.name} effect`)
 }
 
+// Handle adding file from kitbashing drawers
+async function handleAddFileFromDrawer(file: { id: number }) {
+  const center = getViewportCenter(300, 300)
+  
+  dmScreensStore.addBackgroundImage(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    file.id,
+    center,
+    { width: 300, height: 300 },
+    selectedLayerId.value
+  )
+  
+  toast.success('Image added from drawer')
+}
+
 // =====================================================
 // PORTAL HANDLER
 // =====================================================
@@ -1363,12 +1730,132 @@ defineExpose({
   height: 80px !important;
 }
 
-/* Layer Control Panel - positioned at bottom right edge */
-.layer-control-panel {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  z-index: 1000;
+/* Kitbashing Panel - left side */
+.kitbashing-panel {
+  top: 50% !important;
+  left: 10px !important;
+  transform: translateY(-50%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Unified Bottom Toolbar Panel */
+.unified-bottom-panel {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  transform: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.unified-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 16px;
+  background: rgba(22, 22, 32, 0.9);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  gap: 16px;
+}
+
+.toolbar-left,
+.toolbar-right {
+  flex-shrink: 0;
+}
+
+.toolbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Context Menu Styles */
+.context-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  background: transparent;
+}
+
+.context-menu-container {
+  position: fixed;
+  z-index: 9999;
+  animation: contextMenuFadeIn 0.15s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.context-menu-card {
+  background: rgba(30, 30, 40, 0.98) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.context-menu-card :deep(.v-list-item) {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 4px;
+  margin: 2px 4px;
+}
+
+.context-menu-card :deep(.v-list-item:hover) {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.context-menu-card :deep(.v-list-item__prepend) {
+  margin-right: 12px;
+}
+
+.context-menu-card :deep(.v-list-item__prepend .v-icon) {
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.context-menu-card :deep(.v-list-item-title) {
+  font-size: 13px;
+}
+
+.context-menu-card :deep(.v-list-item-subtitle) {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.context-menu-card :deep(.v-list-subheader) {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+  min-height: 28px;
+  padding-top: 8px;
+}
+
+.context-menu-card :deep(.v-list-item.text-error) {
+  color: rgb(var(--v-theme-error));
+}
+
+.context-menu-card :deep(.v-list-item.text-error .v-icon) {
+  color: rgb(var(--v-theme-error));
 }
 </style>
 

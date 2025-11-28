@@ -57,7 +57,7 @@
           >
             <div class="effect-preview" :style="getPreviewStyle(preset)">
               <div class="effect-icon">
-                <v-icon :icon="preset.icon" :color="preset.defaultConfig.color" size="32" />
+                <v-icon :icon="preset.icon" :color="preset.defaultConfig.color" size="20" />
               </div>
               <div class="effect-glow" :style="getGlowStyle(preset)" />
             </div>
@@ -185,40 +185,29 @@ function handleEffectClick(preset: EffectPreset) {
 
 <style scoped>
 .effects-panel {
-  position: absolute;
-  left: 56px;
-  bottom: 120px;
-  z-index: 100;
-  pointer-events: none;
+  position: relative;
 }
 
 .effects-toggle-button {
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  background: rgba(22, 22, 32, 0.8);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35),
-              0 2px 6px rgba(0, 0, 0, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  pointer-events: auto;
+  gap: 6px;
   color: rgba(255, 255, 255, 0.7);
 }
 
 .effects-toggle-button:hover {
-  background: rgba(28, 28, 38, 0.9);
+  background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.15);
-  transform: scale(1.02);
   color: rgba(255, 255, 255, 1);
 }
 
@@ -229,43 +218,40 @@ function handleEffectClick(preset: EffectPreset) {
 }
 
 .toggle-label {
-  font-size: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
 .effects-drawer {
   position: absolute;
-  left: 56px;
-  bottom: 0;
-  width: 320px;
-  max-height: 500px;
-  background: rgba(22, 22, 32, 0.95);
+  left: 0;
+  bottom: 44px;
+  width: 280px;
+  max-height: 400px;
+  background: rgba(22, 22, 32, 0.98);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5),
-              0 2px 8px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5),
+              0 -2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  pointer-events: auto;
 }
 
 .drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
 }
 
 .drawer-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
@@ -274,44 +260,44 @@ function handleEffectClick(preset: EffectPreset) {
 }
 
 .drawer-layer-selector {
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.2);
 }
 
 .layer-select {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .layer-select :deep(.v-field) {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .layer-select :deep(.v-field__input) {
-  font-size: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  min-height: 32px;
+  font-size: 11px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  min-height: 28px;
 }
 
 .effects-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 8px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
 }
 
 .effect-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px;
+  padding: 6px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: grab;
   transition: all 0.2s ease;
   user-select: none;
@@ -320,8 +306,8 @@ function handleEffectClick(preset: EffectPreset) {
 .effect-card:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .effect-card:active {
@@ -330,20 +316,24 @@ function handleEffectClick(preset: EffectPreset) {
 }
 
 .effect-preview {
-  width: 56px;
-  height: 56px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .effect-icon {
   position: relative;
   z-index: 1;
+}
+
+.effect-icon :deep(.v-icon) {
+  font-size: 20px !important;
 }
 
 .effect-glow {
@@ -361,17 +351,17 @@ function handleEffectClick(preset: EffectPreset) {
 }
 
 .effect-name {
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
 }
 
 .drawer-tips {
-  padding: 8px 12px;
+  padding: 6px 8px;
   background: rgba(99, 102, 241, 0.1);
   border-top: 1px solid rgba(99, 102, 241, 0.2);
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
@@ -404,22 +394,22 @@ function handleEffectClick(preset: EffectPreset) {
 
 .effects-drawer-enter-from {
   opacity: 0;
-  transform: translateX(-20px) scale(0.95);
+  transform: translateY(20px) scale(0.95);
 }
 
 .effects-drawer-enter-to {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 .effects-drawer-leave-from {
   opacity: 1;
-  transform: translateX(0) scale(1);
+  transform: translateY(0) scale(1);
 }
 
 .effects-drawer-leave-to {
   opacity: 0;
-  transform: translateX(-20px) scale(0.95);
+  transform: translateY(20px) scale(0.95);
 }
 
 @keyframes pulse {

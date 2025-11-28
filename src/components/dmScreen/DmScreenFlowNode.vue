@@ -1,5 +1,5 @@
 <template>
-  <div class="dm-screen-flow-node-container" :style="containerStyle">
+  <div class="dm-screen-flow-node-container" :style="containerStyle" :class="containerClass">
     <!-- Custom Rotation-Aware Resize Handles -->
     <template v-if="isSelected">
       <!-- Corner handles -->
@@ -364,8 +364,24 @@
                 />
               </template>
               
-              <!-- Light Pool Settings (screen blend lighting) -->
+              <!-- Blend Mode Selection -->
               <v-divider class="my-3" />
+              <div class="text-caption font-weight-medium mb-2 d-flex align-center">
+                <v-icon icon="mdi-blend" size="small" class="mr-1" />
+                Blend Mode (Lighting Effect)
+              </div>
+              <v-select
+                v-model="effectBlendMode"
+                :items="blendModeOptions"
+                item-title="text"
+                item-value="value"
+                density="compact"
+                variant="outlined"
+                hide-details
+                class="mb-3"
+              />
+              
+              <!-- Light Pool Settings (screen blend lighting) -->
               <div class="text-caption font-weight-medium mb-2 d-flex align-center">
                 <v-icon icon="mdi-lightbulb-on" size="small" class="mr-1" />
                 Light Pool (Illumination)
@@ -542,6 +558,18 @@ const effectPulseSpeed = ref(2)
 const effectGlowIntensity = ref(0.8)
 const effectLightPoolIntensity = ref(0.5)
 const effectLightPoolSize = ref(1.0)
+const effectBlendMode = ref('screen')
+
+// Blend mode options for lighting effects
+const blendModeOptions = [
+  { value: 'normal', text: 'Normal (No Blend)' },
+  { value: 'screen', text: 'Screen (Soft Light)' },
+  { value: 'color-dodge', text: 'Color Dodge (Intense)' },
+  { value: 'lighten', text: 'Lighten' },
+  { value: 'overlay', text: 'Overlay' },
+  { value: 'hard-light', text: 'Hard Light' },
+  { value: 'soft-light', text: 'Soft Light' },
+]
 
 // Effect color presets
 const effectColorPresets = [
@@ -584,6 +612,7 @@ watch(() => props.data.item, (item) => {
     effectGlowIntensity.value = config.glowIntensity ?? 0.8
     effectLightPoolIntensity.value = config.lightPoolIntensity ?? 0.5
     effectLightPoolSize.value = config.lightPoolSize ?? 1.0
+    effectBlendMode.value = config.blendMode || 'screen'
   }
 }, { immediate: true, deep: true })
 
@@ -598,13 +627,29 @@ const rotation = computed(() => {
 })
 
 const containerStyle = computed(() => {
+  const style: Record<string, string> = {}
+  
   if (rotation.value) {
-    return {
-      transform: `rotate(${rotation.value}deg)`,
-      transformOrigin: 'center center',
+    style.transform = `rotate(${rotation.value}deg)`
+    style.transformOrigin = 'center center'
+  }
+  
+  // Apply blend mode for effect nodes at the container level
+  // This allows the effect to blend with content below on the canvas
+  if (isEffectNode.value) {
+    const blendMode = currentEffectConfig.value.blendMode || 'screen'
+    if (blendMode !== 'normal') {
+      style.mixBlendMode = blendMode
     }
   }
-  return {}
+  
+  return style
+})
+
+const containerClass = computed(() => {
+  return {
+    'effect-node-blend': isEffectNode.value && (currentEffectConfig.value.blendMode || 'screen') !== 'normal',
+  }
 })
 
 const isBackgroundImage = computed(() => {
@@ -624,7 +669,16 @@ const isEffectNode = computed(() => {
 })
 
 const currentEffectConfig = computed(() => {
-  return props.data.item.data.effectConfig || {}
+  return props.data.item.data.effectConfig || {
+    effectType: 'fire' as const,
+    intensity: 0.7,
+    speed: 1,
+    scale: 1,
+    color: '#ff6600',
+    secondaryColor: '#ffcc00',
+    opacity: 0.9,
+    blendMode: 'screen',
+  }
 })
 
 const currentEffectIcon = computed(() => {
@@ -1064,8 +1118,10 @@ function saveTokenSettings() {
 function saveEffectSettings() {
   const item = props.data.item
   
+  const existingConfig = item.data.effectConfig || { effectType: 'fire' as const, opacity: 0.9 }
+  
   const updatedConfig = {
-    ...item.data.effectConfig,
+    ...existingConfig,
     intensity: effectIntensity.value,
     speed: effectSpeed.value,
     scale: effectScale.value,
@@ -1076,6 +1132,8 @@ function saveEffectSettings() {
     glowIntensity: effectGlowIntensity.value,
     lightPoolIntensity: effectLightPoolIntensity.value,
     lightPoolSize: effectLightPoolSize.value,
+    blendMode: effectBlendMode.value,
+    opacity: existingConfig.opacity ?? 0.9,
   }
   
   const updatedItem: DmScreenItem = {
@@ -1125,6 +1183,14 @@ onUnmounted(() => {
   height: 100%;
   position: relative;
   transform-origin: center center;
+}
+
+/* Effect node blend mode - allows blending with canvas content below */
+.dm-screen-flow-node-container.effect-node-blend {
+  /* Don't isolate so blend modes work with content below */
+  isolation: auto;
+  /* z-index ensures effect is above content it should illuminate */
+  z-index: 100;
 }
 
 .dm-screen-flow-node {

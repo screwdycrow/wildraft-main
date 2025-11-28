@@ -1,185 +1,171 @@
 <template>
-  <div class="layer-control" :class="{ 'layer-control--minimized': isMinimized }">
-    <!-- Minimized State - Compact bar with portal indicators -->
-    <div v-if="isMinimized" class="layer-control-minimized" @click="isMinimized = false">
-      <v-icon size="small" class="layer-icon">mdi-layers</v-icon>
-      <span class="layer-count">{{ localLayers.length }}</span>
-      
-      <!-- Portal indicators - dots showing which layers are on portal -->
-      <div class="portal-indicators">
-        <div
-          v-for="layer in localLayers"
-          :key="layer.id"
-          class="portal-dot"
-          :class="{ 
-            'portal-dot--active': layer.showOnPortal !== false,
-            'portal-dot--hidden': !layer.visible
-          }"
-          :title="`${layer.name}${layer.showOnPortal !== false ? ' (on portal)' : ''}`"
-        />
-      </div>
-      
-      <v-icon size="x-small" class="expand-icon">mdi-chevron-up</v-icon>
-      <v-tooltip activator="parent" location="top">Expand Layers</v-tooltip>
-    </div>
-    
-    <!-- Expanded State -->
-    <template v-else>
-      <div class="layer-control-header">
-        <span class="layer-control-title">Layers</span>
-        <div class="header-actions">
-          <v-btn
-            icon
-            size="x-small"
-            variant="text"
-            color="white"
-            @click="handleAddLayer"
-          >
-            <v-icon size="small">mdi-plus</v-icon>
-            <v-tooltip activator="parent" location="top">Add Layer</v-tooltip>
-          </v-btn>
-          <v-btn
-            icon
-            size="x-small"
-            variant="text"
-            color="white"
-            @click="isMinimized = true"
-          >
-            <v-icon size="small">mdi-chevron-down</v-icon>
-            <v-tooltip activator="parent" location="top">Minimize</v-tooltip>
-          </v-btn>
-        </div>
-      </div>
-      
-      <div class="layer-list">
-        <draggable
-        v-model="localLayers"
-        item-key="id"
-        handle=".layer-drag-handle"
-        @end="handleReorder"
-        :animation="200"
-      >
-        <template #item="{ element: layer }">
-          <div 
-            class="layer-item"
-            :class="{ 
-              'layer-item--hidden': !layer.visible,
-              'layer-item--locked': layer.locked,
-              'layer-item--selected': selectedLayerId === layer.id
-            }"
-            @click="selectLayer(layer.id)"
-          >
-            <div class="layer-drag-handle">
-              <v-icon size="x-small" color="grey">mdi-drag</v-icon>
-            </div>
-            
-            <!-- Portal indicator dot on each item -->
-            <div 
-              class="layer-portal-indicator"
-              :class="{ 'layer-portal-indicator--active': layer.showOnPortal !== false }"
-              :title="layer.showOnPortal !== false ? 'Showing on portal' : 'Hidden from portal'"
-            />
-            
+  <div class="layer-panel">
+    <!-- Toggle Button -->
+    <button
+      class="layer-toggle-button"
+      :class="{ 'layer-toggle-button--active': isOpen }"
+      @click="isOpen = !isOpen"
+    >
+      <v-icon :icon="isOpen ? 'mdi-close' : 'mdi-layers'" size="small" />
+      <span class="toggle-label">Layers</span>
+      <span class="layer-count-badge">{{ localLayers.length }}</span>
+    </button>
+
+    <!-- Layer Drawer -->
+    <transition name="layer-drawer">
+      <div v-show="isOpen" class="layer-drawer">
+        <div class="drawer-header">
+          <h3 class="drawer-title">
+            <v-icon icon="mdi-layers" size="small" class="mr-2" />
+            Layers
+          </h3>
+          <div class="header-actions">
             <v-btn
               icon
               size="x-small"
               variant="text"
-              :color="layer.visible ? 'white' : 'grey'"
-              @click.stop="toggleVisibility(layer)"
+              color="white"
+              @click="handleAddLayer"
             >
-              <v-icon size="small">{{ layer.visible ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+              <v-icon size="small">mdi-plus</v-icon>
+              <v-tooltip activator="parent" location="top">Add Layer</v-tooltip>
             </v-btn>
-            
-            <span 
-              class="layer-name"
-              :class="{ 'layer-name--editing': editingLayerId === layer.id }"
-            >
-              <input
-                v-if="editingLayerId === layer.id"
-                v-model="editingName"
-                class="layer-name-input"
-                @blur="finishEditing"
-                @keydown.enter="finishEditing"
-                @keydown.escape="cancelEditing"
-                ref="nameInputRef"
-              />
-              <span 
-                v-else 
-                @dblclick="startEditing(layer)"
-                class="layer-name-text"
+            <v-btn
+              icon="mdi-close"
+              size="x-small"
+              variant="text"
+              @click="isOpen = false"
+            />
+          </div>
+        </div>
+
+        <!-- Layer List -->
+        <div class="layer-list">
+          <draggable
+            v-model="localLayers"
+            item-key="id"
+            handle=".layer-drag-handle"
+            @end="handleReorder"
+            :animation="200"
+          >
+            <template #item="{ element: layer }">
+              <div 
+                class="layer-item"
+                :class="{ 
+                  'layer-item--hidden': !layer.visible,
+                  'layer-item--locked': layer.locked,
+                  'layer-item--selected': selectedLayerId === layer.id
+                }"
+                @click="selectLayer(layer.id)"
               >
-                {{ layer.name }}
-              </span>
-            </span>
-            
-            <div class="layer-actions">
-              <v-btn
-                icon
-                size="x-small"
-                variant="text"
-                :color="layer.locked ? 'warning' : 'grey'"
-                @click.stop="toggleLock(layer)"
-              >
-                <v-icon size="small">{{ layer.locked ? 'mdi-lock' : 'mdi-lock-open-variant' }}</v-icon>
-              </v-btn>
-              
-              <v-btn
-                icon
-                size="x-small"
-                variant="text"
-                :color="layer.showOnPortal !== false ? 'primary' : 'grey'"
-                @click.stop="toggleShowOnPortal(layer)"
-                title="Show on Portal"
-              >
-                <v-icon size="small">{{ layer.showOnPortal !== false ? 'mdi-projector-screen' : 'mdi-projector-screen-off' }}</v-icon>
-              </v-btn>
-              
-              <v-menu>
-                <template #activator="{ props: menuProps }">
+                <div class="layer-drag-handle">
+                  <v-icon size="x-small" color="grey">mdi-drag</v-icon>
+                </div>
+                
+                <!-- Portal indicator dot -->
+                <div 
+                  class="layer-portal-indicator"
+                  :class="{ 'layer-portal-indicator--active': layer.showOnPortal !== false }"
+                  :title="layer.showOnPortal !== false ? 'Showing on portal' : 'Hidden from portal'"
+                />
+                
+                <v-btn
+                  icon
+                  size="x-small"
+                  variant="text"
+                  :color="layer.visible ? 'white' : 'grey'"
+                  @click.stop="toggleVisibility(layer)"
+                >
+                  <v-icon size="small">{{ layer.visible ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                </v-btn>
+                
+                <span class="layer-name">
+                  <input
+                    v-if="editingLayerId === layer.id"
+                    v-model="editingName"
+                    class="layer-name-input"
+                    @blur="finishEditing"
+                    @keydown.enter="finishEditing"
+                    @keydown.escape="cancelEditing"
+                    ref="nameInputRef"
+                  />
+                  <span 
+                    v-else 
+                    @dblclick="startEditing(layer)"
+                    class="layer-name-text"
+                  >
+                    {{ layer.name }}
+                  </span>
+                </span>
+                
+                <div class="layer-actions">
                   <v-btn
                     icon
                     size="x-small"
                     variant="text"
-                    color="grey"
-                    v-bind="menuProps"
-                    @click.stop
+                    :color="layer.locked ? 'warning' : 'grey'"
+                    @click.stop="toggleLock(layer)"
                   >
-                    <v-icon size="small">mdi-dots-vertical</v-icon>
+                    <v-icon size="small">{{ layer.locked ? 'mdi-lock' : 'mdi-lock-open-variant' }}</v-icon>
                   </v-btn>
-                </template>
-                <v-list density="compact" class="layer-menu">
-                  <v-list-item @click="openOpacityDialog(layer)">
-                    <template #prepend>
-                      <v-icon size="small">mdi-opacity</v-icon>
-                    </template>
-                    <v-list-item-title>Opacity</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item @click="toggleShowOnPortal(layer)">
-                    <template #prepend>
-                      <v-icon size="small">{{ layer.showOnPortal !== false ? 'mdi-projector-screen-off' : 'mdi-projector-screen' }}</v-icon>
-                    </template>
-                    <v-list-item-title>{{ layer.showOnPortal !== false ? 'Hide on Portal' : 'Show on Portal' }}</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item 
-                    v-if="!isDefaultLayer(layer.id)"
-                    @click="handleDeleteLayer(layer)"
-                    class="text-error"
+                  
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    :color="layer.showOnPortal !== false ? 'primary' : 'grey'"
+                    @click.stop="toggleShowOnPortal(layer)"
                   >
-                    <template #prepend>
-                      <v-icon size="small" color="error">mdi-delete</v-icon>
+                    <v-icon size="small">{{ layer.showOnPortal !== false ? 'mdi-projector-screen' : 'mdi-projector-screen-off' }}</v-icon>
+                  </v-btn>
+                  
+                  <v-menu>
+                    <template #activator="{ props: menuProps }">
+                      <v-btn
+                        icon
+                        size="x-small"
+                        variant="text"
+                        color="grey"
+                        v-bind="menuProps"
+                        @click.stop
+                      >
+                        <v-icon size="small">mdi-dots-vertical</v-icon>
+                      </v-btn>
                     </template>
-                    <v-list-item-title>Delete Layer</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </div>
-          </div>
-        </template>
-      </draggable>
+                    <v-list density="compact" class="layer-menu">
+                      <v-list-item @click="openOpacityDialog(layer)">
+                        <template #prepend>
+                          <v-icon size="small">mdi-opacity</v-icon>
+                        </template>
+                        <v-list-item-title>Opacity</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item 
+                        v-if="!isDefaultLayer(layer.id)"
+                        @click="handleDeleteLayer(layer)"
+                        class="text-error"
+                      >
+                        <template #prepend>
+                          <v-icon size="small" color="error">mdi-delete</v-icon>
+                        </template>
+                        <v-list-item-title>Delete Layer</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </div>
+              </div>
+            </template>
+          </draggable>
+        </div>
+
+        <!-- Tips -->
+        <div class="drawer-tips">
+          <v-icon icon="mdi-information-outline" size="x-small" class="mr-1" />
+          <span>Drag to reorder, double-click to rename</span>
+        </div>
       </div>
-    </template>
+    </transition>
     
-    <!-- Opacity Dialog (outside v-else so it can render when minimized) -->
+    <!-- Dialogs -->
     <v-dialog v-model="showOpacityDialog" max-width="300">
       <v-card class="glass-card">
         <v-card-title>Layer Opacity</v-card-title>
@@ -201,7 +187,6 @@
       </v-card>
     </v-dialog>
     
-    <!-- Add Layer Dialog -->
     <v-dialog v-model="showAddDialog" max-width="300">
       <v-card class="glass-card">
         <v-card-title>Add Layer</v-card-title>
@@ -221,7 +206,6 @@
       </v-card>
     </v-dialog>
     
-    <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card class="glass-card">
         <v-card-title>Delete Layer</v-card-title>
@@ -240,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import draggable from 'vuedraggable'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import type { DmScreenLayer } from '@/types/dmScreen.types'
@@ -259,17 +243,15 @@ const emit = defineEmits<{
 
 const dmScreensStore = useDmScreensStore()
 
-// Minimized state
-const isMinimized = ref(false)
+// Open state
+const isOpen = ref(false)
 
-// Local state for draggable - reversed for UI (top = highest order)
+// Local state for draggable
 const localLayers = ref<DmScreenLayer[]>([])
 
-// Watch store layers and sync to local (reversed order for display)
 watch(
   () => dmScreensStore.getLayers(props.dmScreenId),
   (layers) => {
-    // Sort by order descending (highest order at top of list)
     localLayers.value = [...layers].sort((a, b) => b.order - a.order)
   },
   { immediate: true, deep: true }
@@ -322,7 +304,7 @@ function toggleShowOnPortal(layer: DmScreenLayer) {
 }
 
 function startEditing(layer: DmScreenLayer) {
-  if (isDefaultLayer(layer.id)) return // Don't allow editing default layer names
+  if (isDefaultLayer(layer.id)) return
   editingLayerId.value = layer.id
   editingName.value = layer.name
   nextTick(() => {
@@ -389,8 +371,6 @@ function confirmDeleteLayer() {
 }
 
 function handleReorder() {
-  // localLayers is in reverse order (top = highest), so we need to reverse it back
-  // and assign new order values
   const newOrder = localLayers.value
     .slice()
     .reverse()
@@ -401,133 +381,122 @@ function handleReorder() {
 </script>
 
 <style scoped>
-.layer-control {
-  background: rgba(22, 22, 32, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  overflow: hidden;
-  min-width: 200px;
-  max-width: 280px;
-  transition: all 0.2s ease;
+.layer-panel {
+  position: relative;
 }
 
-.layer-control--minimized {
-  min-width: auto;
-  max-width: none;
-  border-radius: 14px;
-}
-
-/* Minimized State */
-.layer-control-minimized {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+.layer-toggle-button {
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.layer-control-minimized:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.layer-icon {
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: rgba(255, 255, 255, 0.7);
 }
 
-.layer-count {
-  font-size: 12px;
+.layer-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 1);
+}
+
+.layer-toggle-button--active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+}
+
+.toggle-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.layer-count-badge {
+  background: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  font-size: 10px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  min-width: 16px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  min-width: 18px;
   text-align: center;
 }
 
-.portal-indicators {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 4px;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
-  margin-left: 4px;
-}
-
-.portal-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+.layer-drawer {
+  position: absolute;
+  right: 0;
+  bottom: 44px;
+  width: 320px;
+  max-height: 400px;
+  background: rgba(22, 22, 32, 0.98);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.15s ease;
+  border-radius: 12px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5),
+              0 -2px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.portal-dot--active {
-  background: #6366f1;
-  border-color: #818cf8;
-  box-shadow: 0 0 6px rgba(99, 102, 241, 0.5);
-}
-
-.portal-dot--hidden {
-  opacity: 0.4;
-}
-
-.portal-dot--active.portal-dot--hidden {
-  background: #4f46e5;
-  box-shadow: none;
-}
-
-.expand-icon {
-  color: rgba(255, 255, 255, 0.5);
-  margin-left: 4px;
-}
-
-/* Expanded State */
-.layer-control-header {
+.drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  flex-shrink: 0;
+}
+
+.drawer-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  display: flex;
+  align-items: center;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
-}
-
-.layer-control-title {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 4px;
 }
 
 .layer-list {
-  max-height: 300px;
+  flex: 1;
   overflow-y: auto;
+  padding: 8px;
 }
 
 .layer-item {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s ease;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .layer-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .layer-item--selected {
   background: rgba(99, 102, 241, 0.2);
-  border-left: 2px solid #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
 .layer-item--hidden {
@@ -549,7 +518,6 @@ function handleReorder() {
   cursor: grabbing;
 }
 
-/* Portal indicator on each layer item */
 .layer-portal-indicator {
   width: 6px;
   height: 6px;
@@ -572,7 +540,7 @@ function handleReorder() {
 
 .layer-name-text {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.9);
   white-space: nowrap;
   overflow: hidden;
@@ -586,7 +554,7 @@ function handleReorder() {
   border: 1px solid rgba(99, 102, 241, 0.5);
   border-radius: 4px;
   padding: 2px 6px;
-  font-size: 13px;
+  font-size: 12px;
   color: white;
   outline: none;
 }
@@ -603,8 +571,40 @@ function handleReorder() {
   opacity: 1;
 }
 
-.layer-menu {
-  background: rgba(22, 22, 32, 0.98) !important;
+.drawer-tips {
+  padding: 8px 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+}
+
+/* Drawer transition */
+.layer-drawer-enter-active,
+.layer-drawer-leave-active {
+  transition: all 0.3s ease;
+}
+
+.layer-drawer-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.layer-drawer-enter-to {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.layer-drawer-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.layer-drawer-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
 }
 
 /* Scrollbar styling */
@@ -614,6 +614,7 @@ function handleReorder() {
 
 .layer-list::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
 }
 
 .layer-list::-webkit-scrollbar-thumb {
@@ -625,9 +626,12 @@ function handleReorder() {
   background: rgba(255, 255, 255, 0.3);
 }
 
+.layer-menu {
+  background: rgba(22, 22, 32, 0.98) !important;
+}
+
 .glass-card {
   background: rgba(22, 22, 32, 0.98) !important;
   backdrop-filter: blur(20px);
 }
 </style>
-

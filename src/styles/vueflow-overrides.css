@@ -52,3 +52,18 @@
   opacity: 1 !important;
 }
 
+/* Effect nodes - allow blend modes to work with canvas content */
+.vue-flow__node[data-type="effect-node"],
+.vue-flow__node.effect-node {
+  /* Don't isolate stacking context so blend modes affect content below */
+  isolation: auto !important;
+  /* Ensure effect is rendered above most content */
+  z-index: 100 !important;
+}
+
+/* Prevent VueFlow from creating isolated stacking contexts on effect nodes */
+.vue-flow__node:has(.effect-node-blend) {
+  isolation: auto !important;
+  contain: none !important;
+}
+

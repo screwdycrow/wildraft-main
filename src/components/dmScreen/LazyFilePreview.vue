@@ -11,7 +11,7 @@
       >
         <!-- Loading state while fetching URL -->
         <div v-if="isLoadingUrl" class="file-preview-loading">
-          <v-progress-circular indeterminate color="primary" size="24" />
+          <v-progress-circular indeterminate color="primary" size="16" />
         </div>
         
         <!-- Image preview -->
@@ -24,14 +24,14 @@
         >
           <template #placeholder>
             <div class="d-flex align-center justify-center fill-height">
-              <v-progress-circular indeterminate color="primary" size="24" />
+              <v-progress-circular indeterminate color="primary" size="16" />
             </div>
           </template>
         </v-img>
         
         <!-- Non-image file icon -->
         <div v-else class="file-preview-icon">
-          <v-icon :icon="getFileIcon(file.fileType)" size="32" />
+          <v-icon :icon="getFileIcon(file.fileType)" size="20" />
         </div>
       </div>
     </transition>
@@ -170,24 +170,24 @@ function handleDragStart(event: DragEvent) {
 <style scoped>
 .lazy-file-preview {
   width: 100%;
-  min-height: 80px;
+  min-height: 40px;
 }
 
 .file-preview {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .file-preview:hover {
-  transform: scale(1.05);
+  transform: scale(1.03);
   border-color: rgba(var(--v-theme-primary), 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .file-preview-image {
