@@ -167,6 +167,15 @@ const dmScreen = computed(() => dmScreensStore.currentDmScreen)
 const lastFetchedLibraryId = ref<number | null>(null)
 const lastDmScreenId = ref<string | null>(null)
 
+// Initialize categories on mount
+onMounted(async () => {
+  if (libraryId.value && dmScreen.value) {
+    await fileCategoriesStore.fetchCategories(libraryId.value)
+    lastFetchedLibraryId.value = libraryId.value
+    lastDmScreenId.value = dmScreen.value.id
+  }
+})
+
 // Watch for libraryId changes to load categories (only if libraryId changed)
 watch(libraryId, async (newLibraryId) => {
   // Only fetch if:
@@ -178,9 +187,9 @@ watch(libraryId, async (newLibraryId) => {
     lastFetchedLibraryId.value = newLibraryId
     lastDmScreenId.value = dmScreen.value.id
   }
-}, { immediate: true })
+})
 
-// Watch for dmScreen ID changes (when switching between screens or initial load)
+// Watch for dmScreen ID changes (when switching between screens)
 watch(() => dmScreen.value?.id, async (newScreenId, oldScreenId) => {
   // Only fetch if:
   // 1. We have a screen ID
@@ -194,7 +203,7 @@ watch(() => dmScreen.value?.id, async (newScreenId, oldScreenId) => {
     }
     lastDmScreenId.value = newScreenId
   }
-}, { immediate: true })
+})
 
 const pinnedCategories = computed(() => {
   if (!dmScreen.value?.settings?.pinnedCategories) return []

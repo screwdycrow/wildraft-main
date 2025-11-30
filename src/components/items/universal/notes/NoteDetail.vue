@@ -1,68 +1,67 @@
 <template>
   <div class="note-detail" :style="backgroundImageStyle">
-    <v-card class="glass-card mb-4" elevation="0">
-      <v-card-title class="d-flex align-center">
-        <v-icon icon="mdi-note-text" size="32" class="mr-3" color="#95A5A6" />
-        <div>
-          <div class="text-h5 font-weight-bold">{{ item.name }}</div>
-        </div>
-        <v-spacer />
-        <v-btn  variant="text" @click="$emit('edit')"> 
-          <v-icon size="small" class="mr-1">mdi-pencil</v-icon>
-          <span class="btn-text-mobile">Edit</span>
-        </v-btn>
-      </v-card-title>
-    </v-card>
-
-    <v-row no-gutters class="">
+    <v-row no-gutters class="note-detail-row">
       <!-- Sections -->
-      <v-col class="glass-card" cols="12" md="2">
-        <div class="mb-4">
-          <v-card-text class="pa-0">
-            <v-list nav density="compact">
-              <v-list-item
-                class="glass-card-item"
-                rounded="lg"
-                :class="{ 'active-item': activeSection === 'main' }"
-                @click="setActiveSection('main')"
-              >
-                <v-list-item-title>{{ item.name || 'Main' }}</v-list-item-title>
-              </v-list-item>
-              <v-divider class="my-2" />
-              <v-list-subheader v-if="orderedChapters.length">Chapters</v-list-subheader>
-              <v-list-item
-                v-for="chapter in orderedChapters"
-                :key="chapter.id"
-                rounded="lg"
-                :class="{ 'active-item': activeSection === chapter.id }"
-                @click="setActiveSection(chapter.id!)"
-              >
-                <v-list-item-title>
-                  {{ chapter.title || `Chapter ${chapter.order}` }}
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card-text>
+      <v-col class="note-sidebar" cols="12" md="2">
+        <div class="sidebar-content-wrapper">
+          <div class="mb-4">
+            <v-card-text class="pa-0">
+              <v-list nav density="compact">
+                <v-list-item
+                  class="glass-card-item"
+                  rounded="lg"
+                  :class="{ 'active-item': activeSection === 'main' }"
+                  @click="setActiveSection('main')"
+                >
+                  <v-list-item-title>{{ item.name || 'Main' }}</v-list-item-title>
+                </v-list-item>
+                <v-divider class="my-2" />
+                <v-list-subheader v-if="orderedChapters.length">Chapters</v-list-subheader>
+                <v-list-item
+                  v-for="chapter in orderedChapters"
+                  :key="chapter.id"
+                  rounded="lg"
+                  :class="{ 'active-item': activeSection === chapter.id }"
+                  @click="setActiveSection(chapter.id!)"
+                >
+                  <v-list-item-title>
+                    {{ chapter.title || `Chapter ${chapter.order}` }}
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </div>
+     
+          <attached-files-grid
+            v-if="fileIds.length"
+            class="attached-files-grid"
+            :file-ids="fileIds"
+            :featured-image-id="item.featuredImage?.id"
+            :columns="2"
+            :read-only="true"
+          />
         </div>
-   
-        <attached-files-grid
-          v-if="fileIds.length"
-          class=""
-          :file-ids="fileIds"
-          :featured-image-id="item.featuredImage?.id"
-          :columns="2"
-          :read-only="true"
-        />
       </v-col>
 
       <!-- Content -->
-      <v-col class="glass-card" cols="12" md="10">
-        <div>
+      <v-col class="note-content-col" cols="12" md="10">
+        <div class="note-content-wrapper">
           <v-card-text class="pa-6">
             <div class="note-body">
-              <h1 class="text-h3 font-weight-bold mb-4">
-                {{ activeSectionTitle }}
-              </h1>
+              <div class="section-header d-flex align-center mb-4">
+                <h1 class="text-h3 font-weight-bold">
+                  {{ activeSectionTitle }}
+                </h1>
+                <v-btn 
+                  variant="text" 
+                  size="small"
+                  class="ml-3"
+                  @click="handleEdit"
+                > 
+                  <v-icon size="small" class="mr-1">mdi-pencil</v-icon>
+                  <span>Edit</span>
+                </v-btn>
+              </div>
               <article
                 v-if="activeSection === 'main'"
                 v-html="renderedMainContent"
@@ -98,7 +97,9 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits(['edit'])
+const emit = defineEmits<{
+  (e: 'edit', item: LibraryItem): void
+}>()
 
 const filesStore = useFilesStore()
 
@@ -223,6 +224,10 @@ function setActiveSection(sectionId: 'main' | string) {
   }
 }
 
+function handleEdit() {
+  emit('edit', props.item)
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleString(undefined, {
     year: 'numeric',
@@ -237,9 +242,98 @@ function formatDate(dateString: string) {
 <style scoped>
 .note-detail {
   width: 100%;
+  height: 100%;
   position: relative;
-  min-height: 100vh;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: visible;
 }
+
+.note-sidebar {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Sidebar content wrapper */
+.sidebar-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 16px;
+}
+
+/* Scrollbar styling for sidebar */
+.sidebar-content-wrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.sidebar-content-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Firefox scrollbar */
+.sidebar-content-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+}
+
+/* Attachment grid styling */
+.attached-files-grid {
+  padding: 12px;
+}
+
+/* Reduce spacing in attachment grid */
+.attached-files-grid :deep(.v-row) {
+  margin: 0 !important;
+  gap: 4px !important;
+}
+
+.attached-files-grid :deep(.v-col) {
+  padding: 2px !important;
+}
+
+.attached-files-grid :deep(.v-card),
+.attached-files-grid :deep(.media-card) {
+  margin: 0 !important;
+}
+
+/* Note content wrapper */
+.note-content-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.note-content-wrapper .v-card-text {
+  width: 100%;
+}
+
 
 .note-detail::before {
   content: '';
@@ -248,8 +342,10 @@ function formatDate(dateString: string) {
   left: 0;
   width: 50vw;
   height: calc(50vw * 4 / 3);
-  max-height: calc(100vh - 50px);
+  max-height: 600px;
+  max-width: 100vw;
   background-image: var(--bg-image);
+  filter: blur(2px);
   background-size: cover;
   background-position: left center;
   background-repeat: no-repeat;
@@ -264,11 +360,18 @@ function formatDate(dateString: string) {
     linear-gradient(to right, black 0%, black 60%, transparent 100%),
     linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
   -webkit-mask-composite: source-in;
+  clip-path: inset(0);
 }
 
 .note-detail > * {
   position: relative;
   z-index: 1;
+}
+
+.note-detail-row {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
 }
 
 .detail-grid {
@@ -284,9 +387,25 @@ function formatDate(dateString: string) {
   transition: background 0.2s ease;
 }
 
+/* Make all list items transparent */
+:deep(.v-list),
+:deep(.v-list-item),
+:deep(.glass-card-item),
+:deep(.v-list-subheader) {
+  background: transparent !important;
+}
+
+:deep(.v-list-item:hover) {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 .active-item {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08) !important;
   border-left: 3px solid rgba(148, 197, 255, 0.7);
+}
+
+.active-item:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
 }
 
 .content-card {
@@ -298,6 +417,15 @@ function formatDate(dateString: string) {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 16px;
+}
+
+.section-header {
+  gap: 8px;
+}
+
+.section-header h1 {
+  margin: 0;
+  flex: 1;
 }
 
 .note-body {

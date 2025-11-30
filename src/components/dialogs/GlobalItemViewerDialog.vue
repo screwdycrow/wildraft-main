@@ -6,31 +6,14 @@
     scrollable
     @update:model-value="handleClose"
   >
-    <v-card v-if="dialogsStore.itemViewerData" class="item-viewer-dialog">
-      <v-card-title class="d-flex align-center justify-space-between">
-        <div class="d-flex align-center gap-2">
-          <v-icon icon="mdi-eye" />
-          <span>{{ dialogsStore.itemViewerData.item.name }}</span>
-        </div>
-        <div class="d-flex gap-2">
-          <v-btn
-            icon="mdi-pencil"
-            variant="text"
-            @click="handleEdit(dialogsStore.itemViewerData.item)"
-          >
-            <v-icon />
-            <v-tooltip activator="parent" location="bottom">
-              Edit Item
-            </v-tooltip>
-          </v-btn>
-          <v-btn
+  <v-btn
+      class="close-button"
             icon="mdi-close"
             variant="text"
             @click="dialogsStore.closeItemViewer()"
           />
-        </div>
-      </v-card-title>
-      <v-divider />
+    <v-card v-if="dialogsStore.itemViewerData" class="item-viewer-dialog">
+
       <v-card-text class="pa-0 item-viewer-content">
         <component
           v-if="detailComponent"
@@ -38,7 +21,7 @@
           :item="dialogsStore.itemViewerData.item"
           :can-edit="true"
           :initial-chapter-id="dialogsStore.itemViewerData.chapterId"
-          @edit="handleEdit(dialogsStore.itemViewerData.item)"
+          @edit="handleEdit"
           @delete="handleDelete"
         />
         <div v-else class="pa-6">
@@ -75,12 +58,13 @@ function handleClose(value: boolean) {
   }
 }
 
-function handleEdit(item: LibraryItem) {
+function handleEdit(item?: LibraryItem) {
   // Close viewer and open editor
   const libraryId = dialogsStore.itemViewerData?.libraryId
+  const itemToEdit = item || dialogsStore.itemViewerData?.item
   dialogsStore.closeItemViewer()
-  if (libraryId) {
-    dialogsStore.openItemEditor(item, libraryId)
+  if (libraryId && itemToEdit) {
+    dialogsStore.openItemEditor(itemToEdit, libraryId)
   }
 }
 
@@ -96,6 +80,7 @@ function handleDelete() {
 }
 
 .item-viewer-dialog {
+  background-color: rgba(var(--v-theme-card-background), 0.9)!important;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -104,6 +89,15 @@ function handleDelete() {
 .item-viewer-content {
   flex: 1;
   overflow: auto;
+}
+.close-button {
+  position: fixed;
+  top: -20px;
+  right: -10px;
+  z-index: 1000;
+  background: rgba(var(--v-theme-surface), 0.9) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 </style>
 

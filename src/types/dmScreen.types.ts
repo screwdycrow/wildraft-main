@@ -62,6 +62,282 @@ export interface EffectConfig {
   lightPoolSize?: number       // 0.5-3, multiplier for light pool size (1 = 100% of node)
 }
 
+// =====================================================
+// SVG SHAPE TYPES for ShapeNode
+// =====================================================
+
+export type SVGShapeType = 
+  | 'rectangle'
+  | 'roundedRect'
+  | 'circle'
+  | 'ellipse'
+  | 'triangle'
+  | 'diamond'
+  | 'pentagon'
+  | 'hexagon'
+  | 'star'
+  | 'arrow'
+  | 'arrowDouble'
+  | 'cross'
+  | 'heart'
+  | 'cloud'
+  | 'speech'
+  | 'line'
+  | 'custom' // Custom SVG path
+
+// Point for custom path editing
+export interface SVGPathPoint {
+  x: number
+  y: number
+  type: 'M' | 'L' | 'C' | 'Q' | 'Z' // Move, Line, Cubic bezier, Quadratic bezier, Close
+  // Control points for curves
+  cx1?: number
+  cy1?: number
+  cx2?: number
+  cy2?: number
+}
+
+// Gradient stop for gradient fills
+export interface SVGGradientStop {
+  offset: number  // 0-100 percentage
+  color: string   // hex color
+  opacity: number // 0-1
+}
+
+// Fill configuration
+export interface SVGFillConfig {
+  type: 'solid' | 'linearGradient' | 'radialGradient' | 'none'
+  color: string           // Primary color (for solid)
+  opacity: number         // Fill opacity 0-1
+  // Gradient options
+  gradientStops?: SVGGradientStop[]
+  gradientAngle?: number  // 0-360 for linear gradient direction
+}
+
+// Stroke/Border configuration
+export interface SVGStrokeConfig {
+  enabled: boolean
+  color: string
+  width: number          // Stroke width in pixels
+  opacity: number        // Stroke opacity 0-1
+  dashArray?: string     // e.g., "5,5" for dashed, "10,5,2,5" for complex
+  lineCap?: 'butt' | 'round' | 'square'
+  lineJoin?: 'miter' | 'round' | 'bevel'
+}
+
+// Shadow configuration
+export interface SVGShadowConfig {
+  enabled: boolean
+  color: string
+  offsetX: number
+  offsetY: number
+  blur: number
+  opacity: number
+}
+
+// Complete shape data
+export interface SVGShapeData {
+  // Shape type and path
+  shapeType: SVGShapeType
+  customPath?: string        // SVG path d attribute for custom shapes
+  pathPoints?: SVGPathPoint[] // Editable points for path editor
+  
+  // Appearance
+  fill: SVGFillConfig
+  stroke: SVGStrokeConfig
+  shadow?: SVGShadowConfig
+  
+  // Shape-specific options
+  cornerRadius?: number      // For roundedRect
+  points?: number            // For star (number of points)
+  innerRadius?: number       // For star (inner radius percentage)
+  arrowHeadSize?: number     // For arrow shapes
+  
+  // Text label
+  label?: string
+  labelColor?: string
+  labelFontSize?: number
+  labelFontWeight?: 'normal' | 'bold'
+  
+  // Transform
+  rotation?: number          // Rotation in degrees (separate from node rotation)
+  flipX?: boolean
+  flipY?: boolean
+}
+
+// Shape preset for quick selection
+export interface SVGShapePreset {
+  id: string
+  name: string
+  icon: string
+  shapeType: SVGShapeType
+  defaultData: Partial<SVGShapeData>
+  svgPath?: string  // Pre-defined SVG path for the shape
+}
+
+// Default shape data factory
+export function getDefaultSVGShapeData(shapeType: SVGShapeType = 'rectangle'): SVGShapeData {
+  return {
+    shapeType,
+    fill: {
+      type: 'solid',
+      color: '#6366f1',
+      opacity: 0.8,
+    },
+    stroke: {
+      enabled: true,
+      color: '#ffffff',
+      width: 2,
+      opacity: 1,
+      lineCap: 'round',
+      lineJoin: 'round',
+    },
+    shadow: {
+      enabled: true,
+      color: '#000000',
+      offsetX: 0,
+      offsetY: 2,
+      blur: 8,
+      opacity: 0.3,
+    },
+    cornerRadius: 8,
+    points: 5,
+    innerRadius: 40,
+    arrowHeadSize: 30,
+    labelColor: '#ffffff',
+    labelFontSize: 14,
+    labelFontWeight: 'bold',
+  }
+}
+
+// SVG path generators for each shape type
+export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?: any) => string> = {
+  rectangle: (w, h) => `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`,
+  
+  roundedRect: (w, h, opts) => {
+    const r = Math.min(opts?.cornerRadius || 8, w / 2, h / 2)
+    return `M ${r} 0 L ${w - r} 0 Q ${w} 0 ${w} ${r} L ${w} ${h - r} Q ${w} ${h} ${w - r} ${h} L ${r} ${h} Q 0 ${h} 0 ${h - r} L 0 ${r} Q 0 0 ${r} 0 Z`
+  },
+  
+  circle: (w, h) => {
+    const rx = w / 2
+    const ry = h / 2
+    return `M ${rx} 0 A ${rx} ${ry} 0 1 1 ${rx} ${h} A ${rx} ${ry} 0 1 1 ${rx} 0 Z`
+  },
+  
+  ellipse: (w, h) => {
+    const rx = w / 2
+    const ry = h / 2
+    return `M ${rx} 0 A ${rx} ${ry} 0 1 1 ${rx} ${h} A ${rx} ${ry} 0 1 1 ${rx} 0 Z`
+  },
+  
+  triangle: (w, h) => `M ${w / 2} 0 L ${w} ${h} L 0 ${h} Z`,
+  
+  diamond: (w, h) => `M ${w / 2} 0 L ${w} ${h / 2} L ${w / 2} ${h} L 0 ${h / 2} Z`,
+  
+  pentagon: (w, h) => {
+    const cx = w / 2, cy = h / 2
+    const r = Math.min(w, h) / 2
+    const points = []
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * 72 - 90) * Math.PI / 180
+      points.push(`${cx + r * Math.cos(angle)} ${cy + r * Math.sin(angle)}`)
+    }
+    return `M ${points.join(' L ')} Z`
+  },
+  
+  hexagon: (w, h) => {
+    const cx = w / 2, cy = h / 2
+    const r = Math.min(w, h) / 2
+    const points = []
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * 60 - 90) * Math.PI / 180
+      points.push(`${cx + r * Math.cos(angle)} ${cy + r * Math.sin(angle)}`)
+    }
+    return `M ${points.join(' L ')} Z`
+  },
+  
+  star: (w, h, opts) => {
+    const cx = w / 2, cy = h / 2
+    const outerR = Math.min(w, h) / 2
+    const innerR = outerR * (opts?.innerRadius || 40) / 100
+    const numPoints = opts?.points || 5
+    const points = []
+    for (let i = 0; i < numPoints * 2; i++) {
+      const angle = (i * 180 / numPoints - 90) * Math.PI / 180
+      const r = i % 2 === 0 ? outerR : innerR
+      points.push(`${cx + r * Math.cos(angle)} ${cy + r * Math.sin(angle)}`)
+    }
+    return `M ${points.join(' L ')} Z`
+  },
+  
+  arrow: (w, h, opts) => {
+    const headSize = (opts?.arrowHeadSize || 30) / 100
+    const headW = w * headSize
+    const bodyH = h * 0.4
+    const bodyY = (h - bodyH) / 2
+    return `M 0 ${bodyY} L ${w - headW} ${bodyY} L ${w - headW} 0 L ${w} ${h / 2} L ${w - headW} ${h} L ${w - headW} ${bodyY + bodyH} L 0 ${bodyY + bodyH} Z`
+  },
+  
+  arrowDouble: (w, h, opts) => {
+    const headSize = (opts?.arrowHeadSize || 25) / 100
+    const headW = w * headSize
+    const bodyH = h * 0.35
+    const bodyY = (h - bodyH) / 2
+    return `M 0 ${h / 2} L ${headW} 0 L ${headW} ${bodyY} L ${w - headW} ${bodyY} L ${w - headW} 0 L ${w} ${h / 2} L ${w - headW} ${h} L ${w - headW} ${bodyY + bodyH} L ${headW} ${bodyY + bodyH} L ${headW} ${h} Z`
+  },
+  
+  cross: (w, h) => {
+    const armW = w * 0.33
+    const armH = h * 0.33
+    const x1 = (w - armW) / 2
+    const x2 = x1 + armW
+    const y1 = (h - armH) / 2
+    const y2 = y1 + armH
+    return `M ${x1} 0 L ${x2} 0 L ${x2} ${y1} L ${w} ${y1} L ${w} ${y2} L ${x2} ${y2} L ${x2} ${h} L ${x1} ${h} L ${x1} ${y2} L 0 ${y2} L 0 ${y1} L ${x1} ${y1} Z`
+  },
+  
+  heart: (w, h) => {
+    const cx = w / 2
+    return `M ${cx} ${h * 0.25} C ${cx} ${h * 0.1} ${w * 0.25} 0 ${w * 0.15} 0 C 0 0 0 ${h * 0.35} 0 ${h * 0.35} C 0 ${h * 0.55} ${cx * 0.5} ${h * 0.75} ${cx} ${h} C ${cx * 1.5} ${h * 0.75} ${w} ${h * 0.55} ${w} ${h * 0.35} C ${w} ${h * 0.35} ${w} 0 ${w * 0.85} 0 C ${w * 0.75} 0 ${cx} ${h * 0.1} ${cx} ${h * 0.25} Z`
+  },
+  
+  cloud: (w, h) => {
+    return `M ${w * 0.25} ${h * 0.6} C ${w * 0.1} ${h * 0.6} 0 ${h * 0.45} 0 ${h * 0.35} C 0 ${h * 0.2} ${w * 0.15} ${h * 0.1} ${w * 0.3} ${h * 0.15} C ${w * 0.35} 0 ${w * 0.55} 0 ${w * 0.6} ${h * 0.1} C ${w * 0.75} 0 ${w * 0.95} ${h * 0.1} ${w} ${h * 0.3} C ${w} ${h * 0.5} ${w * 0.85} ${h * 0.6} ${w * 0.75} ${h * 0.6} Z`
+  },
+  
+  speech: (w, h) => {
+    const tailH = h * 0.2
+    const bodyH = h - tailH
+    const r = Math.min(w * 0.15, bodyH * 0.3)
+    return `M ${r} 0 L ${w - r} 0 Q ${w} 0 ${w} ${r} L ${w} ${bodyH - r} Q ${w} ${bodyH} ${w - r} ${bodyH} L ${w * 0.35} ${bodyH} L ${w * 0.15} ${h} L ${w * 0.25} ${bodyH} L ${r} ${bodyH} Q 0 ${bodyH} 0 ${bodyH - r} L 0 ${r} Q 0 0 ${r} 0 Z`
+  },
+  
+  line: (w, h) => `M 0 ${h / 2} L ${w} ${h / 2}`,
+  
+  custom: () => '', // Custom path is stored in customPath
+}
+
+// Shape presets for the shape picker
+export const SVG_SHAPE_PRESETS: SVGShapePreset[] = [
+  { id: 'rectangle', name: 'Rectangle', icon: 'mdi-rectangle-outline', shapeType: 'rectangle', defaultData: {} },
+  { id: 'roundedRect', name: 'Rounded Rectangle', icon: 'mdi-card-outline', shapeType: 'roundedRect', defaultData: { cornerRadius: 12 } },
+  { id: 'circle', name: 'Circle', icon: 'mdi-circle-outline', shapeType: 'circle', defaultData: {} },
+  { id: 'ellipse', name: 'Ellipse', icon: 'mdi-ellipse-outline', shapeType: 'ellipse', defaultData: {} },
+  { id: 'triangle', name: 'Triangle', icon: 'mdi-triangle-outline', shapeType: 'triangle', defaultData: {} },
+  { id: 'diamond', name: 'Diamond', icon: 'mdi-rhombus-outline', shapeType: 'diamond', defaultData: {} },
+  { id: 'pentagon', name: 'Pentagon', icon: 'mdi-pentagon-outline', shapeType: 'pentagon', defaultData: {} },
+  { id: 'hexagon', name: 'Hexagon', icon: 'mdi-hexagon-outline', shapeType: 'hexagon', defaultData: {} },
+  { id: 'star', name: 'Star', icon: 'mdi-star-outline', shapeType: 'star', defaultData: { points: 5, innerRadius: 40 } },
+  { id: 'arrow', name: 'Arrow', icon: 'mdi-arrow-right-bold-outline', shapeType: 'arrow', defaultData: { arrowHeadSize: 30 } },
+  { id: 'arrowDouble', name: 'Double Arrow', icon: 'mdi-arrow-left-right-bold-outline', shapeType: 'arrowDouble', defaultData: { arrowHeadSize: 25 } },
+  { id: 'cross', name: 'Cross', icon: 'mdi-plus-thick', shapeType: 'cross', defaultData: {} },
+  { id: 'heart', name: 'Heart', icon: 'mdi-heart-outline', shapeType: 'heart', defaultData: {} },
+  { id: 'cloud', name: 'Cloud', icon: 'mdi-cloud-outline', shapeType: 'cloud', defaultData: {} },
+  { id: 'speech', name: 'Speech Bubble', icon: 'mdi-message-outline', shapeType: 'speech', defaultData: {} },
+  { id: 'line', name: 'Line', icon: 'mdi-minus', shapeType: 'line', defaultData: { stroke: { enabled: true, width: 4 } } },
+]
+
 // Vue Flow node position and options
 export interface VueFlowNodeOptions {
   x?: number
@@ -122,8 +398,10 @@ export interface DmScreenItem {
     textColor?: string
     textAlign?: string
     
-    // For ShapeNode
-    shape?: 'circle' | 'square' | 'triangle'
+    // For ShapeNode (SVG-based)
+    shape?: SVGShapeType
+    shapeData?: SVGShapeData
+    // Legacy simple shape properties (kept for backwards compatibility)
     color?: string
     opacity?: number
     borderColor?: string

@@ -40,6 +40,7 @@
       >
         <media-card
           :file="file"
+          :hide-title="true"
           :deletable="!readOnly"
           :show-featured-toggle="!readOnly"
           :is-featured="file.id === featuredImageId"

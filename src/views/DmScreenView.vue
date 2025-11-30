@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
@@ -129,11 +129,40 @@ onMounted(async () => {
   await loadDmScreen()
 })
 
+onUnmounted(() => {
+  // Clear selection when leaving the view
+  dmScreensStore.selectItem(null)
+})
+
+// Watch for route changes (navigating between DM screens)
+watch(
+  () => route.params.dmScreenId,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      // Clear current state before loading new screen
+      dmScreensStore.selectItem(null)
+      await loadDmScreen()
+    }
+  }
+)
+
+// Also watch libraryId in case that changes
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId && dmScreenId.value) {
+      dmScreensStore.selectItem(null)
+      await loadDmScreen()
+    }
+  }
+)
+
 async function loadDmScreen() {
   if (!libraryId.value || !dmScreenId.value) return
 
   try {
-    await dmScreensStore.fetchDmScreen(libraryId.value, dmScreenId.value)
+    // Force refresh to ensure we get fresh data
+    await dmScreensStore.fetchDmScreen(libraryId.value, dmScreenId.value, true)
   } catch (error) {
     toast.error('Failed to load DM screen')
   }

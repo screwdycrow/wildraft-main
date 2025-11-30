@@ -525,7 +525,13 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     return newItem
   }
   
-  function addShapeNode(dmScreenId: string, libraryId: number, position: { x: number; y: number }, targetLayer?: string) {
+  function addShapeNode(
+    dmScreenId: string, 
+    libraryId: number, 
+    position: { x: number; y: number }, 
+    targetLayer?: string,
+    shapeType?: string
+  ) {
     const screen = findDmScreen(dmScreenId)
     const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
     
@@ -533,18 +539,115 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
     const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
     
+    // Use new SVG shape data structure
     const newItem: DmScreenItem = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: 'ShapeNode',
       layer: layerId,
       order: maxOrder + 1,
       data: {
-        shape: 'circle',
+        shapeData: {
+          shapeType: (shapeType as any) || 'rectangle',
+          fill: {
+            type: 'solid',
+            color: '#6366f1',
+            opacity: 0.8,
+          },
+          stroke: {
+            enabled: true,
+            color: '#ffffff',
+            width: 2,
+            opacity: 1,
+            lineCap: 'round',
+            lineJoin: 'round',
+          },
+          shadow: {
+            enabled: true,
+            color: '#000000',
+            offsetX: 0,
+            offsetY: 2,
+            blur: 8,
+            opacity: 0.3,
+          },
+          cornerRadius: 8,
+          points: 5,
+          innerRadius: 40,
+          arrowHeadSize: 30,
+          labelColor: '#ffffff',
+          labelFontSize: 14,
+          labelFontWeight: 'bold',
+        },
+      },
+      nodeOptions: {
+        x: position.x,
+        y: position.y,
+        position: position,
+        width: 150,
+        height: 150,
+        resizable: true,
+      },
+      isMinimized: false,
+    }
+    
+    addItem(dmScreenId, libraryId, newItem)
+    return newItem
+  }
+  
+  function addShapeNodeWithPreset(
+    dmScreenId: string, 
+    libraryId: number, 
+    preset: { id: string; name: string; shapeType: string; defaultData?: any },
+    position: { x: number; y: number }, 
+    targetLayer?: string
+  ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
+    // Merge preset defaults with base defaults
+    const baseShapeData = {
+      shapeType: preset.shapeType as any,
+      fill: {
+        type: 'solid' as const,
         color: '#6366f1',
         opacity: 0.8,
-        borderColor: '#ffffff',
-        borderWidth: 2,
-        label: '',
+      },
+      stroke: {
+        enabled: true,
+        color: '#ffffff',
+        width: 2,
+        opacity: 1,
+        lineCap: 'round' as const,
+        lineJoin: 'round' as const,
+      },
+      shadow: {
+        enabled: true,
+        color: '#000000',
+        offsetX: 0,
+        offsetY: 2,
+        blur: 8,
+        opacity: 0.3,
+      },
+      cornerRadius: 8,
+      points: 5,
+      innerRadius: 40,
+      arrowHeadSize: 30,
+      labelColor: '#ffffff',
+      labelFontSize: 14,
+      labelFontWeight: 'bold' as const,
+      ...preset.defaultData, // Override with preset defaults
+    }
+    
+    const newItem: DmScreenItem = {
+      id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'ShapeNode',
+      layer: layerId,
+      order: maxOrder + 1,
+      data: {
+        shapeData: baseShapeData,
       },
       nodeOptions: {
         x: position.x,
@@ -707,6 +810,13 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
   }
 
   async function fetchDmScreen(libraryId: number, dmScreenId: string, forceRefresh: boolean = false) {
+    // If we're loading a different screen than currently displayed, clear it first
+    // This prevents showing stale data from a previous screen
+    if (currentDmScreen.value?.id !== dmScreenId) {
+      currentDmScreen.value = null
+      selectedItemId.value = null
+    }
+    
     if (!forceRefresh) {
       const cached = getDmScreenById.value(dmScreenId)
       if (cached && cacheMetadata.value.libraryId === libraryId) {
@@ -1260,6 +1370,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     // Add Item Helpers
     addTextNode,
     addShapeNode,
+    addShapeNodeWithPreset,
     addEffectNode,
     addBackgroundImage,
     addUserFile,

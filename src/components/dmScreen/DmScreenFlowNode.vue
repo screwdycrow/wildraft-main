@@ -465,6 +465,8 @@
         :snap-to-grid="data.snapToGrid"
         :grid-size="data.gridSize"
         :background-opacity="data.backgroundOpacity"
+        :selected="isSelected"
+        :rotation="rotation"
         @update="handleItemUpdate"
         @delete="handleDelete"
       />
@@ -826,54 +828,88 @@ function startResize(event: MouseEvent, handle: string) {
 function handleResizeMove(event: MouseEvent) {
   if (!isResizing.value || !resizeHandle.value) return
   
-  // Get raw mouse delta
+  // Get raw mouse delta in screen space
   const rawDx = event.clientX - resizeStartMouse.value.x
   const rawDy = event.clientY - resizeStartMouse.value.y
   
-  // Transform mouse delta by inverse of rotation to get local coordinates
-  const angleRad = -(currentRotation.value * Math.PI) / 180
+  const angleRad = (currentRotation.value * Math.PI) / 180
   const cos = Math.cos(angleRad)
   const sin = Math.sin(angleRad)
   
-  const dx = rawDx * cos - rawDy * sin
-  const dy = rawDx * sin + rawDy * cos
+  // Transform mouse delta to local (rotated) coordinate space
+  // This makes the resize feel natural relative to the rotated handles
+  const localDx = rawDx * cos + rawDy * sin
+  const localDy = -rawDx * sin + rawDy * cos
   
   let newWidth = resizeStartDimensions.value.width
   let newHeight = resizeStartDimensions.value.height
-  let newX = resizeStartPosition.value.x
-  let newY = resizeStartPosition.value.y
   
+  // Calculate dimension changes based on handle
   const handle = resizeHandle.value
+  let widthDelta = 0
+  let heightDelta = 0
+  let anchorX = 0 // -1 = left edge anchored, 0 = center, 1 = right edge anchored
+  let anchorY = 0 // -1 = top edge anchored, 0 = center, 1 = bottom edge anchored
   
-  // Apply delta based on which handle is being dragged
   if (handle.includes('right')) {
-    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + dx)
+    widthDelta = localDx
+    anchorX = -1 // Left edge stays put
   }
   if (handle.includes('left')) {
-    const widthChange = -dx
-    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthChange)
-    if (newWidth > MIN_WIDTH) {
-      // Adjust position to keep right edge in place (in rotated space)
-      const actualWidthChange = newWidth - resizeStartDimensions.value.width
-      const posAngleRad = (currentRotation.value * Math.PI) / 180
-      newX = resizeStartPosition.value.x - actualWidthChange * Math.cos(posAngleRad)
-      newY = resizeStartPosition.value.y - actualWidthChange * Math.sin(posAngleRad)
-    }
+    widthDelta = -localDx
+    anchorX = 1 // Right edge stays put
   }
   if (handle.includes('bottom')) {
-    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + dy)
+    heightDelta = localDy
+    anchorY = -1 // Top edge stays put
   }
   if (handle.includes('top')) {
-    const heightChange = -dy
-    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightChange)
-    if (newHeight > MIN_HEIGHT) {
-      // Adjust position to keep bottom edge in place (in rotated space)
-      const actualHeightChange = newHeight - resizeStartDimensions.value.height
-      const posAngleRad = (currentRotation.value * Math.PI) / 180
-      newX = resizeStartPosition.value.x + actualHeightChange * Math.sin(posAngleRad)
-      newY = resizeStartPosition.value.y - actualHeightChange * Math.cos(posAngleRad)
-    }
+    heightDelta = -localDy
+    anchorY = 1 // Bottom edge stays put
   }
+  
+  // Apply deltas with minimum constraints
+  newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthDelta)
+  newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightDelta)
+  
+  // Calculate actual change (may be clamped)
+  const actualWidthDelta = newWidth - resizeStartDimensions.value.width
+  const actualHeightDelta = newHeight - resizeStartDimensions.value.height
+  
+  // Calculate position adjustment
+  // The node's position is its top-left corner in world space
+  // When resizing with rotation, we need to keep the anchor point fixed
+  // The anchor point in local space is at (anchorX * width/2, anchorY * height/2) from center
+  
+  // Calculate how much the center moves in local space
+  // If left edge is anchored (anchorX = -1), center moves right by widthDelta/2
+  // If right edge is anchored (anchorX = 1), center moves left by widthDelta/2
+  const localCenterDx = -anchorX * actualWidthDelta / 2
+  const localCenterDy = -anchorY * actualHeightDelta / 2
+  
+  // Transform center movement back to world space
+  const worldCenterDx = localCenterDx * cos - localCenterDy * sin
+  const worldCenterDy = localCenterDx * sin + localCenterDy * cos
+  
+  // The node position is top-left, which is center - (width/2, height/2) in local space
+  // But we also need to account for how the top-left moves relative to the new center
+  const oldHalfWidth = resizeStartDimensions.value.width / 2
+  const oldHalfHeight = resizeStartDimensions.value.height / 2
+  const newHalfWidth = newWidth / 2
+  const newHalfHeight = newHeight / 2
+  
+  // In local space, top-left is at (-halfWidth, -halfHeight) from center
+  // Change in top-left position in local space due to size change:
+  const localTopLeftDx = -(newHalfWidth - oldHalfWidth)
+  const localTopLeftDy = -(newHalfHeight - oldHalfHeight)
+  
+  // Transform to world space
+  const worldTopLeftDx = localTopLeftDx * cos - localTopLeftDy * sin
+  const worldTopLeftDy = localTopLeftDx * sin + localTopLeftDy * cos
+  
+  // Final position = start position + center movement + top-left adjustment
+  const newX = resizeStartPosition.value.x + worldCenterDx + worldTopLeftDx
+  const newY = resizeStartPosition.value.y + worldCenterDy + worldTopLeftDy
   
   // Store current values for visual feedback and final save
   currentDimensions.value = { width: newWidth, height: newHeight }
@@ -1183,6 +1219,8 @@ onUnmounted(() => {
   height: 100%;
   position: relative;
   transform-origin: center center;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Effect node blend mode - allows blending with canvas content below */
@@ -1196,9 +1234,12 @@ onUnmounted(() => {
 .dm-screen-flow-node {
   width: 100%;
   height: 100%;
+  flex: 1;
   min-width: 30px;
   min-height: 30px;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .dm-screen-flow-node.is-token {

@@ -8,6 +8,7 @@
     >
       <VueFlow
         v-if="dmScreen"
+        :key="`vueflow-${dmScreen.id}`"
         ref="vueFlowRef"
         :nodes="nodes"
         :edges="[]"
@@ -45,9 +46,10 @@
         <!-- Unified Bottom Toolbar -->
         <Panel v-if="!isPortalMode" position="bottom-center" class="unified-bottom-panel">
           <div class="unified-toolbar">
-            <!-- Left: Effects Panel -->
+            <!-- Left: Effects & Shapes Panels -->
             <div class="toolbar-left">
               <EffectsPanel @add-effect="handleAddEffect" />
+              <ShapesPanel @add-shape="handleAddShape" />
             </div>
             
             <!-- Center: Main Actions (slot for toolbar from parent) -->
@@ -584,8 +586,9 @@ import LayerControl from './LayerControl.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import EffectsPanel from './EffectsPanel.vue'
+import ShapesPanel from './ShapesPanel.vue'
 import KitbashingDrawers from './KitbashingDrawers.vue'
-import type { EffectPreset } from '@/types/dmScreen.types'
+import type { EffectPreset, SVGShapePreset } from '@/types/dmScreen.types'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
@@ -822,6 +825,8 @@ const nodes = computed<Node[]>(() => {
         height,
         style: {
           opacity: itemOpacity,
+          // Make locked items transparent to clicks - clicks pass through to pane
+          pointerEvents: isLocked ? 'none' : 'auto',
         },
         zIndex: itemZIndex,
       }
@@ -840,6 +845,9 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
+  // Ensure layers are initialized (this persists default layers if none exist)
+  dmScreensStore.ensureLayers(props.dmScreen.id, props.dmScreen.libraryId)
+  
   // Load canvas background if set
   const canvasBackgroundId = props.dmScreen.settings?.canvasBackgroundImageId
   if (canvasBackgroundId) {
@@ -996,6 +1004,8 @@ function onNodeDragStop(event: NodeDragEvent) {
 function onNodeClick(event: any) {
   const nodeId = event.node?.id
   if (nodeId) {
+    // Note: Locked items have pointer-events: none, so clicks pass through
+    // to the pane and this handler won't be called for them
     dmScreensStore.selectItem(nodeId)
   }
 }
@@ -1032,6 +1042,9 @@ function handleNodeContextMenu(event: MouseEvent, nodeId: string) {
   
   event.preventDefault()
   event.stopPropagation()
+  
+  // Note: Locked items have pointer-events: none, so right-clicks pass through
+  // to the pane and handlePaneContextMenu will be called instead
   
   // Close any open menus first
   showPaneContextMenu.value = false
@@ -1488,6 +1501,51 @@ async function handleDrop(event: DragEvent) {
       }
     }
     
+    // Handle shape drops from ShapesPanel
+    if (parsed && parsed.type === 'shape-node') {
+      const dropPosition = project({ x: event.clientX, y: event.clientY })
+      const shapeSize = 150
+      
+      dmScreensStore.addShapeNodeWithPreset(
+        props.dmScreen.id,
+        props.dmScreen.libraryId,
+        parsed.shapePreset,
+        { x: dropPosition.x - shapeSize / 2, y: dropPosition.y - shapeSize / 2 },
+        parsed.targetLayer || 'screen'
+      )
+      
+      toast.success(`Added ${parsed.shapePreset.name} shape`)
+      return
+    }
+    
+    // Handle text/plain shape format
+    if (textData && textData.startsWith('shape:')) {
+      // Parse format: shape:shapeId:layerId
+      const parts = textData.split(':')
+      const shapeId = parts[1]
+      const targetLayer = parts[2] || 'screen'
+      
+      // Find the shape preset
+      const { SVG_SHAPE_PRESETS } = await import('@/types/dmScreen.types')
+      const preset = SVG_SHAPE_PRESETS.find(p => p.id === shapeId)
+      
+      if (preset) {
+        const dropPosition = project({ x: event.clientX, y: event.clientY })
+        const shapeSize = 150
+        
+        dmScreensStore.addShapeNodeWithPreset(
+          props.dmScreen.id,
+          props.dmScreen.libraryId,
+          preset,
+          { x: dropPosition.x - shapeSize / 2, y: dropPosition.y - shapeSize / 2 },
+          targetLayer
+        )
+        
+        toast.success(`Added ${preset.name} shape`)
+        return
+      }
+    }
+    
     // Handle file drops (existing logic)
     if (!parsed || !parsed.fileId) {
       if (textData && textData.startsWith('file:')) {
@@ -1559,6 +1617,22 @@ function handleAddEffect(preset: EffectPreset, layerId: string) {
   )
   
   toast.success(`Added ${preset.name} effect`)
+}
+
+// Handle adding shape from click (adds at viewport center)
+function handleAddShape(preset: SVGShapePreset, layerId: string) {
+  const shapeSize = 150
+  const center = getViewportCenter(shapeSize, shapeSize)
+  
+  dmScreensStore.addShapeNodeWithPreset(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    preset,
+    center,
+    layerId
+  )
+  
+  toast.success(`Added ${preset.name} shape`)
 }
 
 // Handle adding file from kitbashing drawers
@@ -1767,6 +1841,9 @@ defineExpose({
 .toolbar-left,
 .toolbar-right {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .toolbar-center {

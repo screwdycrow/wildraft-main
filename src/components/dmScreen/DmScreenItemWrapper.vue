@@ -30,7 +30,7 @@
     />
 
     <!-- Full View (all other types) -->
-    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' }" :style="item.data.isBackground ? {} : contentStyle">
+    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' }" :style="shouldApplyContentScaling ? contentStyle : {}">
       <!-- LibraryItemId -->
       <div 
         v-if="item.type === 'LibraryItemId' && libraryItem" 
@@ -146,6 +146,10 @@
       <shape-node
         v-else-if="item.type === 'ShapeNode'"
         :item="item"
+        :selected="props.selected"
+        :rotation="props.rotation"
+        :width="props.item.nodeOptions?.width"
+        :height="props.item.nodeOptions?.height"
         @update:data="handleShapeDataUpdate"
       />
 
@@ -197,6 +201,8 @@ interface Props {
   snapToGrid?: boolean
   gridSize?: number
   backgroundOpacity?: number
+  selected?: boolean
+  rotation?: number
 }
 
 const props = defineProps<Props>()
@@ -292,6 +298,16 @@ const nodeWidth = computed(() => {
 // Check if content should be scaled down (below 300px)
 const isScaled = computed(() => {
   return nodeWidth.value < 300
+})
+
+// Only apply content scaling to library items, not shapes/text/effects
+const shouldApplyContentScaling = computed(() => {
+  const type = props.item.type
+  // Don't scale backgrounds, shapes, text, effects, or tokens
+  if (props.item.data.isBackground) return false
+  if (type === 'ShapeNode' || type === 'TextNode' || type === 'EffectNode' || type === 'TokenNode') return false
+  // Only apply scaling for library items when scaled
+  return isScaled.value
 })
 
 // Wrapper style
@@ -436,13 +452,15 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 <style scoped>
 .dm-screen-item-wrapper {
   width: 100%;
-  height: 100%;;
+  height: 100%;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.01);
   overflow: hidden;
   user-select: none;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -586,8 +604,12 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 .item-content {
   width: 100%;
   height: 100%;
+  flex: 1;
+  min-height: 0; /* Important for flex children */
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .item-content.has-handle {
@@ -598,9 +620,19 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 .dm-screen-item-wrapper.transparent .item-content {
   overflow: visible;
   padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Shape node specific - ensure full fill */
+.dm-screen-item-wrapper.transparent .shape-node {
+  width: 100%;
+  height: 100%;
 }
 
 .item-content-wrapper {
+  flex: 1;
+  min-height: 0;
   pointer-events: auto;
   cursor: pointer;
   transition: transform 0.2s ease;
@@ -618,7 +650,11 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
 .library-item-content {
   width: 100%;
   height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .library-item-content :deep(.item-card-wrapper) {

@@ -224,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 import draggable from 'vuedraggable'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import type { DmScreenLayer } from '@/types/dmScreen.types'
@@ -242,6 +242,11 @@ const emit = defineEmits<{
 }>()
 
 const dmScreensStore = useDmScreensStore()
+
+// Ensure layers are initialized on mount
+onMounted(() => {
+  dmScreensStore.ensureLayers(props.dmScreenId, props.libraryId)
+})
 
 // Open state
 const isOpen = ref(false)
