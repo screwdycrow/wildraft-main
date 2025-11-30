@@ -1,124 +1,157 @@
 <template>
-  <Panel position="top-left" class="grid-panel">
-    <svg 
-      class="grid-svg" 
-      :width="viewportWidth"
-      :height="viewportHeight"
-      :style="gridTransformStyle"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <pattern 
-          :id="patternId" 
-          :width="scaledGridSize" 
-          :height="scaledGridSize" 
-          patternUnits="userSpaceOnUse"
-          :patternTransform="`translate(${patternOffset.x}, ${patternOffset.y})`"
-        >
-          <!-- Horizontal line -->
-          <line 
-            x1="0" 
-            :y1="scaledGridSize" 
-            :x2="scaledGridSize" 
-            :y2="scaledGridSize" 
-            :stroke="gridColor" 
-            :stroke-width="lineWidth"
-          />
-          <!-- Vertical line -->
-          <line 
-            :x1="scaledGridSize" 
-            y1="0" 
-            :x2="scaledGridSize" 
-            :y2="scaledGridSize" 
-            :stroke="gridColor" 
-            :stroke-width="lineWidth"
-          />
-        </pattern>
-      </defs>
-      <rect 
-        width="100%" 
-        height="100%" 
-        :fill="`url(#${patternId})`"
-        :opacity="gridOpacity"
-      />
-    </svg>
-  </Panel>
+  <!-- VueFlow Background component - properly synced with pan/zoom -->
+  <Background
+    :variant="BackgroundVariant.Lines"
+    :gap="gridSize"
+    :size="lineWidth"
+    :color="gridColorWithOpacity"
+    :offset="gridOffset"
+    class="vtt-grid-background"
+  />
+  
+  <!-- Major grid lines (second background layer) -->
+  <Background
+    v-if="showMajorGridLines"
+    :variant="BackgroundVariant.Lines"
+    :gap="majorGridSize"
+    :size="majorLineWidth"
+    :color="majorColorWithOpacity"
+    :offset="gridOffset"
+    class="vtt-major-grid-background"
+  />
+  
+  <!-- Scale indicator (fixed to screen) -->
+  <div v-if="showScaleIndicator" class="scale-indicator">
+    <div class="scale-bar">
+      <div class="scale-line" :style="scaleLineStyle" />
+      <span class="scale-label">{{ feetPerSquare }} ft</span>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { Panel, useVueFlow } from '@vue-flow/core'
+import { computed } from 'vue'
+import { useVueFlow } from '@vue-flow/core'
+import { Background, BackgroundVariant } from '@vue-flow/background'
 
 interface Props {
   gridSize?: number
   gridColor?: string
   gridOpacity?: number
   lineWidth?: number
+  offsetX?: number
+  offsetY?: number
+  showMajorGridLines?: boolean
+  majorGridInterval?: number
+  majorGridColor?: string
+  feetPerSquare?: number
+  showScaleIndicator?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  gridSize: 20,
-  gridColor: 'rgba(255, 255, 255, 0.3)',
-  gridOpacity: 0.3,
+  gridSize: 50,
+  gridColor: '#ffffff',
+  gridOpacity: 0.6,
   lineWidth: 1,
+  offsetX: 0,
+  offsetY: 0,
+  showMajorGridLines: true,
+  majorGridInterval: 5,
+  majorGridColor: '#ffffff',
+  feetPerSquare: 5,
+  showScaleIndicator: true,
 })
 
-const { viewport, dimensions } = useVueFlow()
+const { viewport } = useVueFlow()
 
-// Unique ID for the SVG pattern to avoid conflicts
-const patternId = computed(() => `grid-pattern-${Math.random().toString(36).substr(2, 9)}`)
+// Grid offset for alignment
+const gridOffset = computed(() => [props.offsetX, props.offsetY] as [number, number])
 
-// Viewport dimensions
-const viewportWidth = computed(() => dimensions.value.width || 2000)
-const viewportHeight = computed(() => dimensions.value.height || 2000)
+// Major grid size
+const majorGridSize = computed(() => props.gridSize * props.majorGridInterval)
+const majorLineWidth = computed(() => Math.max(2, props.lineWidth * 2))
 
-// Scale grid size based on zoom
-const scaledGridSize = computed(() => {
-  return props.gridSize * (viewport.value.zoom || 1)
-})
+// Convert hex to rgba
+function hexToRgba(hex: string, alpha: number): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+  if (result) {
+    const r = parseInt(result[1], 16)
+    const g = parseInt(result[2], 16)
+    const b = parseInt(result[3], 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  // Handle shorthand hex
+  const shortResult = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(hex)
+  if (shortResult) {
+    const r = parseInt(shortResult[1] + shortResult[1], 16)
+    const g = parseInt(shortResult[2] + shortResult[2], 16)
+    const b = parseInt(shortResult[3] + shortResult[3], 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  return `rgba(255, 255, 255, ${alpha})`
+}
 
-// Calculate pattern offset to align grid with viewport pan
-const patternOffset = computed(() => {
-  const zoom = viewport.value.zoom || 1
-  const x = (viewport.value.x || 0) * zoom % scaledGridSize.value
-  const y = (viewport.value.y || 0) * zoom % scaledGridSize.value
-  return { x, y }
-})
+// Colors with opacity
+const gridColorWithOpacity = computed(() => hexToRgba(props.gridColor, props.gridOpacity))
+const majorColorWithOpacity = computed(() => hexToRgba(props.majorGridColor || props.gridColor, Math.min(1, props.gridOpacity * 1.3)))
 
-// Transform style for the grid
-const gridTransformStyle = computed(() => ({
-  position: 'absolute' as const,
-  top: 0,
-  left: 0,
-  pointerEvents: 'none' as const,
-  zIndex: 9999,
+// Scale indicator width based on zoom
+const scaledGridSize = computed(() => props.gridSize * (viewport.value.zoom || 1))
+const scaleLineStyle = computed(() => ({
+  width: `${scaledGridSize.value}px`,
+  background: props.gridColor,
 }))
 </script>
 
 <style scoped>
-.grid-panel {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
+/* Grid on TOP of everything - high z-index */
+.vtt-grid-background {
+  z-index: 9999 !important;
   pointer-events: none !important;
-  z-index: 0 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
 }
 
-.grid-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.vtt-major-grid-background {
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+/* Override VueFlow Background default styles */
+:deep(.vue-flow__background) {
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+.scale-indicator {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
   pointer-events: none;
+  z-index: 10000;
+}
+
+.scale-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.scale-line {
+  height: 4px;
+  border-left: 2px solid white;
+  border-right: 2px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  transition: width 0.1s ease;
+}
+
+.scale-label {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 3px 10px;
+  border-radius: 6px;
 }
 </style>

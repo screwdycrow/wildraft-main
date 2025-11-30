@@ -188,8 +188,9 @@ const handlePortalViewUpdated = (payload: any) => {
     // Save current item state if it's an image before changing
     saveCurrentItemState()
     
+    // Force refresh to get the updated currentItem
     if (libraryId.value && portalViewId.value) {
-      portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value)
+      portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value, true)
     }
   }
   
@@ -258,11 +259,20 @@ const handlePortalViewUpdated = (payload: any) => {
     showOnTopItem.value = null
   }
   
-  // Handle Update Screen Item (DM Screen update)
+  // Handle Update Screen Item (DM Screen update) - Direct socket update, fallback to refetch
   if (payload.command === 'update-screen-item' && payload.dmScreen) {
-    // Refetch the portal view to get the updated DM screen data
-    if (libraryId.value && portalViewId.value) {
-      portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value)
+    console.log('[PortalViewView] Received dm screen update via socket')
+    
+    // Try direct update first (fastest - no API call)
+    if (currentItemRef.value && typeof (currentItemRef.value as any).updateDmScreen === 'function') {
+      console.log('[PortalViewView] Applying direct dm screen update')
+      ;(currentItemRef.value as any).updateDmScreen(payload.dmScreen)
+    } else {
+      // Fallback: force refresh to bypass cache
+      console.log('[PortalViewView] Direct update not available, force refreshing')
+      if (libraryId.value && portalViewId.value) {
+        portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value, true)
+      }
     }
   }
   
@@ -290,6 +300,45 @@ const handlePortalViewUpdated = (payload: any) => {
       (currentItemRef.value as any).handleDmScreenResetView()
     }
   }
+  
+  // Handle VTT measurements (ruler tool)
+  if (payload.command === 'draw-measurements') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDrawMeasurements === 'function') {
+      (currentItemRef.value as any).handleDrawMeasurements(payload.lines, payload.totalFeet)
+    }
+  }
+  
+  if (payload.command === 'clear-measurements') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleClearMeasurements === 'function') {
+      (currentItemRef.value as any).handleClearMeasurements()
+    }
+  }
+  
+  // Handle VTT movement trails
+  if (payload.command === 'draw-movement-trail') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleDrawMovementTrail === 'function') {
+      (currentItemRef.value as any).handleDrawMovementTrail(payload.trail)
+    }
+  }
+  
+  if (payload.command === 'clear-movement-trail') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleClearMovementTrail === 'function') {
+      (currentItemRef.value as any).handleClearMovementTrail(payload.nodeId)
+    }
+  }
+  
+  // Handle VTT pings
+  if (payload.command === 'ping') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handlePing === 'function') {
+      (currentItemRef.value as any).handlePing(payload.x, payload.y)
+    }
+  }
+  
+  if (payload.command === 'clear-ping') {
+    if (currentItemRef.value && typeof (currentItemRef.value as any).handleClearPing === 'function') {
+      (currentItemRef.value as any).handleClearPing()
+    }
+  }
 }
 
 const handleSyncResponse = (payload: any) => {
@@ -298,9 +347,9 @@ const handleSyncResponse = (payload: any) => {
     currentViewerState.value = payload.viewerState
   }
   
-  // Refetch portal view to get updated currentItem
+  // Force refetch portal view to get latest state
   if (libraryId.value && portalViewId.value) {
-    portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value)
+    portalViewsStore.fetchPortalView(libraryId.value, portalViewId.value, true)
   }
 }
 

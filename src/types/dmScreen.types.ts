@@ -436,14 +436,59 @@ export interface DmScreenItem {
   [key: string]: any
 }
 
-// Grid options for DM Screen background
+// Grid options for DM Screen background (VTT-enabled)
 export interface GridOptions {
   showGrid?: boolean
-  gridSize?: number // Size of grid cells in pixels
-  gridColor?: string // Color of grid lines (hex or rgba)
+  gridSize?: number // Size of grid cells in pixels (default: 50 for VTT)
+  gridColor?: string // Color of grid lines (hex)
   gridLineWidth?: number // Width of grid lines
   gridOpacity?: number // Opacity of grid lines (0-1)
-  snapToGrid?: boolean // Whether items snap to grid
+  snapToGrid?: boolean // Whether items snap to grid (center to center)
+  
+  // Grid alignment offset (for matching map image grids)
+  offsetX?: number // X offset in pixels
+  offsetY?: number // Y offset in pixels
+  
+  // VTT-specific settings (D&D 5e standard: 1 square = 5 feet)
+  feetPerSquare?: number // Distance in feet per grid square (default: 5)
+  showCoordinates?: boolean // Show grid coordinates (A1, B2, etc.)
+  gridStyle?: 'square' | 'hex' // Grid type (square for D&D, hex for some systems)
+  showMajorGridLines?: boolean // Show thicker lines every N squares
+  majorGridInterval?: number // Interval for major grid lines (default: 5)
+  majorGridColor?: string // Color for major grid lines
+  
+  // Measurement settings
+  diagonalRule?: 'standard' | 'alternating' | 'euclidean'
+  // standard = every diagonal = 5ft (simple)
+  // alternating = 5-10-5-10 pattern (PHB variant)
+  // euclidean = actual diagonal distance (sqrt(2) * 5 ≈ 7ft)
+  
+  // Portal sync settings
+  showMeasurementsOnPortal?: boolean // Send measurement lines/trails/pings to portal
+}
+
+// Movement tracking for drag operations
+export interface MovementTracker {
+  startX: number
+  startY: number
+  currentX: number
+  currentY: number
+  distanceSquares: number
+  distanceFeet: number
+}
+
+// VTT Tool modes
+export type VttToolMode = 'select' | 'measure' | 'ping' | 'draw'
+
+// Measurement line for ruler tool
+export interface MeasurementLine {
+  id: string
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+  color?: string
+  persistent?: boolean // If true, stays on screen until manually removed
 }
 
 // DM Screen Settings (flexible JSON object)
@@ -522,6 +567,82 @@ export function getDefaultLayers(): DmScreenLayer[] {
       showOnPortal: true,
     },
   ]
+}
+
+// Helper function to get default VTT grid options
+export function getDefaultGridOptions(): GridOptions {
+  return {
+    showGrid: true,
+    gridSize: 50, // 50px per square is good for VTT
+    gridColor: '#ffffff', // Pure white, opacity controlled separately
+    gridLineWidth: 1,
+    gridOpacity: 0.6, // Higher default opacity for better visibility
+    snapToGrid: true,
+    offsetX: 0, // Grid alignment offset
+    offsetY: 0,
+    feetPerSquare: 5, // D&D 5e standard
+    showCoordinates: false,
+    gridStyle: 'square',
+    showMajorGridLines: true,
+    majorGridInterval: 5, // Thicker line every 5 squares (25 feet)
+    majorGridColor: '#ffffff',
+    diagonalRule: 'standard',
+  }
+}
+
+// Calculate distance in feet between two grid positions
+export function calculateDistanceFeet(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  gridSize: number,
+  feetPerSquare: number = 5,
+  diagonalRule: 'standard' | 'alternating' | 'euclidean' = 'standard'
+): { squares: number; feet: number; path: string } {
+  // Convert pixel positions to grid squares
+  const startCol = Math.floor(startX / gridSize)
+  const startRow = Math.floor(startY / gridSize)
+  const endCol = Math.floor(endX / gridSize)
+  const endRow = Math.floor(endY / gridSize)
+  
+  const deltaX = Math.abs(endCol - startCol)
+  const deltaY = Math.abs(endRow - startRow)
+  
+  let squares: number
+  let feet: number
+  
+  switch (diagonalRule) {
+    case 'euclidean':
+      // True distance: sqrt(dx² + dy²)
+      squares = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+      feet = Math.round(squares * feetPerSquare)
+      break
+      
+    case 'alternating':
+      // D&D 5e PHB variant: diagonal costs alternate between 5ft and 10ft
+      // Each diagonal movement costs 1 square, but every other diagonal costs 2
+      const diagonals = Math.min(deltaX, deltaY)
+      const straights = Math.abs(deltaX - deltaY)
+      // First diagonal = 5ft, second = 10ft, third = 5ft, etc.
+      const diagonalCost = Math.floor(diagonals / 2) * 3 + (diagonals % 2) // 1.5 average
+      squares = straights + diagonals
+      feet = (straights + Math.floor(diagonals * 1.5)) * feetPerSquare
+      break
+      
+    case 'standard':
+    default:
+      // Simple: each square = 5ft, including diagonals
+      // Movement is the greater of horizontal or vertical distance
+      squares = Math.max(deltaX, deltaY)
+      feet = squares * feetPerSquare
+      break
+  }
+  
+  // Generate path description
+  const path = `${deltaX} squares horizontal, ${deltaY} squares vertical`
+  
+  return { squares: Math.round(squares * 10) / 10, feet, path }
 }
 
 // Effect presets for the effects panel

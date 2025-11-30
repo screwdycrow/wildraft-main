@@ -2,10 +2,11 @@
   <div 
     class="dm-screen-item-wrapper"
     :class="{ 
-      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode',
+      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode',
       'is-background': item.data.isBackground,
       'is-token': item.type === 'TokenNode',
       'is-effect': item.type === 'EffectNode',
+      'is-shape': item.type === 'ShapeNode',
       'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode'
     }"
     :style="wrapperStyle"
@@ -319,7 +320,13 @@ const wrapperStyle = computed(() => {
 })
 
 // Content style (scale down if below 300px)
+// NOTE: Shapes and Effects should NOT be scaled - they resize directly
 const contentStyle = computed(() => {
+  // Don't apply scaling to ShapeNode or EffectNode - they use direct sizing
+  if (props.item.type === 'ShapeNode' || props.item.type === 'EffectNode') {
+    return {}
+  }
+  
   if (isScaled.value) {
     const scale = nodeWidth.value / 300
     return {
@@ -599,6 +606,28 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   overflow: visible;
   pointer-events: none;
   isolation: auto;
+}
+
+/* Shape node styles - direct sizing, no scaling */
+.dm-screen-item-wrapper.is-shape {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.dm-screen-item-wrapper.is-shape .item-content {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  padding: 0;
+}
+
+/* Ensure shapes and effects fill their containers directly without transform scaling */
+.dm-screen-item-wrapper.is-shape .shape-node,
+.dm-screen-item-wrapper.is-effect .effect-node-container {
+  width: 100%;
+  height: 100%;
 }
 
 .item-content {

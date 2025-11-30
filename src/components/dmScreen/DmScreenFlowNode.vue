@@ -1,7 +1,7 @@
 <template>
   <div class="dm-screen-flow-node-container" :style="containerStyle" :class="containerClass">
-    <!-- Custom Rotation-Aware Resize Handles -->
-    <template v-if="isSelected">
+    <!-- Custom Rotation-Aware Resize Handles (hidden in portal mode) -->
+    <template v-if="showControls">
       <!-- Corner handles -->
       <div 
         class="resize-handle corner top-left" 
@@ -40,8 +40,8 @@
       <div class="selection-border" />
     </template>
     
-    <!-- Rotation Handle and Action Toolbar -->
-    <div v-if="isSelected" class="top-controls">
+    <!-- Rotation Handle and Action Toolbar (hidden in portal mode) -->
+    <div v-if="showControls" class="top-controls">
       <!-- Rotation Handle -->
       <div
         class="rotation-handle"
@@ -454,7 +454,8 @@
         'rotating': isRotating,
         'resizing': isResizing,
         'is-token': isTokenNode,
-        'is-effect': isEffectNode
+        'is-effect': isEffectNode,
+        'is-shape': isShapeNode
       }"
     >
       <dm-screen-item-wrapper
@@ -495,6 +496,7 @@ interface Props {
     gridSize?: number
     backgroundOpacity?: number
     rotation?: number
+    isPortalMode?: boolean // Hide controls in portal view
   }
   selected?: boolean
   dragging?: boolean
@@ -623,6 +625,10 @@ watch(() => props.data.item, (item) => {
 // =====================================================
 
 const isSelected = computed(() => props.selected || false)
+const isPortalMode = computed(() => props.data.isPortalMode || false)
+
+// Show controls only when selected and not in portal mode
+const showControls = computed(() => isSelected.value && !isPortalMode.value)
 
 const rotation = computed(() => {
   return currentRotation.value
@@ -668,6 +674,10 @@ const isTokenNode = computed(() => {
 
 const isEffectNode = computed(() => {
   return props.data.item.type === 'EffectNode'
+})
+
+const isShapeNode = computed(() => {
+  return props.data.item.type === 'ShapeNode'
 })
 
 const currentEffectConfig = computed(() => {
@@ -851,21 +861,50 @@ function handleResizeMove(event: MouseEvent) {
   let anchorX = 0 // -1 = left edge anchored, 0 = center, 1 = right edge anchored
   let anchorY = 0 // -1 = top edge anchored, 0 = center, 1 = bottom edge anchored
   
-  if (handle.includes('right')) {
-    widthDelta = localDx
-    anchorX = -1 // Left edge stays put
-  }
-  if (handle.includes('left')) {
-    widthDelta = -localDx
-    anchorX = 1 // Right edge stays put
-  }
-  if (handle.includes('bottom')) {
-    heightDelta = localDy
-    anchorY = -1 // Top edge stays put
-  }
-  if (handle.includes('top')) {
-    heightDelta = -localDy
-    anchorY = 1 // Bottom edge stays put
+  // For shapes and effects, resize from center (like tokens)
+  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value
+  
+  if (shouldResizeFromCenter) {
+    // Center-based resizing: all handles resize symmetrically from center
+    // For center resizing, anchorX = 0 and anchorY = 0
+    anchorX = 0
+    anchorY = 0
+    
+    // Calculate deltas based on handle direction
+    if (handle.includes('right')) {
+      widthDelta = localDx
+    } else if (handle.includes('left')) {
+      widthDelta = -localDx
+    }
+    
+    if (handle.includes('bottom')) {
+      heightDelta = localDy
+    } else if (handle.includes('top')) {
+      heightDelta = -localDy
+    }
+    
+    // For center-based resizing, we double the delta since we're expanding from center
+    // Each handle moves the edge by the full delta, so total size change is 2x
+    widthDelta *= 2
+    heightDelta *= 2
+  } else {
+    // Edge-based resizing for other node types
+    if (handle.includes('right')) {
+      widthDelta = localDx
+      anchorX = -1 // Left edge stays put
+    }
+    if (handle.includes('left')) {
+      widthDelta = -localDx
+      anchorX = 1 // Right edge stays put
+    }
+    if (handle.includes('bottom')) {
+      heightDelta = localDy
+      anchorY = -1 // Top edge stays put
+    }
+    if (handle.includes('top')) {
+      heightDelta = -localDy
+      anchorY = 1 // Bottom edge stays put
+    }
   }
   
   // Apply deltas with minimum constraints
@@ -947,7 +986,29 @@ function handleResizeEnd() {
   isResizing.value = false
   resizeHandle.value = null
   
+  // CRITICAL: Update VueFlow node position FIRST to ensure it matches what we're saving
+  // This prevents VueFlow from recalculating the position incorrectly
+  setNodes((nodes) => 
+    nodes.map((node) => {
+      if (node.id === props.id) {
+        return {
+          ...node,
+          position: { x, y },
+          width,
+          height,
+          style: {
+            ...node.style,
+            width: `${width}px`,
+            height: `${height}px`,
+          },
+        }
+      }
+      return node
+    })
+  )
+  
   // Save to store (triggers debounced API call)
+  // Position is already updated in VueFlow above, so this should maintain it
   dmScreensStore.updateItemDimensions(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -1261,10 +1322,25 @@ onUnmounted(() => {
   border: none;
   /* Don't isolate - allow blend modes to work */
   isolation: auto;
+  /* Ensure content is centered */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dm-screen-flow-node.is-effect:hover {
   background: transparent;
+}
+
+.dm-screen-flow-node.is-shape {
+  width: 100%;
+  height: 100%;
+  min-width: 30px;
+  min-height: 30px;
+  /* Ensure content is centered */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dm-screen-flow-node.selected {
