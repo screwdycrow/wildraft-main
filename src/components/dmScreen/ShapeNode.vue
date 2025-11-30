@@ -80,6 +80,7 @@
             :y1="point.prevY"
             :x2="point.cx1"
             :y2="point.cy1"
+            :stroke-width="strokeWidth"
             class="control-line"
           />
           <line
@@ -88,6 +89,7 @@
             :y1="point.y"
             :x2="point.cx2"
             :y2="point.cy2"
+            :stroke-width="strokeWidth"
             class="control-line"
           />
         </template>
@@ -97,6 +99,7 @@
           v-for="(segment, idx) in pathSegments"
           :key="`segment-${idx}`"
           :d="segment.d"
+          :stroke-width="handleRadius * 2"
           class="path-segment-hitarea"
           @click.stop="addPointOnSegment(idx, $event)"
         />
@@ -107,7 +110,8 @@
             v-if="point.hasCurve && point.cx1 != null"
             :cx="point.cx1"
             :cy="point.cy1"
-            r="4"
+            :r="controlPointRadius"
+            :stroke-width="strokeWidth"
             class="control-point"
             @mousedown.stop="startDrag('control1', idx, $event)"
           />
@@ -115,7 +119,8 @@
             v-if="point.type === 'C' && point.cx2 != null"
             :cx="point.cx2"
             :cy="point.cy2"
-            r="4"
+            :r="controlPointRadius"
+            :stroke-width="strokeWidth"
             class="control-point"
             @mousedown.stop="startDrag('control2', idx, $event)"
           />
@@ -127,7 +132,8 @@
           :key="`point-${idx}`"
           :cx="point.x"
           :cy="point.y"
-          :r="selectedPointIndex === idx ? 6 : 5"
+          :r="selectedPointIndex === idx ? handleRadius * 1.2 : handleRadius"
+          :stroke-width="strokeWidth"
           :class="['anchor-point', { selected: selectedPointIndex === idx }]"
           @mousedown.stop="startDrag('point', idx, $event)"
           @dblclick.stop="togglePointCurve(idx)"
@@ -578,6 +584,19 @@ const pathRef = ref<SVGPathElement | null>(null)
 const showSettings = ref(false)
 const activeTab = ref('shape')
 const viewBoxSize = 100
+
+// Non-scaling handle sizes - maintain constant screen size regardless of element scale
+const handleRadius = computed(() => {
+  // Target screen size for handles in pixels
+  const targetScreenSize = 8
+  // Get element size (use props or default)
+  const elementSize = Math.min(props.width || 100, props.height || 100)
+  // Calculate radius in viewBox units that will appear as targetScreenSize on screen
+  return (targetScreenSize * viewBoxSize) / elementSize
+})
+
+const controlPointRadius = computed(() => handleRadius.value * 0.7)
+const strokeWidth = computed(() => handleRadius.value * 0.3)
 
 // Path editing state
 const editablePoints = ref<EditablePoint[]>([])
@@ -1298,38 +1317,31 @@ onUnmounted(() => {
 .anchor-point {
   fill: #fff;
   stroke: #6366f1;
-  stroke-width: 2;
   cursor: move;
-  transition: all 0.1s ease;
 }
 
 .anchor-point:hover {
   fill: #6366f1;
-  r: 7;
 }
 
 .anchor-point.selected {
   fill: #f59e0b;
   stroke: #fff;
-  stroke-width: 2;
 }
 
 .control-point {
   fill: #f59e0b;
   stroke: #fff;
-  stroke-width: 1;
   cursor: move;
   opacity: 0.9;
 }
 
 .control-point:hover {
-  r: 5;
   opacity: 1;
 }
 
 .control-line {
   stroke: rgba(245, 158, 11, 0.6);
-  stroke-width: 1;
   stroke-dasharray: 3,3;
   pointer-events: none;
 }
@@ -1337,7 +1349,6 @@ onUnmounted(() => {
 .path-segment-hitarea {
   fill: none;
   stroke: transparent;
-  stroke-width: 16;
   cursor: cell; /* Plus cursor for adding */
 }
 

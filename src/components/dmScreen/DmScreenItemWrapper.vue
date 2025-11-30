@@ -159,6 +159,9 @@
         v-else-if="item.type === 'EffectNode'"
         :item="item"
         :library-id="libraryId"
+        :selected="props.selected"
+        :rotation="props.rotation"
+        @update:path="handleBeamPathUpdate"
       />
 
       <!-- Fallback for unknown types -->
@@ -428,6 +431,22 @@ function handleShapeDataUpdate(data: any) {
       ...props.item.data,
       ...data,
     }
+  }
+  emit('update', updatedItem)
+}
+
+function handleBeamPathUpdate(path: string) {
+  if (!props.item.data.effectConfig) return
+  
+  const updatedItem: DmScreenItem = {
+    ...props.item,
+    data: {
+      ...props.item.data,
+      effectConfig: {
+        ...props.item.data.effectConfig,
+        beamPath: path,
+      },
+    },
   }
   emit('update', updatedItem)
 }

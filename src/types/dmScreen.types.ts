@@ -28,6 +28,11 @@ export type EffectType =
   | 'fireflies'
   | 'dust'
   | 'embers'
+  | 'spiritualWeapon'
+  | 'thunder'
+  | 'electricBeam'
+  | 'energyBeam'
+  | 'fireColumn'
 
 // Effect preset configuration
 export interface EffectPreset {
@@ -60,6 +65,8 @@ export interface EffectConfig {
   // Light pool settings (screen blend lighting effect)
   lightPoolIntensity?: number  // 0-1, how bright the light pool is (0 = off)
   lightPoolSize?: number       // 0.5-3, multiplier for light pool size (1 = 100% of node)
+  // Beam path (for beam effects)
+  beamPath?: string            // SVG path d attribute for beam to follow
 }
 
 // =====================================================
@@ -943,6 +950,109 @@ export const EFFECT_PRESETS: EffectPreset[] = [
       glowIntensity: 0.7,
       lightPoolIntensity: 0.5,
       lightPoolSize: 1.3,
+    },
+  },
+  {
+    id: 'spiritualWeapon',
+    name: 'Spiritual Weapon',
+    effectType: 'spiritualWeapon',
+    icon: 'mdi-sword',
+    description: 'Floating magical weapon',
+    defaultConfig: {
+      effectType: 'spiritualWeapon',
+      intensity: 0.7,
+      color: '#ffd700',
+      secondaryColor: '#ffaa00',
+      speed: 1,
+      scale: 1,
+      opacity: 0.95,
+      blendMode: 'screen',
+      glowIntensity: 0.9,
+      lightPoolIntensity: 0.5,
+      lightPoolSize: 1.0,
+    },
+  },
+  {
+    id: 'thunder',
+    name: 'Thunder',
+    effectType: 'thunder',
+    icon: 'mdi-lightning-bolt',
+    description: 'Crackling lightning bolts',
+    defaultConfig: {
+      effectType: 'thunder',
+      intensity: 0.7,
+      color: '#4a9eff',
+      secondaryColor: '#ffffff',
+      speed: 1,
+      scale: 1,
+      opacity: 0.9,
+      blendMode: 'screen',
+      glowIntensity: 1.0,
+      lightPoolIntensity: 0.6,
+      lightPoolSize: 1.2,
+    },
+  },
+  {
+    id: 'electricBeam',
+    name: 'Electric Beam',
+    effectType: 'electricBeam',
+    icon: 'mdi-lightning-bolt',
+    description: 'Vertical beam of crackling electricity',
+    defaultConfig: {
+      effectType: 'electricBeam',
+      intensity: 0.7,
+      color: '#4a9eff',
+      secondaryColor: '#88ccff',
+      speed: 1.5,
+      scale: 1,
+      opacity: 0.9,
+      blendMode: 'screen',
+      glowIntensity: 1.0,
+      lightPoolIntensity: 0.5,
+      lightPoolSize: 1.0,
+      beamPath: 'M 50 0 L 50 100', // Default vertical line
+    },
+  },
+  {
+    id: 'energyBeam',
+    name: 'Energy Beam',
+    effectType: 'energyBeam',
+    icon: 'mdi-ray-start-end',
+    description: 'Vertical beam of pure energy',
+    defaultConfig: {
+      effectType: 'energyBeam',
+      intensity: 0.7,
+      color: '#66ffff',
+      secondaryColor: '#ffffff',
+      speed: 1,
+      scale: 1,
+      opacity: 0.85,
+      blendMode: 'screen',
+      glowIntensity: 0.9,
+      lightPoolIntensity: 0.5,
+      lightPoolSize: 1.0,
+      beamPath: 'M 50 0 L 50 100', // Default vertical line
+    },
+  },
+  {
+    id: 'fireColumn',
+    name: 'Fire Column',
+    effectType: 'fireColumn',
+    icon: 'mdi-fire',
+    description: 'Vertical column of rising flames',
+    defaultConfig: {
+      effectType: 'fireColumn',
+      intensity: 0.7,
+      color: '#ff6600',
+      secondaryColor: '#ffcc00',
+      speed: 1,
+      scale: 1,
+      opacity: 0.9,
+      blendMode: 'screen',
+      glowIntensity: 0.8,
+      lightPoolIntensity: 0.5,
+      lightPoolSize: 1.0,
+      beamPath: 'M 50 0 L 50 100', // Default vertical line
     },
   },
 ]
