@@ -39,6 +39,38 @@
           </div>
         </div>
 
+        <!-- Grid Toggle (pseudo-layer) -->
+        <div class="grid-toggle-row">
+          <div 
+            class="layer-item layer-item--special"
+            :class="{ 'layer-item--hidden': !showGrid }"
+          >
+            <div class="layer-icon">
+              <v-icon size="small" color="primary">mdi-grid</v-icon>
+            </div>
+            
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              :color="showGrid ? 'primary' : 'grey'"
+              @click.stop="emit('toggle-grid')"
+            >
+              <v-icon size="small">{{ showGrid ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+            </v-btn>
+            
+            <span class="layer-name">
+              <span class="layer-name-text">Grid (VTT)</span>
+            </span>
+            
+            <div class="layer-badge">
+              <span class="badge-text">5 ft/sq</span>
+            </div>
+          </div>
+        </div>
+        
+        <v-divider class="my-2" />
+        
         <!-- Layer List -->
         <div class="layer-list">
           <draggable
@@ -224,7 +256,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import draggable from 'vuedraggable'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import type { DmScreenLayer } from '@/types/dmScreen.types'
@@ -233,15 +265,22 @@ import { DEFAULT_LAYERS } from '@/types/dmScreen.types'
 interface Props {
   dmScreenId: string
   libraryId: number
+  showGrid?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showGrid: true,
+})
 
 const emit = defineEmits<{
   'layer-select': [layerId: string]
+  'toggle-grid': []
 }>()
 
 const dmScreensStore = useDmScreensStore()
+
+// Computed to access showGrid from props
+const showGrid = computed(() => props.showGrid)
 
 // Open state
 const isOpen = ref(false)
@@ -633,5 +672,42 @@ function handleReorder() {
 .glass-card {
   background: rgba(22, 22, 32, 0.98) !important;
   backdrop-filter: blur(20px);
+}
+
+/* Grid toggle row */
+.grid-toggle-row {
+  padding: 0 8px;
+}
+
+.layer-item--special {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed rgba(99, 102, 241, 0.3);
+}
+
+.layer-item--special:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.layer-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.layer-badge {
+  display: flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.badge-text {
+  font-size: 10px;
+  color: #a5b4fc;
+  font-weight: 500;
 }
 </style>

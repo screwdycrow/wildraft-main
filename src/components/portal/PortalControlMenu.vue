@@ -592,6 +592,7 @@ const portalViewsStore = usePortalViewsStore()
 const {
   isConnected,
   sendPortalViewUpdate,
+  sendCollaborativeUpdate,
 } = usePortalSocket()
 const toast = useToast()
 

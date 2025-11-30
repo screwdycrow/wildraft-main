@@ -249,23 +249,36 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
       const { usePortalViewsStore } = await import('@/stores/portalViews')
       const { usePortalSocket } = await import('@/composables/usePortalSocket')
       const portalViewsStore = usePortalViewsStore()
-      const { sendPortalViewUpdate } = usePortalSocket()
+      const { sendPortalViewUpdate, isConnected } = usePortalSocket()
       
       const currentPortalView = portalViewsStore.currentPortalView
+      console.log('[DmScreensStore] Portal update check:', {
+        hasPortalView: !!currentPortalView,
+        isConnected: isConnected.value,
+        dmScreenId,
+      })
+      
       if (currentPortalView?.items) {
         const dmScreenItemIndex = currentPortalView.items.findIndex(
           (item: any) => item.type === 'DmScreenViewer' && item.dmScreenId === dmScreenId
         )
         
-        if (dmScreenItemIndex !== -1 && currentPortalView.currentItem === dmScreenItemIndex) {
-          sendPortalViewUpdate({
+        console.log('[DmScreensStore] DM Screen item index:', dmScreenItemIndex, 'currentItem:', currentPortalView.currentItem)
+        
+        // Send update if DM screen is in portal (regardless of whether it's the current item)
+        // This allows all DM screens viewing the portal to receive updates
+        if (dmScreenItemIndex !== -1) {
+          console.log('[DmScreensStore] Sending dm screen update to portal')
+          const success = sendPortalViewUpdate({
             command: 'update-screen-item',
             dmScreen: dmScreen,
+            dmScreenId: dmScreenId, // Include DM screen ID so portal can route to correct viewers
           })
+          console.log('[DmScreensStore] Portal update sent:', success)
         }
       }
     } catch (error) {
-      // Silently fail - portal might not be active
+      console.error('[DmScreensStore] Portal update error:', error)
     }
   }
 
@@ -900,6 +913,32 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
       timestamp: 0,
     }
   }
+  
+  /**
+   * Update the store's cache with new DM screen data (used by portal viewers)
+   * This bypasses API calls and directly updates the store's reactive state
+   */
+  function updateDmScreenCache(newDmScreen: DmScreen) {
+    console.log('[DmScreensStore] updateDmScreenCache:', newDmScreen.id)
+    
+    // Update in dmScreens array
+    const index = dmScreens.value.findIndex(ds => ds.id === newDmScreen.id)
+    if (index !== -1) {
+      dmScreens.value[index] = newDmScreen
+    } else {
+      dmScreens.value.push(newDmScreen)
+    }
+    
+    // Update currentDmScreen if it's the same
+    if (currentDmScreen.value?.id === newDmScreen.id) {
+      currentDmScreen.value = newDmScreen
+    }
+    
+    // Update activeDmScreen if it's the same
+    if (activeDmScreen.value?.id === newDmScreen.id) {
+      activeDmScreen.value = newDmScreen
+    }
+  }
 
   function setCardsInHandEnabled(enabled: boolean) {
     cardsInHandEnabled.value = enabled
@@ -1293,6 +1332,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     
     // Other
     clearCache,
+    updateDmScreenCache,
     setCardsInHandEnabled,
     toggleCardsInHand,
   }

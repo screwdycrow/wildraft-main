@@ -1,7 +1,7 @@
 <template>
   <div class="dm-screen-flow-node-container" :style="containerStyle" :class="containerClass">
-    <!-- Custom Rotation-Aware Resize Handles -->
-    <template v-if="isSelected">
+    <!-- Custom Rotation-Aware Resize Handles (hidden in portal mode) -->
+    <template v-if="showControls">
       <!-- Corner handles -->
       <div 
         class="resize-handle corner top-left" 
@@ -40,8 +40,8 @@
       <div class="selection-border" />
     </template>
     
-    <!-- Rotation Handle and Action Toolbar -->
-    <div v-if="isSelected" class="top-controls">
+    <!-- Rotation Handle and Action Toolbar (hidden in portal mode) -->
+    <div v-if="showControls" class="top-controls">
       <!-- Rotation Handle -->
       <div
         class="rotation-handle"
@@ -454,7 +454,8 @@
         'rotating': isRotating,
         'resizing': isResizing,
         'is-token': isTokenNode,
-        'is-effect': isEffectNode
+        'is-effect': isEffectNode,
+        'is-shape': isShapeNode
       }"
     >
       <dm-screen-item-wrapper
@@ -493,6 +494,7 @@ interface Props {
     gridSize?: number
     backgroundOpacity?: number
     rotation?: number
+    isPortalMode?: boolean // Hide controls in portal view
   }
   selected?: boolean
   dragging?: boolean
@@ -621,6 +623,10 @@ watch(() => props.data.item, (item) => {
 // =====================================================
 
 const isSelected = computed(() => props.selected || false)
+const isPortalMode = computed(() => props.data.isPortalMode || false)
+
+// Show controls only when selected and not in portal mode
+const showControls = computed(() => isSelected.value && !isPortalMode.value)
 
 const rotation = computed(() => {
   return currentRotation.value
@@ -666,6 +672,10 @@ const isTokenNode = computed(() => {
 
 const isEffectNode = computed(() => {
   return props.data.item.type === 'EffectNode'
+})
+
+const isShapeNode = computed(() => {
+  return props.data.item.type === 'ShapeNode'
 })
 
 const currentEffectConfig = computed(() => {
@@ -845,33 +855,72 @@ function handleResizeMove(event: MouseEvent) {
   
   const handle = resizeHandle.value
   
-  // Apply delta based on which handle is being dragged
-  if (handle.includes('right')) {
-    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + dx)
-  }
-  if (handle.includes('left')) {
-    const widthChange = -dx
-    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthChange)
-    if (newWidth > MIN_WIDTH) {
-      // Adjust position to keep right edge in place (in rotated space)
-      const actualWidthChange = newWidth - resizeStartDimensions.value.width
-      const posAngleRad = (currentRotation.value * Math.PI) / 180
-      newX = resizeStartPosition.value.x - actualWidthChange * Math.cos(posAngleRad)
-      newY = resizeStartPosition.value.y - actualWidthChange * Math.sin(posAngleRad)
+  // For shapes and effects, resize from center (like tokens)
+  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value
+  
+  if (shouldResizeFromCenter) {
+    // Calculate distance from center to handle
+    let widthDelta = 0
+    let heightDelta = 0
+    
+    if (handle.includes('right')) widthDelta = dx
+    if (handle.includes('left')) widthDelta = -dx
+    if (handle.includes('bottom')) heightDelta = dy
+    if (handle.includes('top')) heightDelta = -dy
+    
+    // For corner handles, apply both deltas
+    if (handle.includes('top-left')) {
+      widthDelta = -dx
+      heightDelta = -dy
+    } else if (handle.includes('top-right')) {
+      widthDelta = dx
+      heightDelta = -dy
+    } else if (handle.includes('bottom-left')) {
+      widthDelta = -dx
+      heightDelta = dy
+    } else if (handle.includes('bottom-right')) {
+      widthDelta = dx
+      heightDelta = dy
     }
-  }
-  if (handle.includes('bottom')) {
-    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + dy)
-  }
-  if (handle.includes('top')) {
-    const heightChange = -dy
-    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightChange)
-    if (newHeight > MIN_HEIGHT) {
-      // Adjust position to keep bottom edge in place (in rotated space)
-      const actualHeightChange = newHeight - resizeStartDimensions.value.height
-      const posAngleRad = (currentRotation.value * Math.PI) / 180
-      newX = resizeStartPosition.value.x + actualHeightChange * Math.sin(posAngleRad)
-      newY = resizeStartPosition.value.y - actualHeightChange * Math.cos(posAngleRad)
+    
+    // Calculate new dimensions (symmetric from center)
+    newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthDelta * 2)
+    newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightDelta * 2)
+    
+    // Adjust position to keep center in place
+    const widthChange = newWidth - resizeStartDimensions.value.width
+    const heightChange = newHeight - resizeStartDimensions.value.height
+    newX = resizeStartPosition.value.x - widthChange / 2
+    newY = resizeStartPosition.value.y - heightChange / 2
+  } else {
+    // Original edge-based resizing for other node types
+    if (handle.includes('right')) {
+      newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + dx)
+    }
+    if (handle.includes('left')) {
+      const widthChange = -dx
+      newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthChange)
+      if (newWidth > MIN_WIDTH) {
+        // Adjust position to keep right edge in place (in rotated space)
+        const actualWidthChange = newWidth - resizeStartDimensions.value.width
+        const posAngleRad = (currentRotation.value * Math.PI) / 180
+        newX = resizeStartPosition.value.x - actualWidthChange * Math.cos(posAngleRad)
+        newY = resizeStartPosition.value.y - actualWidthChange * Math.sin(posAngleRad)
+      }
+    }
+    if (handle.includes('bottom')) {
+      newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + dy)
+    }
+    if (handle.includes('top')) {
+      const heightChange = -dy
+      newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightChange)
+      if (newHeight > MIN_HEIGHT) {
+        // Adjust position to keep bottom edge in place (in rotated space)
+        const actualHeightChange = newHeight - resizeStartDimensions.value.height
+        const posAngleRad = (currentRotation.value * Math.PI) / 180
+        newX = resizeStartPosition.value.x + actualHeightChange * Math.sin(posAngleRad)
+        newY = resizeStartPosition.value.y - actualHeightChange * Math.cos(posAngleRad)
+      }
     }
   }
   
@@ -911,7 +960,29 @@ function handleResizeEnd() {
   isResizing.value = false
   resizeHandle.value = null
   
+  // CRITICAL: Update VueFlow node position FIRST to ensure it matches what we're saving
+  // This prevents VueFlow from recalculating the position incorrectly
+  setNodes((nodes) => 
+    nodes.map((node) => {
+      if (node.id === props.id) {
+        return {
+          ...node,
+          position: { x, y },
+          width,
+          height,
+          style: {
+            ...node.style,
+            width: `${width}px`,
+            height: `${height}px`,
+          },
+        }
+      }
+      return node
+    })
+  )
+  
   // Save to store (triggers debounced API call)
+  // Position is already updated in VueFlow above, so this should maintain it
   dmScreensStore.updateItemDimensions(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -1220,10 +1291,25 @@ onUnmounted(() => {
   border: none;
   /* Don't isolate - allow blend modes to work */
   isolation: auto;
+  /* Ensure content is centered */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dm-screen-flow-node.is-effect:hover {
   background: transparent;
+}
+
+.dm-screen-flow-node.is-shape {
+  width: 100%;
+  height: 100%;
+  min-width: 30px;
+  min-height: 30px;
+  /* Ensure content is centered */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dm-screen-flow-node.selected {

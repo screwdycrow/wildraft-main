@@ -2,6 +2,10 @@
   <div class="dm-screen-wrapper">
     <div 
       class="dm-screen-flow-container" 
+      :class="{ 
+        'dm-screen-flow-container--measuring': currentVttTool === 'measure',
+        'dm-screen-flow-container--pinging': currentVttTool === 'ping'
+      }"
       :style="canvasBackgroundStyle"
       @dragover="handleDragOver"
       @drop="handleDrop"
@@ -19,6 +23,8 @@
         :zoom-on-double-click="false"
         class="dm-screen-flow"
         @nodes-change="onNodesChange"
+        @node-drag-start="onNodeDragStart"
+        @node-drag="onNodeDrag"
         @node-drag-stop="onNodeDragStop"
         @node-click="onNodeClick"
         @pane-click="onPaneClick"
@@ -28,18 +34,50 @@
         <Controls />
         <MiniMap v-if="!isPortalMode" class="minimap-top-right" />
         
-        <!-- Grid Overlay - on top of everything, non-selectable -->
+        <!-- VTT Grid Overlay - inside VueFlow transform context -->
         <GridNode
           v-if="gridOptions.showGrid"
-          :grid-size="gridOptions.gridSize"
-          :grid-color="gridOptions.gridColor"
-          :grid-opacity="gridOptions.gridOpacity"
-          :line-width="gridOptions.gridLineWidth"
+          :grid-size="gridOptions.gridSize || 50"
+          :grid-color="gridOptions.gridColor || '#ffffff'"
+          :grid-opacity="gridOptions.gridOpacity || 0.6"
+          :line-width="gridOptions.gridLineWidth || 1"
+          :offset-x="gridOptions.offsetX || 0"
+          :offset-y="gridOptions.offsetY || 0"
+          :show-major-grid-lines="gridOptions.showMajorGridLines !== false"
+          :major-grid-interval="gridOptions.majorGridInterval || 5"
+          :major-grid-color="gridOptions.majorGridColor || '#ffffff'"
+          :feet-per-square="gridOptions.feetPerSquare || 5"
+          :show-scale-indicator="true"
         />
+        
+        <!-- Movement Distance Display (shown while dragging) -->
+        <Panel v-if="isDragging && movementDistance && movementDistance.squares > 0" position="top-center" class="movement-display-panel">
+          <div class="movement-display">
+            <v-icon icon="mdi-run-fast" size="small" class="mr-2" />
+            <span class="movement-feet">{{ movementDistance.feet }} ft</span>
+            <span class="movement-squares">({{ movementDistance.squares }} sq)</span>
+          </div>
+        </Panel>
+        
         
         <!-- Kitbashing Drawers - left side vertical -->
         <Panel v-if="!isPortalMode" position="top-left" class="kitbashing-panel">
           <KitbashingDrawers @add-file="handleAddFileFromDrawer" />
+        </Panel>
+        
+        <!-- VTT Toolbar (top center) -->
+        <Panel v-if="!isPortalMode" position="top-center" class="vtt-toolbar-panel">
+          <VttToolbar
+            ref="vttToolbarRef"
+            :show-grid="gridOptions.showGrid !== false"
+            :snap-to-grid="gridOptions.snapToGrid !== false"
+            :feet-per-square="gridOptions.feetPerSquare || 5"
+            :diagonal-rule="localDiagonalRule"
+            @tool-change="handleVttToolChange"
+            @toggle-grid="handleToggleGrid"
+            @toggle-snap="handleToggleSnap"
+            @diagonal-rule-change="handleDiagonalRuleChange"
+          />
         </Panel>
         
         <!-- Unified Bottom Toolbar -->
@@ -60,16 +98,279 @@
               <LayerControl
                 :dm-screen-id="dmScreen.id"
                 :library-id="dmScreen.libraryId"
+                :show-grid="gridOptions.showGrid !== false"
                 @layer-select="handleLayerSelect"
+                @toggle-grid="handleToggleGrid"
               />
             </div>
           </div>
         </Panel>
       </VueFlow>
+      
+      <!-- VTT Measurement Ruler (outside VueFlow for proper mouse capture) -->
+      <MeasurementRuler
+        ref="measurementRulerRef"
+        :is-active="currentVttTool === 'measure'"
+        :grid-size="gridOptions.gridSize || 50"
+        :feet-per-square="gridOptions.feetPerSquare || 5"
+        :diagonal-rule="localDiagonalRule"
+        :show-path-squares="true"
+        :send-to-portal="gridOptions.showMeasurementsOnPortal === true"
+        @measurement-end="handleMeasurementEnd"
+      />
+      
+      <!-- Movement Trail & Ping SVG Overlay (outside VueFlow for proper positioning) -->
+      <svg 
+        v-if="(showMovementTrail && dragStartPosition && dragCurrentPosition) || movementTrail || activePing || portalMeasurementLines.length > 0"
+        class="movement-trail-svg"
+      >
+        <!-- Active drag trail (green) -->
+        <g v-if="showMovementTrail && dragStartPosition && dragCurrentPosition">
+          <!-- Trail glow -->
+          <line
+            :x1="toScreenX(dragStartPosition.x)"
+            :y1="toScreenY(dragStartPosition.y)"
+            :x2="toScreenX(dragCurrentPosition.x)"
+            :y2="toScreenY(dragCurrentPosition.y)"
+            stroke="rgba(34, 197, 94, 0.4)"
+            stroke-width="16"
+            stroke-linecap="round"
+          />
+          <!-- Main trail line -->
+          <line
+            :x1="toScreenX(dragStartPosition.x)"
+            :y1="toScreenY(dragStartPosition.y)"
+            :x2="toScreenX(dragCurrentPosition.x)"
+            :y2="toScreenY(dragCurrentPosition.y)"
+            stroke="#22c55e"
+            stroke-width="4"
+            stroke-linecap="round"
+            stroke-dasharray="12,6"
+          >
+            <animate attributeName="stroke-dashoffset" from="0" to="18" dur="0.5s" repeatCount="indefinite" />
+          </line>
+          <!-- Start point -->
+          <circle
+            :cx="toScreenX(dragStartPosition.x)"
+            :cy="toScreenY(dragStartPosition.y)"
+            r="10"
+            fill="#22c55e"
+            stroke="white"
+            stroke-width="3"
+          />
+          <!-- Current position point -->
+          <circle
+            :cx="toScreenX(dragCurrentPosition.x)"
+            :cy="toScreenY(dragCurrentPosition.y)"
+            r="10"
+            fill="#22c55e"
+            stroke="white"
+            stroke-width="3"
+          />
+          <!-- Distance label while dragging -->
+          <g v-if="movementDistance && movementDistance.squares > 0" :transform="`translate(${(toScreenX(dragStartPosition.x) + toScreenX(dragCurrentPosition.x)) / 2}, ${(toScreenY(dragStartPosition.y) + toScreenY(dragCurrentPosition.y)) / 2 - 25})`">
+            <rect
+              x="-40"
+              y="-14"
+              width="80"
+              height="28"
+              rx="6"
+              fill="rgba(34, 197, 94, 0.95)"
+              stroke="white"
+              stroke-width="2"
+            />
+            <text
+              x="0"
+              y="6"
+              text-anchor="middle"
+              fill="white"
+              font-size="14"
+              font-weight="bold"
+              font-family="JetBrains Mono, monospace"
+            >
+              {{ movementDistance.feet }} ft
+            </text>
+          </g>
+        </g>
+        
+        <!-- Persisted stacked trail (yellow segments - after drop) -->
+        <g v-if="movementTrail && movementTrail.segments.length > 0 && !isDragging">
+          <!-- Render each segment -->
+          <g v-for="(segment, idx) in movementTrail.segments" :key="idx">
+            <!-- Trail glow -->
+            <line
+              :x1="toScreenX(segment.startX)"
+              :y1="toScreenY(segment.startY)"
+              :x2="toScreenX(segment.endX)"
+              :y2="toScreenY(segment.endY)"
+              stroke="rgba(251, 191, 36, 0.3)"
+              stroke-width="14"
+              stroke-linecap="round"
+            />
+            <!-- Main trail line -->
+            <line
+              :x1="toScreenX(segment.startX)"
+              :y1="toScreenY(segment.startY)"
+              :x2="toScreenX(segment.endX)"
+              :y2="toScreenY(segment.endY)"
+              stroke="#fbbf24"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-dasharray="10,5"
+            />
+            <!-- Waypoint marker at start -->
+            <circle
+              :cx="toScreenX(segment.startX)"
+              :cy="toScreenY(segment.startY)"
+              r="8"
+              fill="#fbbf24"
+              stroke="white"
+              stroke-width="2"
+            />
+            <!-- Segment number -->
+            <g :transform="`translate(${toScreenX(segment.startX)}, ${toScreenY(segment.startY) - 16})`">
+              <circle r="9" fill="rgba(0,0,0,0.8)" stroke="#fbbf24" stroke-width="1" />
+              <text x="0" y="3" text-anchor="middle" fill="white" font-size="10" font-weight="bold">{{ idx + 1 }}</text>
+            </g>
+          </g>
+          <!-- Final endpoint -->
+          <circle
+            v-if="movementTrail.segments.length > 0"
+            :cx="toScreenX(movementTrail.segments[movementTrail.segments.length - 1].endX)"
+            :cy="toScreenY(movementTrail.segments[movementTrail.segments.length - 1].endY)"
+            r="10"
+            fill="#fbbf24"
+            stroke="white"
+            stroke-width="3"
+          />
+          <!-- Total distance label near final point -->
+          <g 
+            v-if="movementTrail.totalDistance.feet > 0"
+            :transform="`translate(${toScreenX(movementTrail.segments[movementTrail.segments.length - 1].endX) + 25}, ${toScreenY(movementTrail.segments[movementTrail.segments.length - 1].endY) - 25})`"
+          >
+            <rect
+              x="-40"
+              y="-14"
+              width="80"
+              height="28"
+              rx="6"
+              fill="rgba(34, 197, 94, 0.95)"
+              stroke="white"
+              stroke-width="2"
+            />
+            <text
+              x="0"
+              y="6"
+              text-anchor="middle"
+              fill="white"
+              font-size="14"
+              font-weight="bold"
+              font-family="JetBrains Mono, monospace"
+            >
+              {{ movementTrail.totalDistance.feet }} ft
+            </text>
+          </g>
+        </g>
+        
+        <!-- Ping indicator -->
+        <g v-if="activePing" class="ping-indicator">
+          <circle
+            :cx="toScreenX(activePing.x)"
+            :cy="toScreenY(activePing.y)"
+            r="30"
+            fill="none"
+            stroke="#ef4444"
+            stroke-width="4"
+            class="ping-ring ping-ring-1"
+          />
+          <circle
+            :cx="toScreenX(activePing.x)"
+            :cy="toScreenY(activePing.y)"
+            r="50"
+            fill="none"
+            stroke="#ef4444"
+            stroke-width="3"
+            class="ping-ring ping-ring-2"
+          />
+          <circle
+            :cx="toScreenX(activePing.x)"
+            :cy="toScreenY(activePing.y)"
+            r="70"
+            fill="none"
+            stroke="#ef4444"
+            stroke-width="2"
+            class="ping-ring ping-ring-3"
+          />
+          <circle
+            :cx="toScreenX(activePing.x)"
+            :cy="toScreenY(activePing.y)"
+            r="12"
+            fill="#ef4444"
+            stroke="white"
+            stroke-width="3"
+          />
+        </g>
+        
+        <!-- Portal-received measurement lines (from DM ruler tool) -->
+        <g v-if="portalMeasurementLines.length > 0 && isPortalMode" class="portal-measurements">
+          <g v-for="(line, idx) in portalMeasurementLines" :key="line.id || idx">
+            <!-- Line glow -->
+            <line
+              :x1="toScreenX(line.startX)"
+              :y1="toScreenY(line.startY)"
+              :x2="toScreenX(line.endX)"
+              :y2="toScreenY(line.endY)"
+              stroke="rgba(255, 212, 59, 0.3)"
+              stroke-width="14"
+              stroke-linecap="round"
+            />
+            <!-- Main line -->
+            <line
+              :x1="toScreenX(line.startX)"
+              :y1="toScreenY(line.startY)"
+              :x2="toScreenX(line.endX)"
+              :y2="toScreenY(line.endY)"
+              stroke="#fbbf24"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-dasharray="10,5"
+            />
+            <!-- Waypoints -->
+            <circle
+              :cx="toScreenX(line.startX)"
+              :cy="toScreenY(line.startY)"
+              r="8"
+              fill="#fbbf24"
+              stroke="white"
+              stroke-width="2"
+            />
+          </g>
+          <!-- Final waypoint -->
+          <circle
+            v-if="portalMeasurementLines.length > 0"
+            :cx="toScreenX(portalMeasurementLines[portalMeasurementLines.length - 1].endX)"
+            :cy="toScreenY(portalMeasurementLines[portalMeasurementLines.length - 1].endY)"
+            r="8"
+            fill="#fbbf24"
+            stroke="white"
+            stroke-width="2"
+          />
+          <!-- Total distance label -->
+          <g 
+            v-if="portalMeasurementTotal > 0"
+            :transform="`translate(${toScreenX(portalMeasurementLines[portalMeasurementLines.length - 1].endX) + 30}, ${toScreenY(portalMeasurementLines[portalMeasurementLines.length - 1].endY) - 30})`"
+          >
+            <rect x="-45" y="-16" width="90" height="32" rx="8" fill="rgba(34, 197, 94, 0.95)" stroke="white" stroke-width="2" />
+            <text x="0" y="6" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="JetBrains Mono, monospace">
+              {{ portalMeasurementTotal }} ft
+            </text>
+          </g>
+        </g>
+      </svg>
     </div>
 
     <!-- Settings Dialog -->
-    <v-dialog v-model="showSettingsDialog" max-width="500" scrollable :attach="false">
+    <v-dialog v-model="showSettingsDialog" max-width="550" scrollable :attach="false">
       <v-card>
         <v-card-title>
           <v-icon icon="mdi-cog" class="mr-2" />
@@ -77,12 +378,13 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
-          <!-- Grid Settings -->
+          <!-- VTT Grid Settings -->
           <div class="mb-6">
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               <v-icon icon="mdi-grid" class="mr-2" size="small" />
-              Grid
+              Grid (VTT)
             </h3>
+            
             <v-switch
               v-model="localGridOptions.showGrid"
               label="Show Grid"
@@ -91,12 +393,14 @@
               hide-details
               class="mb-3"
             />
+            
+            <!-- Grid Size with scale info -->
             <div class="d-flex align-center gap-2 mb-3">
               <v-slider
                 v-model.number="localGridOptions.gridSize"
                 label="Grid Size"
-                min="10"
-                max="200"
+                min="20"
+                max="100"
                 step="5"
                 thumb-label
                 hide-details
@@ -111,35 +415,164 @@
                 suffix="px"
               />
             </div>
+            
+            <!-- Feet per Square (D&D 5e scale) -->
+            <div class="d-flex align-center gap-2 mb-3">
+              <v-select
+                v-model.number="localGridOptions.feetPerSquare"
+                label="Scale (1 square =)"
+                :items="[
+                  { value: 5, title: '5 ft (Standard)' },
+                  { value: 10, title: '10 ft (Large scale)' },
+                  { value: 2.5, title: '2.5 ft (Half scale)' },
+                ]"
+                item-value="value"
+                item-title="title"
+                density="compact"
+                hide-details
+                class="flex-grow-1"
+              />
+            </div>
+            
+            <!-- Grid Color -->
+            <div class="d-flex align-center gap-2 mb-3">
+              <span class="text-body-2" style="min-width: 80px;">Grid Color</span>
+              <input
+                v-model="localGridOptions.gridColor"
+                type="color"
+                class="color-picker"
+              />
+              <v-text-field
+                v-model="localGridOptions.gridColor"
+                density="compact"
+                hide-details
+                style="max-width: 100px;"
+              />
+            </div>
+            
+            <!-- Grid Opacity -->
             <div class="d-flex align-center gap-2 mb-3">
               <v-slider
                 v-model.number="localGridOptions.gridOpacity"
                 label="Grid Opacity"
-                min="0.05"
+                min="0.1"
                 max="1"
                 step="0.05"
                 thumb-label
                 hide-details
                 class="flex-grow-1"
               />
-              <v-text-field
-                v-model.number="localGridOptions.gridOpacity"
-                type="number"
-                density="compact"
-                hide-details
-                style="max-width: 80px;"
-                :min="0.05"
-                :max="1"
-                :step="0.05"
-              />
+              <span class="text-caption" style="min-width: 40px;">
+                {{ Math.round((localGridOptions.gridOpacity || 0.6) * 100) }}%
+              </span>
             </div>
+            
             <v-switch
               v-model="localGridOptions.snapToGrid"
-              label="Snap to Grid"
+              label="Snap to Grid (center to center)"
               color="primary"
               density="compact"
               hide-details
+              class="mb-3"
             />
+            
+            <!-- Grid Alignment Section -->
+            <v-divider class="my-3" />
+            <h4 class="text-subtitle-2 font-weight-bold mb-2">
+              <v-icon icon="mdi-move-resize" size="small" class="mr-1" />
+              Grid Alignment (match map grids)
+            </h4>
+            <p class="text-caption text-grey mb-2">
+              Adjust offset to align with existing grids on map images
+            </p>
+            <div class="d-flex gap-2 mb-3">
+              <v-text-field
+                v-model.number="localGridOptions.offsetX"
+                label="X Offset"
+                type="number"
+                density="compact"
+                hide-details
+                suffix="px"
+                style="max-width: 120px;"
+              />
+              <v-text-field
+                v-model.number="localGridOptions.offsetY"
+                label="Y Offset"
+                type="number"
+                density="compact"
+                hide-details
+                suffix="px"
+                style="max-width: 120px;"
+              />
+              <v-btn
+                icon
+                size="small"
+                variant="tonal"
+                @click="localGridOptions.offsetX = 0; localGridOptions.offsetY = 0"
+              >
+                <v-icon>mdi-restore</v-icon>
+                <v-tooltip activator="parent" location="top">Reset Offset</v-tooltip>
+              </v-btn>
+            </div>
+            <v-divider class="my-3" />
+            
+            <v-switch
+              v-model="localGridOptions.showMajorGridLines"
+              label="Show Major Grid Lines (every 5 squares)"
+              color="primary"
+              density="compact"
+              hide-details
+              class="mb-3"
+            />
+            
+            <v-switch
+              v-model="localGridOptions.showCoordinates"
+              label="Show Grid Coordinates (A1, B2, etc.)"
+              color="primary"
+              density="compact"
+              hide-details
+              class="mb-3"
+            />
+            
+            <!-- Diagonal Movement Rule -->
+            <div class="mb-3">
+              <v-select
+                v-model="localGridOptions.diagonalRule"
+                label="Diagonal Movement Rule"
+                :items="[
+                  { value: 'standard', title: 'Simple (5 ft per diagonal)' },
+                  { value: 'alternating', title: 'Alternating (5-10-5-10 ft - PHB variant)' },
+                  { value: 'euclidean', title: 'Euclidean (true distance)' },
+                ]"
+                item-value="value"
+                item-title="title"
+                density="compact"
+                hide-details
+              />
+              <p class="text-caption text-grey mt-1">
+                <v-icon icon="mdi-information-outline" size="x-small" class="mr-1" />
+                Affects ruler tool distance calculations
+              </p>
+            </div>
+            
+            <!-- Portal Sync Settings -->
+            <v-divider class="my-3" />
+            <h4 class="text-subtitle-2 font-weight-bold mb-2">
+              <v-icon icon="mdi-cast" class="mr-1" size="small" />
+              Portal Sync
+            </h4>
+            <v-switch
+              v-model="localGridOptions.showMeasurementsOnPortal"
+              label="Show Measurements on Portal"
+              color="primary"
+              density="compact"
+              hide-details
+              class="mb-2"
+            />
+            <p class="text-caption text-grey">
+              <v-icon icon="mdi-information-outline" size="x-small" class="mr-1" />
+              Sends ruler measurements, movement trails, and pings to the portal view
+            </p>
           </div>
 
           <v-divider class="my-4" />
@@ -575,8 +1008,8 @@ import { VueFlow, useVueFlow, Panel } from '@vue-flow/core'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import type { Node, NodeDragEvent, NodeChange } from '@vue-flow/core'
-import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions, DmScreenLayer } from '@/types/dmScreen.types'
-import { EFFECT_PRESETS } from '@/types/dmScreen.types'
+import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions, DmScreenLayer, VttToolMode, MeasurementLine } from '@/types/dmScreen.types'
+import { EFFECT_PRESETS, getDefaultGridOptions, calculateDistanceFeet } from '@/types/dmScreen.types'
 import type { LibraryItem } from '@/types/item.types'
 import DmScreenFlowNode from './DmScreenFlowNode.vue'
 import GridNode from './GridNode.vue'
@@ -585,6 +1018,8 @@ import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import EffectsPanel from './EffectsPanel.vue'
 import KitbashingDrawers from './KitbashingDrawers.vue'
+import VttToolbar from './VttToolbar.vue'
+import MeasurementRuler from './MeasurementRuler.vue'
 import type { EffectPreset } from '@/types/dmScreen.types'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
@@ -614,7 +1049,28 @@ const toast = useToast()
 const { on: onPortalEvent, off: offPortalEvent, isConnected } = usePortalSocket()
 
 // VueFlow composable with viewport controls
-const { project, zoomIn, zoomOut, setViewport, getViewport, fitView } = useVueFlow()
+const { project, zoomIn, zoomOut, setViewport, getViewport, fitView, viewport, getNodes } = useVueFlow()
+
+// Current viewport for grid synchronization
+const currentViewport = computed(() => ({
+  zoom: viewport.value.zoom || 1,
+  x: viewport.value.x || 0,
+  y: viewport.value.y || 0,
+}))
+
+// Convert flow coordinates to screen coordinates for SVG rendering
+// VueFlow transform: screenPos = flowPos * zoom + pan
+function toScreenX(flowX: number): number {
+  const zoom = viewport.value.zoom || 1
+  const panX = viewport.value.x || 0
+  return flowX * zoom + panX
+}
+
+function toScreenY(flowY: number): number {
+  const zoom = viewport.value.zoom || 1
+  const panY = viewport.value.y || 0
+  return flowY * zoom + panY
+}
 const vueFlowRef = ref<any>(null)
 
 // =====================================================
@@ -643,15 +1099,8 @@ const contextMenuPosition = ref({ x: 0, y: 0 })
 const contextMenuFlowPosition = ref({ x: 0, y: 0 })
 const contextMenuNodeId = ref<string | null>(null)
 
-// Local settings for dialog editing
-const localGridOptions = ref<GridOptions>({
-  showGrid: true,
-  gridSize: 20,
-  gridColor: 'rgba(255, 255, 255, 0.1)',
-  gridLineWidth: 1,
-  gridOpacity: 0.3,
-  snapToGrid: false,
-})
+// Local settings for dialog editing (with VTT defaults)
+const localGridOptions = ref<GridOptions>(getDefaultGridOptions())
 const localLockBackgroundImages = ref(false)
 const localBackgroundOpacity = ref(1)
 
@@ -666,19 +1115,135 @@ const editingShapeData = ref({
 })
 const editingShapeItemId = ref<string | null>(null)
 
+// VTT Tool state
+const vttToolbarRef = ref<InstanceType<typeof VttToolbar> | null>(null)
+const measurementRulerRef = ref<InstanceType<typeof MeasurementRuler> | null>(null)
+const currentVttTool = ref<VttToolMode>('select')
+const localDiagonalRule = ref<'standard' | 'alternating' | 'euclidean'>('standard')
+
+// Ping state
+const activePing = ref<{ x: number; y: number; timestamp: number } | null>(null)
+
+// Portal-received measurement lines (from DM to viewers)
+const portalMeasurementLines = ref<MeasurementLine[]>([])
+const portalMeasurementTotal = ref<number>(0)
+
+// Movement tracking state (shows distance while dragging)
+const isDragging = ref(false)
+const dragNodeId = ref<string | null>(null)
+const dragNodeType = ref<string | null>(null)
+const dragStartPosition = ref<{ x: number; y: number } | null>(null)
+const dragCurrentPosition = ref<{ x: number; y: number } | null>(null)
+
+// Movement trail state - now supports stacking (multiple segments)
+interface TrailSegment {
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+  distance: { squares: number; feet: number }
+}
+
+const movementTrail = ref<{
+  nodeId: string
+  segments: TrailSegment[]
+  totalDistance: { squares: number; feet: number }
+} | null>(null)
+
+// Add a segment to the stacked trail
+function addTrailSegment(nodeId: string, startPos: { x: number; y: number }, endPos: { x: number; y: number }) {
+  const gridSize = gridOptions.value.gridSize || 50
+  const feetPerSquare = gridOptions.value.feetPerSquare || 5
+  const diagonalRule = gridOptions.value.diagonalRule || 'standard'
+  
+  // Calculate distance for this segment
+  const dist = calculateDistanceFeet(
+    startPos.x, startPos.y, endPos.x, endPos.y,
+    gridSize, feetPerSquare, diagonalRule
+  )
+  
+  const newSegment: TrailSegment = {
+    startX: startPos.x,
+    startY: startPos.y,
+    endX: endPos.x,
+    endY: endPos.y,
+    distance: dist,
+  }
+  
+  if (movementTrail.value && movementTrail.value.nodeId === nodeId) {
+    // Add to existing trail
+    movementTrail.value.segments.push(newSegment)
+    movementTrail.value.totalDistance = {
+      squares: movementTrail.value.totalDistance.squares + dist.squares,
+      feet: movementTrail.value.totalDistance.feet + dist.feet,
+    }
+  } else {
+    // Start new trail
+    movementTrail.value = {
+      nodeId,
+      segments: [newSegment],
+      totalDistance: dist,
+    }
+  }
+}
+
+// Calculate distance including both horizontal AND vertical movement
+const movementDistance = computed(() => {
+  if (!dragStartPosition.value || !dragCurrentPosition.value) return null
+  
+  const gridSize = gridOptions.value.gridSize || 50
+  const feetPerSquare = gridOptions.value.feetPerSquare || 5
+  const diagonalRule = gridOptions.value.diagonalRule || 'standard'
+  
+  const dx = dragCurrentPosition.value.x - dragStartPosition.value.x
+  const dy = dragCurrentPosition.value.y - dragStartPosition.value.y
+  
+  // Calculate squares moved in each direction
+  const squaresX = Math.abs(Math.round(dx / gridSize))
+  const squaresY = Math.abs(Math.round(dy / gridSize))
+  
+  let squares: number
+  let feet: number
+  
+  // Calculate based on diagonal rule
+  if (diagonalRule === 'euclidean') {
+    // True distance
+    squares = Math.sqrt(squaresX * squaresX + squaresY * squaresY)
+    feet = Math.round(squares * feetPerSquare)
+  } else if (diagonalRule === 'alternating') {
+    // 5-10-5-10 rule
+    const diagonals = Math.min(squaresX, squaresY)
+    const straights = Math.abs(squaresX - squaresY)
+    squares = straights + diagonals
+    feet = (straights + Math.floor(diagonals * 1.5)) * feetPerSquare
+  } else {
+    // Standard: max of horizontal or vertical (diagonal = 5ft)
+    squares = Math.max(squaresX, squaresY)
+    feet = squares * feetPerSquare
+  }
+  
+  return { squares: Math.round(squares), feet, dx: squaresX, dy: squaresY }
+})
+
+// Node types that show movement trails
+const TRAIL_NODE_TYPES = ['TokenNode', 'EffectNode', 'ShapeNode']
+
+// Check if dragging node should show movement trail
+const showMovementTrail = computed(() => {
+  if (!isDragging.value || !dragNodeType.value) return false
+  return TRAIL_NODE_TYPES.includes(dragNodeType.value)
+})
+
 // =====================================================
 // COMPUTED (derived from props, no watchers needed)
 // =====================================================
 
-// Grid options from settings
+// Grid options from settings (with VTT defaults)
 const gridOptions = computed<GridOptions>(() => {
-  return props.dmScreen.settings?.grid || {
-    showGrid: true,
-    gridSize: 20,
-    gridColor: 'rgba(255, 255, 255, 0.1)',
-    gridLineWidth: 1,
-    gridOpacity: 0.3,
-    snapToGrid: false,
+  const defaults = getDefaultGridOptions()
+  return {
+    ...defaults,
+    ...props.dmScreen.settings?.grid,
   }
 })
 
@@ -815,6 +1380,7 @@ const nodes = computed<Node[]>(() => {
           rotation,
           layerId,
           layerLocked,
+          isPortalMode: props.isPortalMode, // Pass portal mode to hide controls
         },
         draggable: !isLocked,
         selectable: !isLocked,
@@ -853,10 +1419,8 @@ onMounted(async () => {
   // Initialize local settings from props
   initializeLocalSettings()
   
-  // Set up portal command listeners if in portal mode
-  if (props.isPortalMode) {
-    setupPortalCommandListeners()
-  }
+  // Set up portal command listeners (always listen for collaborative updates)
+  setupPortalCommandListeners()
   
   // Add keyboard listener for context menu
   window.addEventListener('keydown', handleKeyDown)
@@ -870,14 +1434,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
 
-// Watch for portal mode changes
-watch(() => props.isPortalMode, (isPortalMode) => {
-  if (isPortalMode) {
-    setupPortalCommandListeners()
-  } else {
-    cleanupPortalCommandListeners()
-  }
-})
+// Watch for portal mode changes - always keep listeners active for collaborative updates
+// (No cleanup needed - we want to receive collaborative updates even when not in portal mode)
 
 
 // =====================================================
@@ -887,9 +1445,22 @@ watch(() => props.isPortalMode, (isPortalMode) => {
 function handlePortalViewUpdate(data: any) {
   console.log('[DmScreenWrapper] Received portal-view-updated:', data, 'isPortalMode:', props.isPortalMode)
   
-  if (!props.isPortalMode) return
+  const { command, deltaX, deltaY, dmScreen, dmScreenId } = data
   
-  const { command, deltaX, deltaY } = data
+  // Handle update-screen-item even when not in portal mode (DM screen is being viewed in portal)
+  if (command === 'update-screen-item' && dmScreen) {
+    // Check if this update is for this DM screen
+    if (dmScreenId === props.dmScreen.id || dmScreen.id === props.dmScreen.id) {
+      console.log('[DmScreenWrapper] Updating DM screen from portal:', dmScreen.id)
+      // Update the store cache directly (no API call needed)
+      dmScreensStore.updateDmScreenCache(dmScreen)
+      // The computed properties will automatically update since they read from the store
+      return
+    }
+  }
+  
+  // Other commands only work in portal mode
+  if (!props.isPortalMode) return
   
   console.log('[DmScreenWrapper] Processing command:', command)
   
@@ -910,32 +1481,150 @@ function handlePortalViewUpdate(data: any) {
       console.log('[DmScreenWrapper] Reset view')
       handlePortalResetView()
       break
+    case 'ping':
+      console.log('[DmScreenWrapper] Ping received:', data.x, data.y)
+      handlePing(data.x, data.y)
+      break
+    case 'clear-ping':
+      console.log('[DmScreenWrapper] Clear ping')
+      handleClearPing()
+      break
+    case 'draw-movement-trail':
+      console.log('[DmScreenWrapper] Draw movement trail')
+      handleDrawMovementTrail(data.trail)
+      break
+    case 'clear-movement-trail':
+      console.log('[DmScreenWrapper] Clear movement trail', data.nodeId ? `for node ${data.nodeId}` : 'all trails')
+      handleClearMovementTrail(data.nodeId)
+      break
+    case 'draw-measurements':
+      console.log('[DmScreenWrapper] Draw measurements')
+      handleDrawMeasurements(data.lines, data.totalFeet)
+      break
+    case 'clear-measurements':
+      console.log('[DmScreenWrapper] Clear measurements')
+      handleClearMeasurements()
+      break
     default:
       console.log('[DmScreenWrapper] Unknown command:', command)
+  }
+}
+
+function handleCollaborativeUpdate(data: any) {
+  console.log('[DmScreenWrapper] Received collaborative-update:', data)
+  
+  // Check if this DM screen is being displayed in any portal view
+  // (Collaborative updates should apply to all DM screens viewing the portal)
+  const currentPortalView = portalViewsStore.currentPortalView
+  
+  // If we have a portal view, check if this DM screen is in it
+  // If no portal view, still process updates (might be from another DM screen)
+  if (currentPortalView?.items) {
+    const isDmScreenInPortal = currentPortalView.items.some(
+      (item: any) => item.type === 'DmScreenViewer' && item.dmScreenId === props.dmScreen.id
+    )
+    
+    if (!isDmScreenInPortal) {
+      console.log('[DmScreenWrapper] DM screen not in portal, ignoring collaborative update')
+      return
+    }
+  }
+  
+  // Handle collaborative updates from portal viewers or other DM screens
+  // (pings, measurements, etc.)
+  const { command } = data
+  
+  switch (command) {
+    case 'ping':
+      console.log('[DmScreenWrapper] Collaborative ping:', data.x, data.y)
+      handlePing(data.x, data.y)
+      break
+    case 'clear-ping':
+      console.log('[DmScreenWrapper] Collaborative clear ping')
+      handleClearPing()
+      break
+    case 'draw-movement-trail':
+      console.log('[DmScreenWrapper] Collaborative draw movement trail')
+      handleDrawMovementTrail(data.trail)
+      break
+    case 'clear-movement-trail':
+      console.log('[DmScreenWrapper] Collaborative clear movement trail')
+      handleClearMovementTrail()
+      break
+    case 'draw-measurements':
+      console.log('[DmScreenWrapper] Collaborative draw measurements')
+      handleDrawMeasurements(data.lines, data.totalFeet)
+      break
+    case 'clear-measurements':
+      console.log('[DmScreenWrapper] Collaborative clear measurements')
+      handleClearMeasurements()
+      break
+    default:
+      console.log('[DmScreenWrapper] Unknown collaborative command:', command)
   }
 }
 
 function setupPortalCommandListeners() {
   // Subscribe to portal-view-updated events via store's event system
   onPortalEvent('portal-view-updated', handlePortalViewUpdate)
+  // Subscribe to collaborative-update events (from portal viewers)
+  onPortalEvent('collaborative-update', handleCollaborativeUpdate)
   console.log('[DmScreenWrapper] Portal command listeners set up')
 }
 
 function cleanupPortalCommandListeners() {
   offPortalEvent('portal-view-updated', handlePortalViewUpdate)
+  offPortalEvent('collaborative-update', handleCollaborativeUpdate)
   console.log('[DmScreenWrapper] Portal command listeners cleaned up')
 }
 
 function handlePortalZoomIn() {
-  const viewport = getViewport()
-  const newZoom = Math.min(viewport.zoom * 1.2, 4) // Max zoom 4x
-  setViewport({ ...viewport, zoom: newZoom }, { duration: 300 })
+  const vp = getViewport()
+  const zoomFactor = 1.2
+  const newZoom = Math.min(vp.zoom * zoomFactor, 4) // Max zoom 4x
+  
+  // Get viewport container center
+  const container = document.querySelector('.dm-screen-flow')
+  if (!container) {
+    setViewport({ ...vp, zoom: newZoom }, { duration: 300 })
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  const centerX = rect.width / 2
+  const centerY = rect.height / 2
+  
+  // Calculate new pan to keep center in place
+  // When zoom changes, we need to adjust pan to keep the same point at screen center
+  const zoomRatio = newZoom / vp.zoom
+  const newX = centerX - (centerX - vp.x) * zoomRatio
+  const newY = centerY - (centerY - vp.y) * zoomRatio
+  
+  setViewport({ x: newX, y: newY, zoom: newZoom }, { duration: 300 })
 }
 
 function handlePortalZoomOut() {
-  const viewport = getViewport()
-  const newZoom = Math.max(viewport.zoom / 1.2, 0.2) // Min zoom 0.2x
-  setViewport({ ...viewport, zoom: newZoom }, { duration: 300 })
+  const vp = getViewport()
+  const zoomFactor = 1.2
+  const newZoom = Math.max(vp.zoom / zoomFactor, 0.2) // Min zoom 0.2x
+  
+  // Get viewport container center
+  const container = document.querySelector('.dm-screen-flow')
+  if (!container) {
+    setViewport({ ...vp, zoom: newZoom }, { duration: 300 })
+    return
+  }
+  
+  const rect = container.getBoundingClientRect()
+  const centerX = rect.width / 2
+  const centerY = rect.height / 2
+  
+  // Calculate new pan to keep center in place
+  const zoomRatio = newZoom / vp.zoom
+  const newX = centerX - (centerX - vp.x) * zoomRatio
+  const newY = centerY - (centerY - vp.y) * zoomRatio
+  
+  setViewport({ x: newX, y: newY, zoom: newZoom }, { duration: 300 })
 }
 
 function handlePortalPan(deltaX: number, deltaY: number) {
@@ -953,9 +1642,11 @@ function handlePortalResetView() {
 }
 
 function initializeLocalSettings() {
-  localGridOptions.value = { ...gridOptions.value }
+  const defaults = getDefaultGridOptions()
+  localGridOptions.value = { ...defaults, ...gridOptions.value }
   localLockBackgroundImages.value = lockBackgroundImages.value
   localBackgroundOpacity.value = backgroundOpacity.value
+  localDiagonalRule.value = gridOptions.value.diagonalRule || 'standard'
 }
 
 // =====================================================
@@ -972,36 +1663,320 @@ function onNodesChange(_changes: NodeChange[]) {
   // This handler is kept for any other node changes if needed
 }
 
-function onNodeDragStop(event: NodeDragEvent) {
+/**
+ * Track drag start for movement distance display
+ */
+function onNodeDragStart(event: NodeDragEvent) {
   const node = event.node
-  let x = node.position.x
-  let y = node.position.y
+  const item = props.dmScreen.items?.find(i => i.id === node.id)
   
-  // Snap to grid if enabled
-  if (gridOptions.value.snapToGrid && gridOptions.value.gridSize) {
-    x = Math.round(x / gridOptions.value.gridSize) * gridOptions.value.gridSize
-    y = Math.round(y / gridOptions.value.gridSize) * gridOptions.value.gridSize
+  isDragging.value = true
+  dragNodeId.value = node.id
+  dragNodeType.value = item?.type || null
+  
+  // Get node center position (not top-left)
+  const nodeWidth = node.width || 100
+  const nodeHeight = node.height || 100
+  const centerX = node.position.x + nodeWidth / 2
+  const centerY = node.position.y + nodeHeight / 2
+  
+  dragStartPosition.value = { x: centerX, y: centerY }
+  dragCurrentPosition.value = { x: centerX, y: centerY }
+  
+  // Clear any existing trail when starting new drag
+  if (movementTrail.value?.nodeId !== node.id) {
+    movementTrail.value = null
+  }
+}
+
+/**
+ * Track drag movement for distance display
+ */
+function onNodeDrag(event: NodeDragEvent) {
+  const node = event.node
+  
+  // Get node center position
+  const nodeWidth = node.width || 100
+  const nodeHeight = node.height || 100
+  const centerX = node.position.x + nodeWidth / 2
+  const centerY = node.position.y + nodeHeight / 2
+  
+  dragCurrentPosition.value = { x: centerX, y: centerY }
+}
+
+function onNodeDragStop(event: NodeDragEvent) {
+  const primaryNode = event.node
+  
+  // Get all selected nodes (for multi-select movement)
+  const allNodes = getNodes.value
+  const selectedNodes = allNodes.filter(n => n.selected)
+  
+  // If multiple nodes selected, update all their positions
+  const nodesToUpdate = selectedNodes.length > 1 ? selectedNodes : [primaryNode]
+  
+  for (const node of nodesToUpdate) {
+    let x = node.position.x
+    let y = node.position.y
+    
+    // Snap item CENTER to grid CENTER if enabled
+    if (gridOptions.value.snapToGrid && gridOptions.value.gridSize) {
+      const gridSize = gridOptions.value.gridSize
+      const offsetX = gridOptions.value.offsetX || 0
+      const offsetY = gridOptions.value.offsetY || 0
+      
+      // Get item dimensions
+      const itemWidth = node.width || 100
+      const itemHeight = node.height || 100
+      
+      // Calculate item's current center
+      const centerX = x + itemWidth / 2
+      const centerY = y + itemHeight / 2
+      
+      // Find the nearest grid cell center (accounting for grid offset)
+      const gridCellX = Math.round((centerX - offsetX - gridSize / 2) / gridSize)
+      const gridCellY = Math.round((centerY - offsetY - gridSize / 2) / gridSize)
+      
+      // Calculate snapped center position
+      const snappedCenterX = gridCellX * gridSize + gridSize / 2 + offsetX
+      const snappedCenterY = gridCellY * gridSize + gridSize / 2 + offsetY
+      
+      // Convert back to top-left position
+      x = snappedCenterX - itemWidth / 2
+      y = snappedCenterY - itemHeight / 2
+    }
+    
+    // Update position in store (debounced API call)
+    dmScreensStore.updateItemPosition(
+      props.dmScreen.id,
+      props.dmScreen.libraryId,
+      node.id,
+      x,
+      y
+    )
   }
   
-  // Update position in store (debounced API call)
-  dmScreensStore.updateItemPosition(
-    props.dmScreen.id,
-    props.dmScreen.libraryId,
-    node.id,
-    x,
-    y
-  )
+  // Save trail for primary node (token/effect/shape nodes - persists until deselect)
+  if (TRAIL_NODE_TYPES.includes(dragNodeType.value || '') 
+      && dragStartPosition.value && movementDistance.value && movementDistance.value.squares > 0) {
+    
+    // Get final center position of primary node
+    const nodeWidth = primaryNode.width || 100
+    const nodeHeight = primaryNode.height || 100
+    let finalX = primaryNode.position.x
+    let finalY = primaryNode.position.y
+    
+    // Apply snap if enabled
+    if (gridOptions.value.snapToGrid && gridOptions.value.gridSize) {
+      const gridSize = gridOptions.value.gridSize
+      const offsetX = gridOptions.value.offsetX || 0
+      const offsetY = gridOptions.value.offsetY || 0
+      const centerX = finalX + nodeWidth / 2
+      const centerY = finalY + nodeHeight / 2
+      const gridCellX = Math.round((centerX - offsetX - gridSize / 2) / gridSize)
+      const gridCellY = Math.round((centerY - offsetY - gridSize / 2) / gridSize)
+      finalX = gridCellX * gridSize + gridSize / 2 + offsetX - nodeWidth / 2
+      finalY = gridCellY * gridSize + gridSize / 2 + offsetY - nodeHeight / 2
+    }
+    
+    const finalCenterX = finalX + nodeWidth / 2
+    const finalCenterY = finalY + nodeHeight / 2
+    
+    // Add to stacked trails instead of replacing
+    addTrailSegment(primaryNode.id, dragStartPosition.value, { x: finalCenterX, y: finalCenterY })
+    
+    // Send trail to portal
+    sendMovementTrailToPortal(movementTrail.value)
+  }
+  
+  // Clear drag tracking (but keep trail)
+  isDragging.value = false
+  dragNodeId.value = null
+  dragNodeType.value = null
+  dragStartPosition.value = null
+  dragCurrentPosition.value = null
 }
 
 function onNodeClick(event: any) {
+  // Don't select nodes when measure or ping tool is active
+  if (currentVttTool.value === 'measure' || currentVttTool.value === 'ping') {
+    return
+  }
+  
   const nodeId = event.node?.id
   if (nodeId) {
+    // Always clear trail when selecting a node (even if same node, to ensure it's cleared everywhere)
+    // This ensures trails are cleared when clicking on any node
+    if (movementTrail.value) {
+      clearMovementTrail(movementTrail.value.nodeId)
+    }
     dmScreensStore.selectItem(nodeId)
   }
 }
 
-function onPaneClick() {
+function onPaneClick(event: any) {
+  // Handle ping tool
+  if (currentVttTool.value === 'ping') {
+    // Get container rect to properly convert coordinates
+    const container = document.querySelector('.dm-screen-wrapper .vue-flow')
+    if (container) {
+      const rect = container.getBoundingClientRect()
+      const relativeX = event.clientX - rect.left
+      const relativeY = event.clientY - rect.top
+      const flowPosition = project({ x: relativeX, y: relativeY })
+      createPing(flowPosition.x, flowPosition.y)
+    }
+    return
+  }
+  
+  // Always clear movement trail when clicking outside (deselecting)
+  // This ensures trails are cleared everywhere (portal, other DM screens)
+  clearMovementTrail()
+  
   dmScreensStore.selectItem(null)
+}
+
+/**
+ * Create a ping at the specified flow coordinates
+ */
+function createPing(x: number, y: number) {
+  activePing.value = { x, y, timestamp: Date.now() }
+  
+  // Send ping to portal
+  sendPingToPortal(x, y)
+  
+  // Auto-clear ping after 3 seconds
+  setTimeout(() => {
+    if (activePing.value?.timestamp === activePing.value?.timestamp) {
+      activePing.value = null
+      sendClearPingToPortal()
+    }
+  }, 3000)
+}
+
+/**
+ * Send ping to portal (ALWAYS sent - pings are important for player communication)
+ * Also sends collaborative update so other DM screens can see it
+ */
+async function sendPingToPortal(x: number, y: number) {
+  try {
+    const { usePortalSocket } = await import('@/composables/usePortalSocket')
+    const { sendPortalViewUpdate, sendCollaborativeUpdate } = usePortalSocket()
+    
+    const payload = {
+      command: 'ping',
+      x,
+      y,
+    }
+    
+    // Send to portal viewers
+    sendPortalViewUpdate(payload)
+    // Send to other DM screens (collaborative)
+    sendCollaborativeUpdate(payload)
+  } catch (error) {
+    // Portal might not be active
+  }
+}
+
+/**
+ * Send clear ping to portal (ALWAYS sent)
+ * Also sends collaborative update so other DM screens can see it
+ */
+async function sendClearPingToPortal() {
+  try {
+    const { usePortalSocket } = await import('@/composables/usePortalSocket')
+    const { sendPortalViewUpdate, sendCollaborativeUpdate } = usePortalSocket()
+    
+    const payload = {
+      command: 'clear-ping',
+    }
+    
+    // Send to portal viewers
+    sendPortalViewUpdate(payload)
+    // Send to other DM screens (collaborative)
+    sendCollaborativeUpdate(payload)
+  } catch (error) {
+    // Portal might not be active
+  }
+}
+
+/**
+ * Clear movement trail and notify portal
+ * Always sends clear command to ensure trails are cleared everywhere
+ */
+function clearMovementTrail(nodeId?: string) {
+  // Get the nodeId from the current trail if not provided
+  const trailNodeId = nodeId || movementTrail.value?.nodeId
+  
+  // Always send clear command (even if no local trail, might need to clear elsewhere)
+  if (trailNodeId) {
+    sendClearTrailToPortal(trailNodeId)
+  } else {
+    // If no specific nodeId, send general clear (clears all trails)
+    sendClearTrailToPortal()
+  }
+  
+  // Clear local trail
+  if (movementTrail.value) {
+    movementTrail.value = null
+  }
+}
+
+/**
+ * Send movement trail to portal for display (if enabled)
+ * Also sends collaborative update so other DM screens can see it
+ */
+async function sendMovementTrailToPortal(trail: typeof movementTrail.value) {
+  if (!trail || !trail.segments || trail.segments.length === 0) return
+  if (!gridOptions.value.showMeasurementsOnPortal) return
+  
+  try {
+    const { usePortalSocket } = await import('@/composables/usePortalSocket')
+    const { sendPortalViewUpdate, sendCollaborativeUpdate } = usePortalSocket()
+    
+    const payload = {
+      command: 'draw-movement-trail',
+      trail: {
+        nodeId: trail.nodeId,
+        segments: trail.segments,
+        totalDistance: trail.totalDistance,
+      },
+    }
+    
+    // Send to portal viewers
+    sendPortalViewUpdate(payload)
+    // Send to other DM screens (collaborative)
+    sendCollaborativeUpdate(payload)
+  } catch (error) {
+    // Portal might not be active
+  }
+}
+
+/**
+ * Send clear trail command to portal (ALWAYS sent - like pings)
+ * Also sends collaborative update so other DM screens can see it
+ * @param nodeId - Optional nodeId to clear a specific trail. If not provided, clears all trails.
+ */
+async function sendClearTrailToPortal(nodeId?: string) {
+  try {
+    const { usePortalSocket } = await import('@/composables/usePortalSocket')
+    const { sendPortalViewUpdate, sendCollaborativeUpdate } = usePortalSocket()
+    
+    const payload: any = {
+      command: 'clear-movement-trail',
+    }
+    
+    // Include nodeId if provided (for clearing specific trail)
+    if (nodeId) {
+      payload.nodeId = nodeId
+    }
+    
+    // Send to portal viewers
+    sendPortalViewUpdate(payload)
+    // Send to other DM screens (collaborative)
+    sendCollaborativeUpdate(payload)
+  } catch (error) {
+    // Portal might not be active
+  }
 }
 
 // =====================================================
@@ -1141,6 +2116,64 @@ const selectedLayerId = ref<string>('screen')
 
 function handleLayerSelect(layerId: string) {
   selectedLayerId.value = layerId
+}
+
+// =====================================================
+// VTT TOOL HANDLERS
+// =====================================================
+
+function handleVttToolChange(tool: VttToolMode) {
+  currentVttTool.value = tool
+  
+  // Clear selection and trails when switching to non-select tools
+  if (tool !== 'select') {
+    dmScreensStore.selectItem(null)
+    clearMovementTrail()
+  }
+}
+
+function handleToggleGrid() {
+  const updatedSettings: DmScreenSettings = {
+    ...props.dmScreen.settings,
+    grid: {
+      ...gridOptions.value,
+      showGrid: !gridOptions.value.showGrid,
+    },
+  }
+  dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
+}
+
+function handleToggleSnap() {
+  const updatedSettings: DmScreenSettings = {
+    ...props.dmScreen.settings,
+    grid: {
+      ...gridOptions.value,
+      snapToGrid: !gridOptions.value.snapToGrid,
+    },
+  }
+  dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
+}
+
+function handleDiagonalRuleChange(rule: 'standard' | 'alternating' | 'euclidean') {
+  localDiagonalRule.value = rule
+  
+  // Also persist to settings
+  const updatedSettings: DmScreenSettings = {
+    ...props.dmScreen.settings,
+    grid: {
+      ...gridOptions.value,
+      diagonalRule: rule,
+    },
+  }
+  dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
+}
+
+function handleMeasurementEnd(result: { feet: number; squares: number; line: MeasurementLine }) {
+  // Update the toolbar display
+  vttToolbarRef.value?.setLastMeasurement({ feet: result.feet, squares: result.squares })
+  
+  // Could also emit or log measurement for history
+  console.log(`[VTT] Measured: ${result.feet} ft (${result.squares} squares)`)
 }
 
 // =====================================================
@@ -1305,6 +2338,9 @@ async function getImageDimensions(fileId: number): Promise<{ width: number; heig
 // =====================================================
 
 function saveSettings() {
+  // Sync the diagonal rule with local state
+  localDiagonalRule.value = localGridOptions.value.diagonalRule || 'standard'
+  
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
     grid: { ...localGridOptions.value },
@@ -1598,6 +2634,85 @@ async function handleSendToPortal() {
 }
 
 // =====================================================
+// PORTAL-SIDE HANDLERS (for receiving VTT data from DM)
+// =====================================================
+
+// Handle incoming measurements from DM
+function handleDrawMeasurements(lines: MeasurementLine[], totalFeet: number) {
+  portalMeasurementLines.value = lines
+  portalMeasurementTotal.value = totalFeet
+}
+
+function handleClearMeasurements() {
+  portalMeasurementLines.value = []
+  portalMeasurementTotal.value = 0
+}
+
+// Handle incoming movement trail from DM (supports both old single format and new segment format)
+function handleDrawMovementTrail(trail: {
+  nodeId?: string
+  segments?: TrailSegment[]
+  totalDistance?: { squares: number; feet: number }
+  // Legacy single segment format
+  startX?: number
+  startY?: number
+  endX?: number
+  endY?: number
+  distance?: { squares: number; feet: number }
+}) {
+  // Support new segment-based format
+  if (trail.segments && trail.segments.length > 0) {
+    movementTrail.value = {
+      nodeId: trail.nodeId || 'portal-trail',
+      segments: trail.segments,
+      totalDistance: trail.totalDistance || { squares: 0, feet: 0 },
+    }
+  } else if (trail.startX !== undefined && trail.endX !== undefined) {
+    // Legacy single segment format
+    movementTrail.value = {
+      nodeId: 'portal-trail',
+      segments: [{
+        startX: trail.startX,
+        startY: trail.startY!,
+        endX: trail.endX,
+        endY: trail.endY!,
+        distance: trail.distance || { squares: 0, feet: 0 },
+      }],
+      totalDistance: trail.distance || { squares: 0, feet: 0 },
+    }
+  }
+}
+
+function handleClearMovementTrail(nodeId?: string) {
+  // If no nodeId provided, clear all trails
+  if (!nodeId) {
+    movementTrail.value = null
+    return
+  }
+  
+  // If nodeId matches current trail, clear it
+  if (movementTrail.value?.nodeId === nodeId) {
+    movementTrail.value = null
+  }
+}
+
+// Handle incoming ping from DM
+function handlePing(x: number, y: number) {
+  activePing.value = { x, y, timestamp: Date.now() }
+  
+  // Auto-clear ping after 3 seconds
+  setTimeout(() => {
+    if (activePing.value?.timestamp) {
+      activePing.value = null
+    }
+  }, 3000)
+}
+
+function handleClearPing() {
+  activePing.value = null
+}
+
+// =====================================================
 // EXPOSE METHODS FOR PARENT/TOOLBAR
 // =====================================================
 
@@ -1653,6 +2768,14 @@ defineExpose({
   handleDmScreenZoomOut: handlePortalZoomOut,
   handleDmScreenPan: handlePortalPan,
   handleDmScreenResetView: handlePortalResetView,
+  
+  // Portal-side VTT handlers (receive data from DM)
+  handleDrawMeasurements,
+  handleClearMeasurements,
+  handleDrawMovementTrail,
+  handleClearMovementTrail,
+  handlePing,
+  handleClearPing,
 })
 </script>
 
@@ -1673,10 +2796,37 @@ defineExpose({
   position: relative;
 }
 
+.dm-screen-flow-container--measuring,
+.dm-screen-flow-container--pinging {
+  cursor: crosshair;
+}
+
+.dm-screen-flow-container--measuring :deep(.vue-flow__pane),
+.dm-screen-flow-container--pinging :deep(.vue-flow__pane) {
+  cursor: crosshair !important;
+}
+
+/* Disable node interactions when measuring or pinging */
+.dm-screen-flow-container--measuring :deep(.vue-flow__node),
+.dm-screen-flow-container--pinging :deep(.vue-flow__node) {
+  pointer-events: none !important;
+  cursor: crosshair !important;
+}
+
 .dm-screen-flow {
   width: 100%;
   height: 100%;
   background: rgba(20, 20, 30, 0.5);
+}
+
+/* VTT Grid on TOP of all nodes */
+.dm-screen-flow :deep(.vue-flow__background) {
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+.dm-screen-flow :deep(.vue-flow__background svg) {
+  z-index: 9999 !important;
 }
 
 .empty-state-overlay {
@@ -1711,12 +2861,14 @@ defineExpose({
   margin-top: 8px;
 }
 
-.shape-color-picker {
+.shape-color-picker,
+.color-picker {
   width: 50px;
   height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   cursor: pointer;
+  background: transparent;
 }
 
 /* MiniMap - positioned top right, smaller */
@@ -1728,6 +2880,106 @@ defineExpose({
   left: auto !important;
   width: 120px !important;
   height: 80px !important;
+}
+
+/* VTT Toolbar Panel - top center */
+.vtt-toolbar-panel {
+  top: 10px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Movement Distance Display */
+.movement-display-panel {
+  top: 70px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  z-index: 10001 !important;
+}
+
+.movement-display {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(34, 197, 94, 0.9);
+  backdrop-filter: blur(12px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: bounceIn 0.2s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.movement-feet {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  margin-right: 8px;
+}
+
+.movement-squares {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Movement Trail SVG */
+.movement-trail-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: visible;
+}
+
+/* Ping animation */
+.ping-ring {
+  animation: pingPulse 1.5s ease-out infinite;
+  transform-origin: center;
+}
+
+.ping-ring-1 {
+  animation-delay: 0s;
+}
+
+.ping-ring-2 {
+  animation-delay: 0.3s;
+}
+
+.ping-ring-3 {
+  animation-delay: 0.6s;
+}
+
+@keyframes pingPulse {
+  0% {
+    opacity: 1;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
 }
 
 /* Kitbashing Panel - left side */

@@ -28,6 +28,7 @@ export function usePortalSocket(_options?: { isViewer?: boolean }) {
     // Send methods
     sendPing: socketStore.sendPing,
     sendPortalViewUpdate: socketStore.sendPortalViewUpdate,
+    sendCollaborativeUpdate: socketStore.sendCollaborativeUpdate,
     sendItemUpdate: socketStore.sendItemUpdate,
     requestSync: socketStore.requestSync,
     sendSyncResponse: socketStore.sendSyncResponse,

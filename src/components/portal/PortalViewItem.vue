@@ -198,12 +198,71 @@ const handleDmScreenResetView = () => {
   }
 }
 
+// Direct DM screen update from socket (no refetch needed)
+const updateDmScreen = (newDmScreen: DmScreen) => {
+  if (props.item.type === 'DmScreenViewer' && newDmScreen) {
+    console.log('[PortalViewItem] Direct DM screen update from socket')
+    // Update local ref
+    dmScreen.value = newDmScreen
+    
+    // Also update the store cache so DmScreenWrapper's computed properties work correctly
+    // DmScreenWrapper uses dmScreensStore.getItemsSortedByLayer which fetches from store, not prop
+    dmScreensStore.updateDmScreenCache(newDmScreen)
+  }
+}
+
+// VTT measurement handlers
+const handleDrawMeasurements = (lines: any[], totalFeet: number) => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDrawMeasurements?.(lines, totalFeet)
+  }
+}
+
+const handleClearMeasurements = () => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleClearMeasurements?.()
+  }
+}
+
+// VTT movement trail handlers
+const handleDrawMovementTrail = (trail: any) => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleDrawMovementTrail?.(trail)
+  }
+}
+
+const handleClearMovementTrail = (nodeId?: string) => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleClearMovementTrail?.(nodeId)
+  }
+}
+
+// VTT ping handlers
+const handlePing = (x: number, y: number) => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handlePing?.(x, y)
+  }
+}
+
+const handleClearPing = () => {
+  if (props.item.type === 'DmScreenViewer' && dmScreenWrapperRef.value) {
+    (dmScreenWrapperRef.value as any).handleClearPing?.()
+  }
+}
+
 defineExpose({
   saveState,
   handleDmScreenZoomIn,
   handleDmScreenZoomOut,
   handleDmScreenPan,
   handleDmScreenResetView,
+  updateDmScreen,
+  handleDrawMeasurements,
+  handleClearMeasurements,
+  handleDrawMovementTrail,
+  handleClearMovementTrail,
+  handlePing,
+  handleClearPing,
 })
 </script>
 

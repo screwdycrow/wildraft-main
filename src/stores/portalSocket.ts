@@ -118,6 +118,10 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
       emitEvent('portal-view-updated', data)
     })
     
+    socketInstance.value.on('collaborative-update', (data: any) => {
+      emitEvent('collaborative-update', data)
+    })
+    
     socketInstance.value.on('item-updated', (data: any) => {
       emitEvent('item-updated', data)
     })
@@ -170,6 +174,16 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
       return false
     }
     socketInstance.value.emit('portal-view-update', payload)
+    return true
+  }
+  
+  // Send collaborative update (viewers can send - broadcasts to all DM screens viewing this portal)
+  const sendCollaborativeUpdate = (payload: any) => {
+    if (!socketInstance.value || !socketInstance.value.connected) {
+      return false
+    }
+    // Allow both controllers and viewers to send collaborative updates
+    socketInstance.value.emit('collaborative-update', payload)
     return true
   }
   
@@ -228,6 +242,7 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     // Send methods
     sendPing,
     sendPortalViewUpdate,
+    sendCollaborativeUpdate,
     sendItemUpdate,
     requestSync,
     sendSyncResponse,
