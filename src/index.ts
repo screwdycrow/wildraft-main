@@ -72,6 +72,7 @@ fastify.register(swagger, {
       { name: 'library-access', description: 'Library access control endpoints' },
       { name: 'library-items', description: 'Library item endpoints (stat blocks, notes, items, characters)' },
       { name: 'tags', description: 'Tag management endpoints' },
+      { name: 'tag-folders', description: 'Tag folder management endpoints for organizing tags' },
       { name: 'combat-encounters', description: 'Combat encounter management endpoints' },
       { name: 'portal-views', description: 'Portal view management endpoints for player-facing displays' },
       { name: 'dm-screens', description: 'DM screen management endpoints for organizing and displaying content for the Dungeon Master' },

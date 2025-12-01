@@ -9,7 +9,18 @@ Tags are used to organize and categorize library items. Each tag belongs to a sp
 - **id** (number): Unique identifier
 - **name** (string): Tag name (must be unique within a library)
 - **color** (string): Hex color code (e.g., "#FF0000")
-- **folder** (string | null): Optional folder/category label used for grouping in the UI
+- **order** (number): Display order for sorting (defaults to 0)
+- **folderId** (number | null): Optional tag folder ID for grouping tags
+- **folder** (object | null): Tag folder object (when included in response)
+  - **id** (number): Folder ID
+  - **name** (string): Folder name
+  - **order** (number): Folder order
+- **featuredImageId** (number | null): Optional featured image file ID
+- **featuredImage** (object | null): Featured image file object (when included in response)
+  - **id** (number): File ID
+  - **fileName** (string): File name
+  - **fileUrl** (string): File URL
+  - **fileType** (string): File MIME type
 - **libraryId** (number): ID of the library this tag belongs to
 - **createdAt** (datetime): Creation timestamp
 - **updatedAt** (datetime): Last update timestamp
@@ -29,9 +40,18 @@ Create a new tag in a library.
 {
   "name": "Combat",
   "color": "#FF0000",
-  "folder": "Encounters"
+  "folderId": 1,
+  "featuredImageId": 5,
+  "order": 0
 }
 ```
+
+**Request Body Fields:**
+- `name` (required): Tag name
+- `color` (optional): Hex color code (e.g., "#FF0000")
+- `folderId` (optional): Tag folder ID for grouping
+- `featuredImageId` (optional): Featured image file ID
+- `order` (optional): Display order (defaults to 0)
 
 **Response (201):**
 ```json
@@ -41,7 +61,20 @@ Create a new tag in a library.
     "id": 1,
     "name": "Combat",
     "color": "#FF0000",
-    "folder": "Encounters",
+    "order": 0,
+    "folderId": 1,
+    "folder": {
+      "id": 1,
+      "name": "Encounters",
+      "order": 1
+    },
+    "featuredImageId": 5,
+    "featuredImage": {
+      "id": 5,
+      "fileName": "combat-icon.png",
+      "fileUrl": "users/1/files/combat-icon.png",
+      "fileType": "image/png"
+    },
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z"
@@ -50,7 +83,7 @@ Create a new tag in a library.
 ```
 
 **Errors:**
-- **400**: Invalid request (missing name, invalid color format)
+- **400**: Invalid request (missing name, invalid color format, invalid folder ID, invalid featured image ID)
 - **401**: Unauthorized
 - **403**: Insufficient permissions
 - **409**: Tag name already exists in this library
@@ -74,7 +107,15 @@ Get all tags in a library with item counts.
       "id": 1,
       "name": "Combat",
       "color": "#FF0000",
-      "folder": "Encounters",
+      "order": 0,
+      "folderId": 1,
+      "folder": {
+        "id": 1,
+        "name": "Encounters",
+        "order": 1
+      },
+      "featuredImageId": null,
+      "featuredImage": null,
       "libraryId": 1,
       "itemCount": 5,
       "createdAt": "2025-01-01T00:00:00.000Z",
@@ -84,7 +125,15 @@ Get all tags in a library with item counts.
       "id": 2,
       "name": "Monster",
       "color": "#00FF00",
-      "folder": "Bestiary",
+      "order": 1,
+      "folderId": 2,
+      "folder": {
+        "id": 2,
+        "name": "Bestiary",
+        "order": 2
+      },
+      "featuredImageId": null,
+      "featuredImage": null,
       "libraryId": 1,
       "itemCount": 3,
       "createdAt": "2025-01-02T00:00:00.000Z",
@@ -93,6 +142,8 @@ Get all tags in a library with item counts.
   ]
 }
 ```
+
+**Note:** Tags are sorted by `order` (ascending), then by `name` (ascending).
 
 ---
 
@@ -111,7 +162,20 @@ Get a specific tag with its associated items.
     "id": 1,
     "name": "Combat",
     "color": "#FF0000",
-    "folder": "Encounters",
+    "order": 0,
+    "folderId": 1,
+    "folder": {
+      "id": 1,
+      "name": "Encounters",
+      "order": 1
+    },
+    "featuredImageId": 5,
+    "featuredImage": {
+      "id": 5,
+      "fileName": "combat-icon.png",
+      "fileUrl": "users/1/files/combat-icon.png",
+      "fileType": "image/png"
+    },
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-01T00:00:00.000Z",
@@ -138,7 +202,7 @@ Get a specific tag with its associated items.
 ### Update Tag
 **PUT** `/api/libraries/:libraryId/tags/:tagId`
 
-Update a tag's name or color.
+Update a tag's name, color, folder, featured image, or order.
 
 **Authentication:** Required (Bearer Token)
 **Permission:** EDITOR or OWNER access
@@ -148,9 +212,18 @@ Update a tag's name or color.
 {
   "name": "Combat Encounter",
   "color": "#3498DB",
-  "folder": "Encounters"
+  "folderId": 1,
+  "featuredImageId": 5,
+  "order": 2
 }
 ```
+
+**Request Body Fields:**
+- `name` (optional): New tag name
+- `color` (optional): New hex color code
+- `folderId` (optional): New tag folder ID (set to `null` to remove from folder)
+- `featuredImageId` (optional): New featured image file ID (set to `null` to remove)
+- `order` (optional): New display order
 
 **Response (200):**
 ```json
@@ -160,7 +233,20 @@ Update a tag's name or color.
     "id": 1,
     "name": "Combat Encounter",
     "color": "#3498DB",
-    "folder": "Encounters",
+    "order": 2,
+    "folderId": 1,
+    "folder": {
+      "id": 1,
+      "name": "Encounters",
+      "order": 1
+    },
+    "featuredImageId": 5,
+    "featuredImage": {
+      "id": 5,
+      "fileName": "combat-icon.png",
+      "fileUrl": "users/1/files/combat-icon.png",
+      "fileType": "image/png"
+    },
     "libraryId": 1,
     "createdAt": "2025-01-01T00:00:00.000Z",
     "updatedAt": "2025-01-03T12:00:00.000Z"
@@ -212,7 +298,9 @@ curl -X POST $BASE_URL/libraries/$LIBRARY_ID/tags \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Combat",
-    "color": "#E74C3C"
+    "color": "#E74C3C",
+    "folderId": 1,
+    "order": 0
   }'
 ```
 
@@ -275,7 +363,37 @@ curl -X PUT $BASE_URL/libraries/$LIBRARY_ID/tags/1 \
   }'
 ```
 
-### 7. Delete Tag
+### 7. Update Tag Folder
+```bash
+curl -X PUT $BASE_URL/libraries/$LIBRARY_ID/tags/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "folderId": 2
+  }'
+```
+
+### 8. Update Tag Featured Image
+```bash
+curl -X PUT $BASE_URL/libraries/$LIBRARY_ID/tags/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "featuredImageId": 10
+  }'
+```
+
+### 9. Update Tag Order
+```bash
+curl -X PUT $BASE_URL/libraries/$LIBRARY_ID/tags/1 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "order": 5
+  }'
+```
+
+### 10. Delete Tag
 ```bash
 curl -X DELETE $BASE_URL/libraries/$LIBRARY_ID/tags/1 \
   -H "Authorization: Bearer $TOKEN"
@@ -293,14 +411,14 @@ const token = 'your-jwt-token-here';
 const libraryId = 1;
 
 // Create a tag
-async function createTag(name: string, color: string) {
+async function createTag(name: string, color: string, folderId?: number, featuredImageId?: number, order?: number) {
   const response = await fetch(`${API_BASE}/libraries/${libraryId}/tags`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ name, color })
+    body: JSON.stringify({ name, color, folderId, featuredImageId, order })
   });
   
   if (response.status === 201) {
@@ -343,7 +461,13 @@ async function getTagWithItems(tagId: number) {
 }
 
 // Update tag
-async function updateTag(tagId: number, updates: { name?: string; color?: string }) {
+async function updateTag(tagId: number, updates: { 
+  name?: string; 
+  color?: string; 
+  folderId?: number | null; 
+  featuredImageId?: number | null; 
+  order?: number 
+}) {
   const response = await fetch(`${API_BASE}/libraries/${libraryId}/tags/${tagId}`, {
     method: 'PUT',
     headers: {
@@ -539,6 +663,33 @@ if __name__ == '__main__':
 4. **Limit Tags:** Don't create too many tags - aim for 10-20 meaningful categories
 5. **Descriptive Names:** Use descriptive names that make sense to all collaborators
 6. **Review Regularly:** Periodically review and merge similar tags
+
+---
+
+## Integration with Tag Folders
+
+Tags can be organized into folders for better management. See [Tag Folders API Documentation](TAG_FOLDERS_API.md) for more details.
+
+### Creating Tags in Folders
+
+```javascript
+// First, create a folder
+const folder = await createTagFolder('Encounters', 1);
+
+// Then create tags in that folder
+await createTag('Combat', '#E74C3C', folder.id, null, 0);
+await createTag('Boss Fight', '#E74C3C', folder.id, null, 1);
+```
+
+### Moving Tags Between Folders
+
+```javascript
+// Move tag to a different folder
+await updateTag(tagId, { folderId: newFolderId });
+
+// Remove tag from folder
+await updateTag(tagId, { folderId: null });
+```
 
 ---
 

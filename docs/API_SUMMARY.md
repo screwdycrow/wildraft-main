@@ -89,7 +89,28 @@ Authorization: Bearer <your-jwt-token>
 - **PUT** `/:libraryId/tags/:tagId` - Update tag
 - **DELETE** `/:libraryId/tags/:tagId` - Delete tag
 
+**Tag Features:**
+- Can be organized into folders
+- Support featured images
+- Custom display order
+- Color-coded organization
+
 [Full Documentation](TAGS_API.md)
+
+---
+
+### Tag Folders (`/api/libraries/:libraryId/tag-folders`)
+- **POST** `/:libraryId/tag-folders` - Create tag folder
+- **GET** `/:libraryId/tag-folders` - Get all folders with tag counts
+- **GET** `/:libraryId/tag-folders/:folderId` - Get single folder with tags
+- **PUT** `/:libraryId/tag-folders/:folderId` - Update folder name or order
+- **DELETE** `/:libraryId/tag-folders/:folderId` - Delete folder
+
+**Permissions:**
+- VIEWER: Can list and view folders
+- EDITOR/OWNER: Can create, update, and delete folders
+
+[Full Documentation](TAG_FOLDERS_API.md)
 
 ---
 
@@ -303,9 +324,14 @@ npm run export-openapi
 - Types: STAT_BLOCK_DND_5E, NOTE, ITEM_DND_5E, CHARACTER_DND_5E
 
 ### Tag
-- id, name, color, folder, libraryId
+- id, name, color, order, folderId, featuredImageId, libraryId
 - createdAt, updatedAt
-- Relations: libraryItems[]
+- Relations: libraryItems[], folder (TagFolder), featuredImage (UserFile)
+
+### TagFolder
+- id, name, order, libraryId
+- createdAt, updatedAt
+- Relations: tags[], library
 
 ### CombatEncounter
 - id, name, description, libraryId

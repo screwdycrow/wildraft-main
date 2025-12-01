@@ -38,6 +38,7 @@ model Library {
   access          LibraryAccess[]
   libraryItems    LibraryItem[]
   tags            Tag[]
+  tagFolders      TagFolder[]
   DMScreen        DMScreen[]
   version         LibraryVersion?
   userFileCategories UserFileCategory[] @relation("LibraryUserFileCategories")
@@ -101,6 +102,7 @@ model UserFile {
   updatedAt       DateTime      @updatedAt
   libraryItems    LibraryItem[] @relation("LibraryItemFiles")
   featuredInItems LibraryItem[] @relation("FeaturedImage")
+  featuredInTags  Tag[]         @relation("TagFeaturedImage")
   categoryId      Int?
   category        UserFileCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
@@ -115,17 +117,37 @@ enum LibraryItemType {
 }
 
 model Tag {
-  id           Int           @id @default(autoincrement())
-  name         String
-  color        String        @default("#6B7280") // Default gray color
-  folder       String?
-  libraryId    Int
-  library      Library       @relation(fields: [libraryId], references: [id], onDelete: Cascade)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  libraryItems LibraryItem[] @relation("LibraryItemTags")
+  id              Int           @id @default(autoincrement())
+  name            String
+  color           String        @default("#6B7280") // Default gray color
+  order           Int           @default(0)
+  folderId        Int?
+  folder          TagFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  featuredImageId Int?
+  featuredImage   UserFile?     @relation("TagFeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
+  libraryId       Int
+  library         Library       @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  libraryItems    LibraryItem[] @relation("LibraryItemTags")
 
   @@unique([libraryId, name]) // Tags must be unique within a library
+  @@index([libraryId])
+  @@index([folderId])
+  @@index([featuredImageId])
+}
+
+model TagFolder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  order     Int      @default(0)
+  libraryId Int
+  library   Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  tags      Tag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([libraryId, name]) // Tag folders must be unique within a library
   @@index([libraryId])
 }
 

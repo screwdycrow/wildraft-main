@@ -18,7 +18,9 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     Body: {
       name: string;
       color?: string;
-      folder?: string | null;
+      folderId?: number | null;
+      featuredImageId?: number | null;
+      order?: number;
     };
   }>(
     '/:libraryId/tags',
@@ -29,14 +31,14 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
-        const { name, color, folder } = request.body;
+        const { name, color, folderId, featuredImageId, order } = request.body;
 
         if (!name) {
           reply.code(400);
           return { error: 'Tag name is required' };
         }
 
-        // Use transaction to check for duplicate, create, and increment version
+        // Use transaction to check for duplicate, validate folder/image, create, and increment version
         const result = await prisma.$transaction(async (tx) => {
           // Check if tag with this name already exists in the library
           const existingTag = await tx.tag.findFirst({
@@ -48,13 +50,63 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             return { error: 'duplicate' };
           }
 
+          // Build create data object
+          const createData: any = {
+            libraryId,
+            name,
+            order: order ?? 0,
+          };
+          if (color) createData.color = color;
+          
+          // Handle folderId - validate if positive number, allow null to not set
+          if (folderId !== undefined && folderId !== null) {
+            if (typeof folderId === 'number' && folderId > 0) {
+              // Validate the folder exists in this library
+              const folder = await tx.tagFolder.findFirst({
+                where: { id: folderId, libraryId },
+              });
+              if (!folder) {
+                return { error: 'invalid_folder' };
+              }
+              createData.folderId = folderId;
+            }
+            // If folderId is 0 or negative, ignore it (don't set)
+          }
+          
+          // Handle featuredImageId - validate if positive number, allow null to not set
+          if (featuredImageId !== undefined && featuredImageId !== null) {
+            if (typeof featuredImageId === 'number' && featuredImageId > 0) {
+              // Validate the file exists
+              const file = await tx.userFile.findFirst({
+                where: { id: featuredImageId },
+              });
+              if (!file) {
+                return { error: 'invalid_image' };
+              }
+              createData.featuredImageId = featuredImageId;
+            }
+            // If featuredImageId is 0 or negative, ignore it (don't set)
+          }
+
           // Create the tag
           const tag = await tx.tag.create({
-            data: {
-              libraryId,
-              name,
-              ...(color && { color }),
-              ...(folder !== undefined && { folder: folder?.trim() || null }),
+            data: createData,
+            include: {
+              folder: {
+                select: {
+                  id: true,
+                  name: true,
+                  order: true,
+                },
+              },
+              featuredImage: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileUrl: true,
+                  fileType: true,
+                },
+              },
             },
           });
 
@@ -64,9 +116,19 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           return { tag };
         });
 
-        if ('error' in result && result.error === 'duplicate') {
-          reply.code(409);
-          return { error: 'Tag with this name already exists' };
+        if ('error' in result) {
+          if (result.error === 'duplicate') {
+            reply.code(409);
+            return { error: 'Tag with this name already exists' };
+          }
+          if (result.error === 'invalid_folder') {
+            reply.code(400);
+            return { error: 'Invalid folder ID' };
+          }
+          if (result.error === 'invalid_image') {
+            reply.code(400);
+            return { error: 'Invalid featured image ID' };
+          }
         }
 
         reply.code(201);
@@ -75,7 +137,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           tag: result.tag,
         };
       } catch (error) {
-        console.error('Create tag error:', error);
+        request.log.error({ error }, 'Create tag error');
         reply.code(500);
         return {
           error: 'Failed to create tag',
@@ -102,10 +164,26 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             _count: {
               select: { libraryItems: true },
             },
+            folder: {
+              select: {
+                id: true,
+                name: true,
+                order: true,
+              },
+            },
+            featuredImage: {
+              select: {
+                id: true,
+                fileName: true,
+                fileUrl: true,
+                fileType: true,
+              },
+            },
           },
-          orderBy: {
-            name: 'asc',
-          },
+          orderBy: [
+            { order: 'asc' },
+            { name: 'asc' },
+          ],
         });
 
         // Transform the response to include itemCount
@@ -113,7 +191,11 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           id: tag.id,
           name: tag.name,
           color: tag.color,
-          folder: (tag as any).folder ?? null,
+          order: tag.order,
+          folderId: tag.folderId,
+          folder: tag.folder,
+          featuredImageId: tag.featuredImageId,
+          featuredImage: tag.featuredImage,
           libraryId: tag.libraryId,
           itemCount: tag._count.libraryItems,
           createdAt: tag.createdAt,
@@ -122,7 +204,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
 
         return { tags: tagsWithCount };
       } catch (error) {
-        console.error('Get tags error:', error);
+        request.log.error({ error }, 'Get tags error');
         reply.code(500);
         return {
           error: 'Failed to fetch tags',
@@ -158,6 +240,21 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
                 description: true,
               },
             },
+            folder: {
+              select: {
+                id: true,
+                name: true,
+                order: true,
+              },
+            },
+            featuredImage: {
+              select: {
+                id: true,
+                fileName: true,
+                fileUrl: true,
+                fileType: true,
+              },
+            },
           },
         });
 
@@ -168,7 +265,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
 
         return { tag };
       } catch (error) {
-        console.error('Get tag error:', error);
+        request.log.error({ error }, 'Get tag error');
         reply.code(500);
         return {
           error: 'Failed to fetch tag',
@@ -184,7 +281,9 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     Body: {
       name?: string;
       color?: string;
-      folder?: string | null;
+      folderId?: number | null;
+      featuredImageId?: number | null;
+      order?: number;
     };
   }>(
     '/:libraryId/tags/:tagId',
@@ -196,7 +295,21 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const tagId = parseInt(request.params.tagId, 10);
-        const { name, color, folder } = request.body;
+        
+        // Validate tagId
+        if (isNaN(tagId) || tagId <= 0) {
+          reply.code(400);
+          return { error: 'Invalid tag ID' };
+        }
+        
+        const body = request.body as any;
+        const { name, color, order } = body;
+        
+        // Check if folderId and featuredImageId keys exist in the body
+        const hasFolderId = 'folderId' in body;
+        const hasFeaturedImageId = 'featuredImageId' in body;
+        const folderId = body.folderId;
+        const featuredImageId = body.featuredImageId;
 
         // Use transaction to validate, update, and increment version
         const result = await prisma.$transaction(async (tx) => {
@@ -226,13 +339,66 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             }
           }
 
+          // Build update data object - only include fields that are being updated
+          const updateData: any = {};
+          if (name) updateData.name = name;
+          if (color) updateData.color = color;
+          if (order !== undefined) updateData.order = order;
+          
+          // Handle folderId - check if the key was in the request body
+          if (hasFolderId) {
+            if (folderId === null || folderId === 0 || folderId === undefined) {
+              // Clear the folder
+              updateData.folderId = null;
+            } else if (typeof folderId === 'number' && folderId > 0) {
+              // Validate the folder exists in this library
+              const folder = await tx.tagFolder.findFirst({
+                where: { id: folderId, libraryId },
+              });
+              if (!folder) {
+                return { error: 'invalid_folder' };
+              }
+              updateData.folderId = folderId;
+            }
+          }
+          
+          // Handle featuredImageId - check if the key was in the request body
+          if (hasFeaturedImageId) {
+            if (featuredImageId === null || featuredImageId === 0 || featuredImageId === undefined) {
+              // Clear the featured image
+              updateData.featuredImageId = null;
+            } else if (typeof featuredImageId === 'number' && featuredImageId > 0) {
+              // Validate the file exists
+              const file = await tx.userFile.findFirst({
+                where: { id: featuredImageId },
+              });
+              if (!file) {
+                return { error: 'invalid_image' };
+              }
+              updateData.featuredImageId = featuredImageId;
+            }
+          }
+
           // Update the tag
           const tag = await tx.tag.update({
             where: { id: tagId },
-            data: {
-              ...(name && { name }),
-              ...(color && { color }),
-              ...(folder !== undefined && { folder: folder?.trim() || null }),
+            data: updateData,
+            include: {
+              folder: {
+                select: {
+                  id: true,
+                  name: true,
+                  order: true,
+                },
+              },
+              featuredImage: {
+                select: {
+                  id: true,
+                  fileName: true,
+                  fileUrl: true,
+                  fileType: true,
+                },
+              },
             },
           });
 
@@ -251,6 +417,14 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
             reply.code(409);
             return { error: 'Tag with this name already exists' };
           }
+          if (result.error === 'invalid_folder') {
+            reply.code(400);
+            return { error: 'Invalid folder ID' };
+          }
+          if (result.error === 'invalid_image') {
+            reply.code(400);
+            return { error: 'Invalid featured image ID' };
+          }
         }
 
         return {
@@ -258,7 +432,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           tag: result.tag,
         };
       } catch (error) {
-        console.error('Update tag error:', error);
+        request.log.error({ error }, 'Update tag error');
         reply.code(500);
         return {
           error: 'Failed to update tag',
@@ -308,7 +482,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
         reply.code(204);
         return;
       } catch (error) {
-        console.error('Delete tag error:', error);
+        request.log.error({ error }, 'Delete tag error');
         reply.code(500);
         return {
           error: 'Failed to delete tag',
