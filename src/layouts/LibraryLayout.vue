@@ -60,23 +60,7 @@
       width="200"
       class="glass-sidebar"
     >
-      <!-- Back to Dashboard -->
-      <div class="pa-4">
-        <v-btn
-          :to="{ name: 'Dashboard' }"
-          variant="text"
-          elevation="0"
-          color="primary"
-          :block="!effectiveRail"
-          :icon="effectiveRail"
-          :prepend-icon="!effectiveRail ? 'mdi-arrow-left' : undefined"
-        >
-        <v-icon icon="mdi-arrow-left" v-if="effectiveRail" />
-          <template v-if="!effectiveRail">Back to Dashboard</template>
-        </v-btn>
-      </div>
-
-      <v-divider class="my-2" />
+     
 
       <!-- Tabs for Menu and Folders -->
       <div class="sidebar-tabs-wrapper">
@@ -125,7 +109,7 @@
           @click="sidebarTab = 'folders'"
         >
           <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
+      </v-btn>
       </div>
 
       <v-divider />
@@ -251,37 +235,76 @@
             </div>
 
             <!-- Empty State -->
-            <div v-else-if="Object.keys(tagsStore.tagsByFolder).length === 0" class="pa-2 text-center">
+            <div v-else-if="tagsStore.tags.length === 0 && tagsStore.folders.length === 0" class="pa-2 text-center">
               <v-icon icon="mdi-folder-off" size="32" color="grey-lighten-1" class="mb-1" />
               <p class="text-caption text-grey-lighten-1">No tags yet</p>
             </div>
 
             <!-- Tags by Folder -->
             <template v-else>
+              <!-- Folders with tags -->
               <v-list-group
-                v-for="folderName in sortedFolderNames"
-                :key="folderName"
-                :value="folderName"
+                v-for="folder in tagsStore.sortedFolders"
+                :key="folder.id"
+                :value="folder.id"
                 class="folder-group"
               >
                 <template #activator="{ props }">
                   <v-list-item
                     v-bind="props"
                     :prepend-icon="'mdi-folder'"
-                    :title="folderName"
+                    :title="folder.name"
                     density="compact"
                   >
                     <template #prepend>
                       <v-icon icon="mdi-folder" size="small" />
                     </template>
                     <template #append>
-                      <v-chip size="x-small" class="ml-1">{{ tagsStore.tagsByFolder[folderName].length }}</v-chip>
+                      <v-chip size="x-small" class="ml-1">{{ getTagsInFolder(folder.id).length }}</v-chip>
                     </template>
                   </v-list-item>
                 </template>
 
                 <v-list-item
-                  v-for="tag in tagsStore.tagsByFolder[folderName]"
+                  v-for="tag in getTagsInFolder(folder.id)"
+                  :key="tag.id"
+                  :to="{ name: 'TagLibraryItems', params: { id: libraryId, tagId: tag.id } }"
+                  :title="tag.name"
+                  density="compact"
+                  class="tag-item draggable-tag"
+                  draggable="true"
+                  @dragstart="handleTagDragStart($event, tag.id)"
+                >
+                  <template #prepend>
+                    <v-icon :color="tag.color" icon="mdi-tag" size="small" />
+                  </template>
+                </v-list-item>
+              </v-list-group>
+
+              <!-- Uncategorized tags -->
+              <v-list-group
+                v-if="uncategorizedTags.length > 0"
+                value="uncategorized"
+                class="folder-group"
+              >
+                <template #activator="{ props }">
+                  <v-list-item
+                    v-bind="props"
+                    prepend-icon="mdi-tag-multiple"
+                    title="Uncategorized"
+                    density="compact"
+                  >
+                    <template #prepend>
+                      <v-icon icon="mdi-tag-multiple" size="small" color="grey" />
+                    </template>
+                    <template #append>
+                      <v-chip size="x-small" class="ml-1">{{ uncategorizedTags.length }}</v-chip>
+                    </template>
+                  </v-list-item>
+                </template>
+
+                <v-list-item
+                  v-for="tag in uncategorizedTags"
                   :key="tag.id"
                   :to="{ name: 'TagLibraryItems', params: { id: libraryId, tagId: tag.id } }"
                   :title="tag.name"
@@ -301,8 +324,8 @@
           <!-- Rail Mode: Show icon list -->
           <v-list density="compact" v-else>
             <v-list-item
-              v-for="folderName in sortedFolderNames"
-              :key="folderName"
+              v-for="folder in tagsStore.sortedFolders"
+              :key="folder.id"
               :prepend-icon="'mdi-folder'"
             >
               <v-menu location="right" offset="10">
@@ -310,9 +333,36 @@
                   <v-list-item v-bind="props" />
                 </template>
                 <v-list density="compact">
-                  <v-list-subheader>{{ folderName }}</v-list-subheader>
+                  <v-list-subheader>{{ folder.name }}</v-list-subheader>
                   <v-list-item
-                    v-for="tag in tagsStore.tagsByFolder[folderName]"
+                    v-for="tag in getTagsInFolder(folder.id)"
+                    :key="tag.id"
+                    :to="{ name: 'TagLibraryItems', params: { id: libraryId, tagId: tag.id } }"
+                    :prepend-icon="'mdi-tag'"
+                    :title="tag.name"
+                    draggable="true"
+                    @dragstart="handleTagDragStart($event, tag.id)"
+                  >
+                    <template #prepend>
+                      <v-icon :color="tag.color" icon="mdi-tag" size="small" />
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </v-list-item>
+            <!-- Uncategorized in rail mode -->
+            <v-list-item
+              v-if="uncategorizedTags.length > 0"
+              prepend-icon="mdi-tag-multiple"
+            >
+              <v-menu location="right" offset="10">
+                <template #activator="{ props }">
+                  <v-list-item v-bind="props" />
+                </template>
+                <v-list density="compact">
+                  <v-list-subheader>Uncategorized</v-list-subheader>
+                  <v-list-item
+                    v-for="tag in uncategorizedTags"
                     :key="tag.id"
                     :to="{ name: 'TagLibraryItems', params: { id: libraryId, tagId: tag.id } }"
                     :prepend-icon="'mdi-tag'"
@@ -328,18 +378,18 @@
               </v-menu>
             </v-list-item>
           </v-list>
-        <div class="d-flex justify-end mb-2 mr-2">
-          <v-btn
-            variant="text"
-            size="small"
-            color="primary"
-            :to="{ name: 'LibraryTags', params: { id: libraryId } }"
-            prepend-icon="mdi-tag-multiple"
-            title="Manage library tags"
-          >
-            Manage Tags
-          </v-btn>
-        </div>
+          <div class="d-flex justify-end mb-2 mr-2">
+            <v-btn
+              variant="text"
+              size="small"
+              color="primary"
+              :to="{ name: 'LibraryTags', params: { id: libraryId } }"
+              prepend-icon="mdi-tag-multiple"
+              title="Manage library tags"
+            >
+              Manage Tags
+            </v-btn>
+          </div>
         </v-window-item> 
       </v-window>
     </v-navigation-drawer>
@@ -380,7 +430,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay, useTheme } from 'vuetify'
 import { useLibraryStore } from '@/stores/library'
@@ -407,7 +457,7 @@ const theme = useTheme()
 
 const drawer = ref(false)
 const rail = ref(true)
-const rightDrawer = ref(true)
+const rightDrawer = ref(false)
 const sidebarTab = ref('menu')
 const route = useRoute()
 const router = useRouter()
@@ -452,9 +502,18 @@ const rightSidebarWidth = computed(() => {
   return 350
 })
 
-// Sorted folder names for consistent ordering
-const sortedFolderNames = computed(() => {
-  return Object.keys(tagsStore.tagsByFolder).sort()
+// Get tags in a specific folder
+function getTagsInFolder(folderId: number) {
+  return tagsStore.tags
+    .filter(tag => tag.folderId === folderId)
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+}
+
+// Uncategorized tags (no folder)
+const uncategorizedTags = computed(() => {
+  return tagsStore.tags
+    .filter(tag => !tag.folderId)
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
 })
 
 // Check if portal viewer is connected (placeholder - you might want to track this via socket)
@@ -525,7 +584,7 @@ watch(mobile, (isMobile) => {
     rightDrawer.value = false
   } else {
     drawer.value = true
-    rightDrawer.value = true
+    // Right drawer stays closed by default on desktop
   }
 }, { immediate: true })
 
@@ -609,25 +668,64 @@ onMounted(async () => {
       router.push({ name: 'Dashboard' })
     }
   }
+  
+  // Listen for event to open encounter sidebar
+  const handleOpenEncounterSidebar = () => {
+    rightDrawer.value = true
+  }
+  window.addEventListener('open-encounter-sidebar', handleOpenEncounterSidebar)
+  
+  // Cleanup on unmount
+  onUnmounted(() => {
+    window.removeEventListener('open-encounter-sidebar', handleOpenEncounterSidebar)
+  })
 })
 
 </script>
 
 <style scoped>
+/* Subtle app bar styling - less prominent */
+:deep(.glass-header) {
+  background: rgba(var(--v-theme-surface), 0.4) !important;
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+:deep(.glass-header .v-toolbar-title) {
+  opacity: 0.85;
+}
+
+:deep(.glass-header .v-btn) {
+  opacity: 0.75;
+}
+
+:deep(.glass-header .v-btn:hover) {
+  opacity: 1;
+}
+
+/* Subtle left sidebar styling - less prominent */
+:deep(.glass-sidebar) {
+  background: rgba(var(--v-theme-surface), 0.3) !important;
+  backdrop-filter: blur(8px);
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
 :deep(.v-list-item--active) {
-  background: rgba(220, 20, 60, 0.2) !important;
-  border-left: 3px solid #DC143C;
+  background: rgba(220, 20, 60, 0.15) !important;
+  border-left: 2px solid rgba(220, 20, 60, 0.6);
 }
 
 :deep(.v-list-subheader) {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.4);
   font-size: 0.65rem;
+  opacity: 0.7;
 }
 
 .sidebar-tabs-wrapper {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  opacity: 0.8;
 }
 
 .sidebar-tabs {
@@ -657,6 +755,26 @@ onMounted(async () => {
   min-width: auto;
   padding: 0 8px;
   font-size: 0.875rem;
+  opacity: 0.7;
+}
+
+:deep(.v-tab--selected) {
+  opacity: 1;
+}
+
+/* Subtle list items */
+:deep(.v-list-item) {
+  opacity: 0.8;
+}
+
+:deep(.v-list-item:hover) {
+  opacity: 1;
+}
+
+/* Subtle dividers */
+:deep(.v-divider) {
+  opacity: 0.3;
+  border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 /* Compact folder list styling */

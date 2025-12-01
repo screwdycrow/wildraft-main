@@ -19,6 +19,27 @@ export interface FilterDefinition {
   max?: number
 }
 
+// Table column definitions
+export type TableColumnType = 'text' | 'number' | 'chip' | 'chips' | 'boolean' | 'date' | 'custom'
+
+export interface TableColumnDefinition {
+  key: string
+  title: string
+  dataPath?: string // Path in item.data (e.g., 'cr', 'level', 'rarity'). If not set, uses item[key]
+  type?: TableColumnType
+  width?: number | string
+  minWidth?: number | string
+  sortable?: boolean
+  align?: 'start' | 'center' | 'end'
+  // For chip type
+  chipColor?: string | ((value: any, item: any) => string)
+  chipVariant?: 'flat' | 'elevated' | 'tonal' | 'outlined' | 'text' | 'plain'
+  // For custom formatting
+  format?: (value: any, item: any) => string
+  // For icons
+  icon?: string | ((value: any, item: any) => string)
+}
+
 // Component registry mapping
 const componentRegistry: Partial<Record<ItemType, Record<ComponentType, () => Promise<any>>>> = {
   // ===== DND 5E Template-Specific Components =====
@@ -688,6 +709,196 @@ function genericItemToCombatantConverter(
   }
 }
 
+// Table column definitions per item type
+const itemTypeTableColumns: Partial<Record<ItemType, TableColumnDefinition[]>> = {
+  // DND 5E Stat Blocks
+  STAT_BLOCK_DND_5E: [
+    {
+      key: 'cr',
+      title: 'CR',
+      dataPath: 'cr',
+      type: 'chip',
+      width: 80,
+      chipColor: '#E74C3C',
+      chipVariant: 'tonal',
+      sortable: true,
+    },
+    {
+      key: 'size',
+      title: 'Size',
+      dataPath: 'size',
+      type: 'text',
+      width: 100,
+      sortable: true,
+    },
+    {
+      key: 'type',
+      title: 'Type',
+      dataPath: 'type',
+      type: 'text',
+      width: 120,
+      sortable: true,
+    },
+    {
+      key: 'ac',
+      title: 'AC',
+      dataPath: 'ac',
+      type: 'number',
+      width: 70,
+      sortable: true,
+      align: 'center',
+    },
+    {
+      key: 'hp',
+      title: 'HP',
+      dataPath: 'hp',
+      type: 'number',
+      width: 80,
+      sortable: true,
+      align: 'center',
+    },
+  ],
+
+  // DND 5E Characters  
+  CHARACTER_DND_5E: [
+    {
+      key: 'level',
+      title: 'Lvl',
+      dataPath: 'level',
+      type: 'chip',
+      width: 70,
+      chipColor: '#3498DB',
+      chipVariant: 'tonal',
+      sortable: true,
+      align: 'center',
+    },
+    {
+      key: 'class',
+      title: 'Class',
+      dataPath: 'class',
+      type: 'text',
+      width: 120,
+      sortable: true,
+    },
+    {
+      key: 'race',
+      title: 'Race',
+      dataPath: 'race',
+      type: 'text',
+      width: 100,
+      sortable: true,
+    },
+    {
+      key: 'ac',
+      title: 'AC',
+      dataPath: 'ac',
+      type: 'number',
+      width: 70,
+      sortable: true,
+      align: 'center',
+    },
+    {
+      key: 'hp',
+      title: 'HP',
+      dataPath: 'hp',
+      type: 'number',
+      width: 80,
+      sortable: true,
+      align: 'center',
+      format: (value, item) => {
+        const maxHp = item.data?.maxHp
+        if (maxHp && value !== maxHp) return `${value}/${maxHp}`
+        return value?.toString() || '-'
+      },
+    },
+  ],
+
+  // DND 5E Magic Items
+  ITEM_DND_5E: [
+    {
+      key: 'rarity',
+      title: 'Rarity',
+      dataPath: 'rarity',
+      type: 'chip',
+      width: 120,
+      sortable: true,
+      chipColor: (value) => {
+        const colors: Record<string, string> = {
+          'common': '#95A5A6',
+          'uncommon': '#27AE60',
+          'rare': '#3498DB',
+          'very rare': '#9B59B6',
+          'legendary': '#F39C12',
+          'artifact': '#E74C3C',
+        }
+        return colors[value?.toLowerCase()] || '#7F8C8D'
+      },
+      chipVariant: 'tonal',
+    },
+    {
+      key: 'itemType',
+      title: 'Type',
+      dataPath: 'itemType',
+      type: 'text',
+      width: 120,
+      sortable: true,
+    },
+    {
+      key: 'attunement',
+      title: 'Attune',
+      dataPath: 'attunement',
+      type: 'boolean',
+      width: 80,
+      sortable: true,
+      align: 'center',
+    },
+    {
+      key: 'value',
+      title: 'Value',
+      dataPath: 'value',
+      type: 'text',
+      width: 100,
+      sortable: true,
+    },
+  ],
+
+  // Universal Notes
+  NOTE: [
+    {
+      key: 'isPinned',
+      title: '📌',
+      dataPath: 'isPinned',
+      type: 'boolean',
+      width: 50,
+      sortable: true,
+      align: 'center',
+    },
+    {
+      key: 'chaptersCount',
+      title: 'Chapters',
+      type: 'custom',
+      width: 100,
+      sortable: false,
+      align: 'center',
+      format: (_, item) => {
+        const chapters = item.data?.chapters
+        return chapters?.length ? `${chapters.length}` : '-'
+      },
+    },
+  ],
+}
+
+// Default columns used for all item types (name is always first, actions always last)
+const defaultTableColumns: TableColumnDefinition[] = [
+  {
+    key: 'type',
+    title: 'Type',
+    type: 'chip',
+    width: 130,
+    sortable: true,
+  },
+]
+
 // Filter definitions per item type
 const itemTypeFilters: Partial<Record<ItemType, FilterDefinition[]>> = {
   // DND 5E Stat Blocks
@@ -876,6 +1087,21 @@ export function useItemComponents() {
   }
 
   /**
+   * Get table column definitions for an item type
+   * Returns type-specific columns, or default columns if none defined
+   */
+  function getTableColumns(itemType: ItemType): TableColumnDefinition[] {
+    return itemTypeTableColumns[itemType] || defaultTableColumns
+  }
+
+  /**
+   * Get table columns for a mixed list of items (uses default columns only)
+   */
+  function getMixedTableColumns(): TableColumnDefinition[] {
+    return defaultTableColumns
+  }
+
+  /**
    * Get JSON import schema for an item type
    * Uses imported schemas from config file
    */
@@ -987,6 +1213,8 @@ export function useItemComponents() {
     getUniversalItemTypes,
     isUniversalType,
     getFilterDefinitions,
+    getTableColumns,
+    getMixedTableColumns,
     getJsonImportSchema,
     getCombatantComponent,
     getCombatantDetailComponent,

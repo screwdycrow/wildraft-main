@@ -1,14 +1,14 @@
 <template>
-  <div class="item-grid-list">
+  <div ref="containerRef" class="item-grid-list">
     <!-- Loading State -->
     <div 
       v-if="isLoading && items.length === 0" 
       class="items-grid loading-grid"
     >
-    <MasonryGrid>
-      <MasonryGridItem>
-        <v-skeleton-loader
-          class="skeleton-card glass-card"
+      <MasonryGrid>
+        <MasonryGridItem>
+          <v-skeleton-loader
+            class="skeleton-card glass-card"
             type="card"
           />
         </MasonryGridItem>
@@ -37,9 +37,97 @@
       </v-card>
     </div>
 
-    <!-- Items Grid -->
+    <!-- Table View -->
+    <item-table
+      v-else-if="viewMode === 'table'"
+      :items="flatItems"
+      :selected-items="selectedItems"
+      :library-id="libraryId"
+      :show-selection="selectionMode"
+      :empty-icon="emptyIcon"
+      :empty-icon-color="emptyIconColor"
+      :empty-title="emptyTitle"
+      :empty-message="emptyMessage"
+      :item-type="dominantItemType"
+      :group-by="groupBy"
+      :collapsed-groups="Array.from(localCollapsedGroups)"
+      @view="$emit('view', $event)"
+      @edit="$emit('edit', $event)"
+      @delete="handleDelete"
+      @select="(item, ctrlKey, metaKey) => handleItemSelect(item, ctrlKey, metaKey)"
+      @update:collapsed-groups="handleCollapsedGroupsUpdate"
+    />
+
+    <!-- Grouped Grid View -->
+    <template v-else-if="groupBy !== 'none' && groupedItems.length > 0">
+      <div 
+        v-for="group in groupedItems" 
+        :key="group.name" 
+        class="item-group mb-6"
+      >
+        <!-- Group Header -->
+        <div 
+          class="group-header d-flex align-center gap-3 mb-4 cursor-pointer"
+          @click="toggleGroup(group.name)"
+        >
+          <v-icon 
+            :icon="isGroupCollapsed(group.name) ? 'mdi-chevron-right' : 'mdi-chevron-down'" 
+            size="24"
+          />
+          <div class="d-flex align-center gap-2 flex-grow-1">
+            <v-chip
+              v-if="group.color"
+              :color="group.color"
+              size="small"
+              variant="tonal"
+            >
+              <v-icon v-if="groupBy === 'tagFolder'" icon="mdi-folder" size="16" class="mr-1" />
+              <v-icon v-else icon="mdi-tag" size="16" class="mr-1" />
+              {{ group.name }}
+            </v-chip>
+            <span v-else class="text-h6 font-weight-medium">{{ group.name }}</span>
+            <span class="text-caption text-grey ml-2">({{ group.items.length }})</span>
+          </div>
+        </div>
+
+        <!-- Group Items -->
+        <v-expand-transition>
+          <MasonryGrid
+            v-show="!isGroupCollapsed(group.name)"
+            :key="`group-${group.name}-${gridKey}`"
+            class="items-grid"
+            :class="{ 'drag-over': isDragOver }"
+            :columns="masonryColumns"
+            :gutter="masonryGutter"
+          >
+            <MasonryGridItem
+              v-for="item in group.items"
+              :key="item.id"
+              class="grid-item"
+              :data-item-id="item.id"
+            >
+              <lazy-item-card
+                :item="item"
+                :selected="selectedItems.has(item.id)"
+                :selection-mode="selectionMode"
+                :library-id="libraryId"
+                :unload-when-hidden="virtualizeGrid"
+                @view="$emit('view', item)"
+                @edit="$emit('edit', item)"
+                @delete="handleDelete(item)"
+                @select="(emittedItem, ctrlKey, metaKey) => handleItemSelect(emittedItem, ctrlKey, metaKey)"
+                @contextmenu="handleContextMenu($event, item)"
+              />
+            </MasonryGridItem>
+          </MasonryGrid>
+        </v-expand-transition>
+      </div>
+    </template>
+
+    <!-- Flat Grid View (no grouping) -->
     <MasonryGrid
       v-else
+      :key="`flat-${gridKey}`"
       class="items-grid"
       :class="{ 'drag-over': isDragOver }"
       :columns="masonryColumns"
@@ -59,6 +147,7 @@
           :selected="selectedItems.has(item.id)"
           :selection-mode="selectionMode"
           :library-id="libraryId"
+          :unload-when-hidden="virtualizeGrid"
           @view="$emit('view', item)"
           @edit="$emit('edit', item)"
           @delete="handleDelete(item)"
@@ -331,13 +420,82 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { LibraryItem, Tag } from '@/types/item.types'
+import type { ViewMode, GroupBy } from '@/composables/useViewPreferences'
 import LazyItemCard from './LazyItemCard.vue'
+import ItemTable from './ItemTable.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
 import { MasonryGrid, MasonryGridItem } from 'vue3-masonry-css'
 import { useItemsStore } from '@/stores/items'
+import { useTagsStore } from '@/stores/tags'
 import { useToast } from 'vue-toastification'
+
+// Container ref for ResizeObserver
+const containerRef = ref<HTMLElement | null>(null)
+const containerWidth = ref(0)
+const gridKey = ref(0) // Key to force re-render of masonry grid
+
+// ResizeObserver to track container width with debouncing
+let resizeObserver: ResizeObserver | null = null
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null
+
+const updateGridLayout = (width: number) => {
+  const oldColumns = getColumnCount(containerWidth.value)
+  const newColumns = getColumnCount(width)
+  containerWidth.value = width
+  
+  // Only force re-render if column count actually changed
+  if (oldColumns !== newColumns) {
+    gridKey.value++
+  }
+}
+
+const getColumnCount = (width: number): number => {
+  if (width >= 2000) return 6
+  if (width >= 1600) return 5
+  if (width >= 1200) return 4
+  if (width >= 900) return 3
+  if (width >= 600) return 2
+  return 1
+}
+
+onMounted(() => {
+  if (containerRef.value) {
+    containerWidth.value = containerRef.value.offsetWidth
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newWidth = entry.contentRect.width
+        
+        // Debounce the update to avoid excessive re-renders
+        if (resizeTimeout) {
+          clearTimeout(resizeTimeout)
+        }
+        resizeTimeout = setTimeout(() => {
+          updateGridLayout(newWidth)
+        }, 50)
+      }
+    })
+    resizeObserver.observe(containerRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+    resizeTimeout = null
+  }
+})
+
+interface ItemGroup {
+  name: string
+  color?: string
+  items: LibraryItem[]
+}
 
 interface Props {
   items: LibraryItem[]
@@ -352,6 +510,10 @@ interface Props {
   createButtonText?: string
   skeletonCount?: number
   libraryId?: number
+  viewMode?: ViewMode
+  groupBy?: GroupBy
+  collapsedGroups?: string[]
+  virtualizeGrid?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -365,6 +527,10 @@ const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'Create your first item to get started.',
   createButtonText: 'Create Your First Item',
   skeletonCount: 6,
+  viewMode: 'grid',
+  groupBy: 'none',
+  collapsedGroups: () => [],
+  virtualizeGrid: true,
 })
 
 const emit = defineEmits<{
@@ -374,9 +540,11 @@ const emit = defineEmits<{
   delete: [item: LibraryItem]
   'add-tag': []
   refresh: []
+  'update:collapsedGroups': [groups: string[]]
 }>()
 
 const itemsStore = useItemsStore()
+const tagsStore = useTagsStore()
 const toast = useToast()
 
 // Drag and drop state (for grid-level drops on selected items)
@@ -421,28 +589,119 @@ const showDeleteDialog = ref(false)
 const deletingItem = ref<LibraryItem | null>(null)
 const isDeleting = ref(false)
 
+// Local collapsed groups state
+const localCollapsedGroups = ref<Set<string>>(new Set(props.collapsedGroups))
+
+// Watch for prop changes
+watch(() => props.collapsedGroups, (newVal) => {
+  localCollapsedGroups.value = new Set(newVal)
+})
+
 const skeletonCount = computed(() => props.skeletonCount)
 
-const masonryColumns = {
-  default: 5,
-  3840: 6,
-  2560: 6,
-  1920: 4,
-  1600: 4,
-  1280: 3,
-  960: 2,
-  600: 1,
+// Container-based responsive column count
+const masonryColumns = computed(() => getColumnCount(containerWidth.value))
+
+// Container-based responsive gutter (in pixels as number)
+const masonryGutter = computed(() => {
+  const width = containerWidth.value
+  if (width >= 1600) return 20
+  if (width >= 1200) return 16
+  return 12
+})
+
+// Compute grouped items
+const groupedItems = computed<ItemGroup[]>(() => {
+  if (props.groupBy === 'none') return []
+  
+  const groups: Map<string, ItemGroup> = new Map()
+  
+  props.items.forEach(item => {
+    if (props.groupBy === 'tag') {
+      // Group by individual tags
+      const itemTags = item.tags || []
+      if (itemTags.length === 0) {
+        // Add to "Untagged" group
+        if (!groups.has('Untagged')) {
+          groups.set('Untagged', { name: 'Untagged', items: [] })
+        }
+        groups.get('Untagged')!.items.push(item)
+      } else {
+        // Add to each tag group (item can appear in multiple groups)
+        itemTags.forEach(tag => {
+          if (!groups.has(tag.name)) {
+            groups.set(tag.name, { name: tag.name, color: tag.color, items: [] })
+          }
+          groups.get(tag.name)!.items.push(item)
+        })
+      }
+    } else if (props.groupBy === 'tagFolder') {
+      // Group by tag folder
+      const itemTags = item.tags || []
+      const folders = new Set<string>()
+      
+      itemTags.forEach(tag => {
+        // Get the folder from the tag (need to look it up in the tags store)
+        const fullTag = tagsStore.getTagById(tag.id)
+        const folder = fullTag?.folder || 'Uncategorized'
+        folders.add(folder)
+      })
+      
+      if (folders.size === 0) {
+        folders.add('Uncategorized')
+      }
+      
+      folders.forEach(folder => {
+        if (!groups.has(folder)) {
+          groups.set(folder, { name: folder, items: [] })
+        }
+        // Only add if not already in this folder group
+        const existingIds = new Set(groups.get(folder)!.items.map(i => i.id))
+        if (!existingIds.has(item.id)) {
+          groups.get(folder)!.items.push(item)
+        }
+      })
+    }
+  })
+  
+  // Convert to array and sort by name
+  return Array.from(groups.values()).sort((a, b) => {
+    // Put "Untagged" and "Uncategorized" at the end
+    if (a.name === 'Untagged' || a.name === 'Uncategorized') return 1
+    if (b.name === 'Untagged' || b.name === 'Uncategorized') return -1
+    return a.name.localeCompare(b.name)
+  })
+})
+
+// Flat items (for table view or when grouping)
+const flatItems = computed(() => props.items)
+
+// Determine dominant item type (if all items are same type)
+const dominantItemType = computed(() => {
+  if (props.items.length === 0) return null
+  const firstType = props.items[0].type
+  const allSameType = props.items.every(item => item.type === firstType)
+  return allSameType ? firstType : null
+})
+
+// Handle collapsed groups update from table
+const handleCollapsedGroupsUpdate = (groups: string[]) => {
+  localCollapsedGroups.value = new Set(groups)
+  emit('update:collapsedGroups', groups)
 }
 
-const masonryGutter = {
-  default: '20px',
-  3840: '24px',
-  2560: '20px',
-  1920: '16px',
-  1600: '16px',
-  1280: '12px',
-  960: '12px',
-  600: '12px',
+// Toggle group collapsed state
+const toggleGroup = (groupName: string) => {
+  if (localCollapsedGroups.value.has(groupName)) {
+    localCollapsedGroups.value.delete(groupName)
+  } else {
+    localCollapsedGroups.value.add(groupName)
+  }
+  emit('update:collapsedGroups', Array.from(localCollapsedGroups.value))
+}
+
+const isGroupCollapsed = (groupName: string) => {
+  return localCollapsedGroups.value.has(groupName)
 }
 
 const deleteDialogTitle = computed(() => {
@@ -741,7 +1000,8 @@ function handleDragOver(event: DragEvent) {
 function handleDragLeave(event: DragEvent) {
   // Only clear if we're leaving the grid entirely
   const relatedTarget = event.relatedTarget as HTMLElement
-  if (!relatedTarget || !event.currentTarget?.contains(relatedTarget)) {
+  const currentTarget = event.currentTarget as HTMLElement | null
+  if (!relatedTarget || !currentTarget?.contains(relatedTarget)) {
     isDragOver.value = false
   }
 }
@@ -870,6 +1130,24 @@ async function handleDrop(event: DragEvent) {
 .draggable-tag:active {
   cursor: grabbing;
 }
+
+/* Group styles */
+.item-group {
+  width: 100%;
+}
+
+.group-header {
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.group-header:hover {
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
 </style>
-
-

@@ -67,6 +67,12 @@
           clearable
           style="min-width: 120px;"
         />
+
+        <!-- View Controls -->
+        <view-controls
+          v-model:view-mode="viewMode"
+          v-model:group-by="groupBy"
+        />
       </template>
 
       <template #actions>
@@ -88,6 +94,9 @@
       :is-loading="itemsStore.isLoading && itemsStore.items.length === 0"
       :can-create="canEdit"
       :library-id="libraryId"
+      :view-mode="viewMode"
+      :group-by="groupBy"
+      :collapsed-groups="collapsedGroups"
       item-type-name="stat block"
       item-type-name-plural="stat blocks"
       empty-icon="mdi-sword-cross"
@@ -101,6 +110,7 @@
       @delete="deleteItemConfirmed"
       @refresh="handleRefresh"
       @add-tag="handleAddTag"
+      @update:collapsed-groups="collapsedGroups = $event"
     />
 
     <!-- Create/Edit Dialog -->
@@ -122,8 +132,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { useItemsStore } from '@/stores/items'
 import { useToast } from 'vue-toastification'
+import { useViewPreferences } from '@/composables/useViewPreferences'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import TagSelector from '@/components/tags/TagSelector.vue'
+import ViewControls from '@/components/common/ViewControls.vue'
 import { ItemGridList, ItemDialog } from '@/components/items'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 import type { LibraryItem } from '@/types/item.types'
@@ -133,6 +145,9 @@ const router = useRouter()
 const libraryStore = useLibraryStore()
 const itemsStore = useItemsStore()
 const toast = useToast()
+
+// View preferences with localStorage persistence (global for all library views)
+const { viewMode, groupBy, collapsedGroups } = useViewPreferences('library-stat-blocks')
 
 const ITEM_TYPE = 'STAT_BLOCK_DND_5E' as const
 
@@ -375,4 +390,3 @@ async function deleteItemConfirmed(item: LibraryItem) {
 <style scoped>
 /* Styles moved to ItemGridList component */
 </style>
-

@@ -4,6 +4,8 @@ export { default as ItemFormWrapper } from './ItemFormWrapper.vue'
 export { default as ItemDialog } from './ItemDialog.vue'
 export { default as ItemDetailDialog } from './ItemDetailDialog.vue'
 export { default as ItemGridList } from './ItemGridList.vue'
+export { default as ItemTable } from './ItemTable.vue'
+export { default as LazyItemCard } from './LazyItemCard.vue'
 
 // Common Components
 export { default as GenericItemCard } from './common/GenericItemCard.vue'

@@ -22,7 +22,7 @@
       </v-card-subtitle>
 
       <!-- Stats Row -->
-      <div class="stats-row mb-2" :style="{ }">
+      <div class="stats-row mb-2">
         <div class="stat-item">
           <div class="stat-label" :style="{ color: textColor }">AC</div>
           <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.ac || '10' }}</div>
@@ -31,14 +31,28 @@
           <div class="stat-label" :style="{ color: textColor }">HP</div>
           <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.hp || '10' }}</div>
         </div>
-        <div class="stat-item">
+        <div class="stat-item stat-item-speed">
           <div class="stat-label" :style="{ color: textColor }">SPEED</div>
-          <div class="stat-value" :style="{ color: textColor }">{{ statBlockData.speed || '30 ft.' }}</div>
+          <v-tooltip v-if="speedText && speedText.length > 8" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <div 
+                class="stat-value stat-value-speed" 
+                :style="{ color: textColor }"
+                v-bind="tooltipProps"
+              >
+                {{ speedText }}
+              </div>
+            </template>
+            <span>{{ statBlockData.speed || '30 ft.' }}</span>
+          </v-tooltip>
+          <div v-else class="stat-value stat-value-speed" :style="{ color: textColor }">
+            {{ speedText }}
+          </div>
         </div>
       </div>
 
       <!-- Ability Scores -->
-      <div class="abilities-container mb-3" :style="{ opacity: 0.95 }">
+      <div class="abilities-container mb-3">
         <div v-for="ability in abilities" :key="ability.key" class="ability-item">
           <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
           <div class="ability-value" :style="{ color: textColor }">
@@ -144,7 +158,12 @@ const hasAbilities = computed(() => {
 const allTraitsAndActions = computed(() => {
   const traits = statBlockData.value.traits || []
   const actions = statBlockData.value.actions || []
-  return [...traits, ...actions]
+  // Convert traits to action-like format for ActionChip compatibility
+  const convertedTraits = traits.map(trait => ({
+    ...trait,
+    actionType: 'action' as const, // Add required actionType for ActionChip
+  }))
+  return [...convertedTraits, ...actions]
 })
 
 function getAbilityScore(key: string): number {
@@ -156,6 +175,12 @@ function getAbilityModifier(key: string): string {
   const modifier = Math.floor((score - 10) / 2)
   return modifier >= 0 ? `+${modifier}` : `${modifier}`
 }
+
+// Truncate speed text for display
+const speedText = computed(() => {
+  const speed = statBlockData.value.speed || '30 ft.'
+  return speed
+})
 
 // Resolve image URLs in description
 const resolvedDescription = computed(() => {
@@ -217,65 +242,79 @@ const resolvedDescription = computed(() => {
 .stats-row {
   display: flex;
   justify-content: space-around;
-  gap: 8px;
-  padding: 8px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .stat-item {
   text-align: center;
   flex: 1;
+  min-width: 0;
+}
+
+.stat-item-speed {
+  flex: 1.2;
 }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: clamp(0.55rem, 1.2vw, 0.65rem);
   font-weight: 500;
-  opacity: 0.9;
+  opacity: 0.7;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  font-weight: 600;
   line-height: 1.2;
-  opacity: 0.9;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.stat-value-speed {
+  font-size: clamp(0.7rem, 1.8vw, 0.95rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .abilities-container {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.3);
+  gap: 6px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
   backdrop-filter: blur(4px);
 }
 
 .ability-item {
   text-align: center;
-  padding: 4px;
+  padding: 3px;
 }
 
 .ability-label {
-  font-size: 0.65rem;
+  font-size: clamp(0.5rem, 1vw, 0.6rem);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  opacity: 0.9;
+  opacity: 0.7;
 }
 
 .ability-value {
-  font-size: 1.1rem;
-  font-weight: bold;
+  font-size: clamp(0.9rem, 2vw, 1rem);
+  font-weight: 600;
   line-height: 1;
-  opacity: 0.9;
+  opacity: 0.85;
 }
 
 .ability-modifier {
-  font-size: 0.7rem;
-  opacity: 0.9;
+  font-size: clamp(0.55rem, 1.2vw, 0.65rem);
+  opacity: 0.75;
 }
 
 .description-wrapper {
@@ -343,7 +382,6 @@ const resolvedDescription = computed(() => {
   flex-direction: column;
   gap: 4px;
   margin-top: auto;
-  max-height: 100px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
@@ -408,14 +446,19 @@ const resolvedDescription = computed(() => {
 .stat-block-card.compact .stats-row {
   padding: 4px 0;
   margin-bottom: 4px;
+  gap: 4px;
 }
 
 .stat-block-card.compact .stat-label {
-  font-size: 0.6rem;
+  font-size: 0.5rem;
 }
 
 .stat-block-card.compact .stat-value {
-  font-size: 1rem;
+  font-size: 0.85rem;
+}
+
+.stat-block-card.compact .stat-value-speed {
+  font-size: 0.65rem;
 }
 
 .stat-block-card.compact .abilities-container {
@@ -425,19 +468,18 @@ const resolvedDescription = computed(() => {
 }
 
 .stat-block-card.compact .ability-label {
-  font-size: 0.55rem;
+  font-size: 0.45rem;
 }
 
 .stat-block-card.compact .ability-value {
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .stat-block-card.compact .ability-modifier {
-  font-size: 0.6rem;
+  font-size: 0.5rem;
 }
 
 .stat-block-card.compact .features-list {
-  max-height: 60px;
   gap: 2px;
 }
 

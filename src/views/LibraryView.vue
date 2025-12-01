@@ -1,87 +1,156 @@
 <template>
   <div v-if="libraryStore.currentLibrary">
-    <!-- Library Header -->
-    <page-top-bar
-      :title="libraryStore.currentLibrary.name"
-      icon="mdi-book-open-variant"
-      :description="libraryStore.currentLibrary.description || 'Library overview'"
-      :breadcrumbs="breadcrumbs"
-    >
-      <template #actions>
-        <v-btn
-          v-if="canEdit"
-          icon="mdi-pencil"
-          variant="text"
-          @click="handleEdit"
-        />
-      </template>
-    </page-top-bar>
+    <!-- Library Header with Clock -->
+    <v-row class="mb-6">
+      <v-col cols="12" md="8">
+        <page-top-bar
+          :title="libraryStore.currentLibrary.name"
+          icon="mdi-book-open-variant"
+          :description="libraryStore.currentLibrary.description || 'Library overview'"
+          :breadcrumbs="breadcrumbs"
+        >
+          <template #actions>
+            <v-btn
+              v-if="canEdit"
+              icon="mdi-pencil"
+              variant="text"
+              @click="handleEdit"
+            />
+          </template>
+        </page-top-bar>
+      </v-col>
+      <v-col cols="12" md="4">
+        <digital-clock />
+      </v-col>
+    </v-row>
 
-
-
-    <!-- Quick Actions -->
+    <!-- Quick Actions Row -->
     <v-row class="mb-6">
       <v-col cols="12" sm="6" md="3">
-        <v-card class="glass-card action-card" elevation="1" hover @click="addStatBlock">
-          <v-card-text class="text-center pa-6">
-            <v-icon icon="mdi-sword-cross" size="64" color="primary" class="mb-3" />
-            <h3 class="text-h6 font-weight-bold">Add Stat Block</h3>
-            <p class="text-caption text-grey-lighten-1">Create a new monster or NPC</p>
+        <quick-action-card
+          icon="mdi-sword-cross"
+          title="Stat Block"
+          description="Create a new monster or NPC"
+          icon-color="primary"
+          @click="createItem('STAT_BLOCK_DND_5E')"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <quick-action-card
+          icon="mdi-account-multiple"
+          title="Character"
+          description="Create a player character"
+          icon-color="secondary"
+          @click="createItem('CHARACTER_DND_5E')"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <quick-action-card
+          icon="mdi-treasure-chest"
+          title="Magic Item"
+          description="Create a magic item"
+          icon-color="accent"
+          @click="createItem('ITEM_DND_5E')"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <quick-action-card
+          icon="mdi-note-plus"
+          title="Note"
+          description="Write campaign notes"
+          icon-color="info"
+          @click="createItem('NOTE')"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Quick Shortcuts Row -->
+    <v-row class="mb-6">
+      <v-col cols="12" sm="6" md="4">
+        <v-card 
+          v-if="activeDmScreen"
+          class="glass-card shortcut-card"
+          elevation="0"
+          hover
+          @click="openDmScreen"
+        >
+          <v-card-text class="d-flex align-center pa-4">
+            <v-avatar size="48" color="primary" class="mr-4">
+              <v-icon icon="mdi-monitor-dashboard" size="24" />
+            </v-avatar>
+            <div class="flex-1">
+              <div class="text-subtitle-2 font-weight-bold">Active DM Screen</div>
+              <div class="text-caption text-grey-lighten-1">{{ activeDmScreen.name }}</div>
+            </div>
+            <v-icon icon="mdi-arrow-right" />
+          </v-card-text>
+        </v-card>
+        <v-card 
+          v-else
+          class="glass-card shortcut-card"
+          elevation="0"
+          @click="goToDmScreens"
+        >
+          <v-card-text class="d-flex align-center pa-4">
+            <v-avatar size="48" color="grey-darken-2" class="mr-4">
+              <v-icon icon="mdi-monitor-dashboard" size="24" />
+            </v-avatar>
+            <div class="flex-1">
+              <div class="text-subtitle-2 font-weight-bold">No Active DM Screen</div>
+              <div class="text-caption text-grey-lighten-1">Create or select a DM screen</div>
+            </div>
+            <v-icon icon="mdi-arrow-right" />
           </v-card-text>
         </v-card>
       </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="glass-card action-card" elevation="1" hover @click="addCharacter">
-          <v-card-text class="text-center pa-6">
-            <v-icon icon="mdi-account-multiple" size="64" color="secondary" class="mb-3" />
-            <h3 class="text-h6 font-weight-bold">Add Character</h3>
-            <p class="text-caption text-grey-lighten-1">Create a player character</p>
+      <v-col cols="12" sm="6" md="4">
+        <v-card 
+          v-if="activeEncounter"
+          class="glass-card shortcut-card"
+          elevation="0"
+          hover
+          @click="openEncounter"
+        >
+          <v-card-text class="d-flex align-center pa-4">
+            <v-avatar size="48" color="error" class="mr-4">
+              <v-icon icon="mdi-sword-cross" size="24" />
+            </v-avatar>
+            <div class="flex-1">
+              <div class="text-subtitle-2 font-weight-bold">Active Encounter</div>
+              <div class="text-caption text-grey-lighten-1">{{ activeEncounter.name }}</div>
+            </div>
+            <v-icon icon="mdi-arrow-right" />
           </v-card-text>
         </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="glass-card action-card" elevation="1" hover @click="addItem">
-          <v-card-text class="text-center pa-6">
-            <v-icon icon="mdi-treasure-chest" size="64" color="accent" class="mb-3" />
-            <h3 class="text-h6 font-weight-bold">Add Item</h3>
-            <p class="text-caption text-grey-lighten-1">Create a magic item</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="glass-card action-card" elevation="1" hover @click="addNote">
-          <v-card-text class="text-center pa-6">
-            <v-icon icon="mdi-note-plus" size="64" color="info" class="mb-3" />
-            <h3 class="text-h6 font-weight-bold">Add Note</h3>
-            <p class="text-caption text-grey-lighten-1">Write campaign notes</p>
+        <v-card 
+          v-else
+          class="glass-card shortcut-card"
+          elevation="0"
+          @click="openEncounter"
+        >
+          <v-card-text class="d-flex align-center pa-4">
+            <v-avatar size="48" color="grey-darken-2" class="mr-4">
+              <v-icon icon="mdi-sword-cross" size="24" />
+            </v-avatar>
+            <div class="flex-1">
+              <div class="text-subtitle-2 font-weight-bold">Open Encounter</div>
+              <div class="text-caption text-grey-lighten-1">View or create an encounter</div>
+            </div>
+            <v-icon icon="mdi-arrow-right" />
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Recent Content -->
+    <!-- Tags Section -->
     <v-row>
       <v-col cols="12">
         <v-card class="glass-card" elevation="0">
-          <v-card-title class="text-h5 font-weight-bold pa-6 d-flex align-items-center">
-            <v-icon icon="mdi-history" color="primary" class="mr-2" />
-            Recent Content
-          </v-card-title>
-          <v-card-text>
-            <v-list class="bg-transparent">
-              <v-list-item class="text-center py-12">
-                <v-icon icon="mdi-package-variant" size="64" color="grey" class="mb-2" />
-                <v-list-item-title class="text-h6 text-grey-lighten-1 mb-2">
-                  No content yet
-                </v-list-item-title>
-                <v-list-item-subtitle class="text-grey">
-                  Start adding content to your library using the cards above
-                </v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
+          <v-card-text class="pa-6">
+            <dashboard-tags-section
+              :library-id="libraryId!"
+              :can-edit="canEdit"
+            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -128,16 +197,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, provide } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
+import { useTagsStore } from '@/stores/tags'
+import { useDmScreensStore } from '@/stores/dmScreens'
+import { useCombatEncountersStore } from '@/stores/combatEncounters'
+import { useDialogsStore } from '@/stores/dialogs'
 import { useToast } from 'vue-toastification'
 import PageTopBar from '@/components/common/PageTopBar.vue'
+import DigitalClock from '@/components/common/DigitalClock.vue'
+import QuickActionCard from '@/components/library/QuickActionCard.vue'
+import DashboardTagsSection from '@/components/library/DashboardTagsSection.vue'
 import CreateLibraryDialog from '@/components/library/CreateLibraryDialog.vue'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
+import type { ItemType } from '@/types/item.types'
 
 const route = useRoute()
+const router = useRouter()
 const libraryStore = useLibraryStore()
+const tagsStore = useTagsStore()
+const dmScreensStore = useDmScreensStore()
+const combatEncountersStore = useCombatEncountersStore()
+const dialogsStore = useDialogsStore()
 const toast = useToast()
 
 const showEditDialog = ref(false)
@@ -159,6 +241,41 @@ const canEdit = computed(() =>
   ['OWNER', 'EDITOR'].includes(libraryStore.currentLibrary?.role || '')
 )
 
+const activeDmScreen = computed(() => dmScreensStore.activeDmScreen)
+const activeEncounter = computed(() => combatEncountersStore.activeEncounter)
+
+// Provide function to open right sidebar (for encounter)
+const openRightSidebar = () => {
+  // Dispatch custom event that LibraryLayout can listen to
+  window.dispatchEvent(new CustomEvent('open-encounter-sidebar'))
+}
+provide('openRightSidebar', openRightSidebar)
+
+onMounted(async () => {
+  if (libraryId.value) {
+    // Load tags for the dashboard
+    try {
+      await tagsStore.fetchTags(libraryId.value)
+    } catch (error) {
+      console.error('Failed to load tags:', error)
+    }
+
+    // Load DM screens
+    try {
+      await dmScreensStore.fetchDmScreens(libraryId.value)
+    } catch (error) {
+      console.error('Failed to load DM screens:', error)
+    }
+
+    // Load encounters
+    try {
+      await combatEncountersStore.fetchEncounters(libraryId.value)
+    } catch (error) {
+      console.error('Failed to load encounters:', error)
+    }
+  }
+})
+
 function handleEdit() {
   showEditDialog.value = true
 }
@@ -177,32 +294,58 @@ async function handleUpdate(data: { name: string; description?: string }, callba
   }
 }
 
-function addStatBlock() {
-  toast.info('Stat block creation coming soon!')
+function createItem(itemType: ItemType) {
+  if (!libraryId.value) return
+  dialogsStore.openItemEditorCreate(itemType, libraryId.value)
 }
 
-function addCharacter() {
-  toast.info('Character creation coming soon!')
+function openDmScreen() {
+  if (activeDmScreen.value) {
+    router.push({
+      name: 'DmScreen',
+      params: {
+        id: activeDmScreen.value.libraryId,
+        dmScreenId: activeDmScreen.value.id,
+      },
+    })
+  }
 }
 
-function addItem() {
-  toast.info('Item creation coming soon!')
+function goToDmScreens() {
+  if (libraryId.value) {
+    router.push({
+      name: 'LibraryDmScreens',
+      params: {
+        id: libraryId.value,
+      },
+    })
+  }
 }
 
-function addNote() {
-  toast.info('Note creation coming soon!')
+function openEncounter() {
+  // Open the right sidebar with encounter
+  openRightSidebar()
+  
+  // If no active encounter, navigate to encounters view
+  if (!activeEncounter.value && libraryId.value) {
+    // You might want to navigate to an encounters view or create one
+    // For now, just open the sidebar
+  }
 }
 </script>
 
 <style scoped>
-/* Use global glass-card class */
-
-.action-card {
+.shortcut-card {
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.action-card:hover .v-icon {
-  transform: scale(1.1);
-  transition: transform 0.3s ease-in-out;
+.shortcut-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.flex-1 {
+  flex: 1;
 }
 </style>
