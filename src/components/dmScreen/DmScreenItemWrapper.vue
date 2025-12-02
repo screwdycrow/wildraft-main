@@ -2,18 +2,19 @@
   <div 
     class="dm-screen-item-wrapper"
     :class="{ 
-      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode',
+      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode',
       'is-background': item.data.isBackground,
       'is-token': item.type === 'TokenNode',
       'is-effect': item.type === 'EffectNode',
       'is-shape': item.type === 'ShapeNode',
-      'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode'
+      'is-terrain': item.type === 'TerrainNode',
+      'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
     }"
     :style="wrapperStyle"
   >
     <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
     <div 
-      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && !item.data.isBackground" 
+      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && !item.data.isBackground" 
       class="selection-handle"
       data-drag-handle
     >
@@ -31,7 +32,7 @@
     />
 
     <!-- Full View (all other types) -->
-    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' }" :style="shouldApplyContentScaling ? contentStyle : {}">
+    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' }" :style="shouldApplyContentScaling ? contentStyle : {}">
       <!-- LibraryItemId -->
       <div 
         v-if="item.type === 'LibraryItemId' && libraryItem" 
@@ -165,6 +166,16 @@
         @update:path="handleBeamPathUpdate"
       />
 
+      <!-- TerrainNode (procedurally generated terrain elements) -->
+      <terrain-node-display
+        v-else-if="item.type === 'TerrainNode'"
+        :item="item"
+        :library-id="libraryId"
+        :selected="props.selected"
+        :rotation="props.rotation"
+        @update:generated-image="handleTerrainImageGenerated"
+      />
+
       <!-- Fallback for unknown types -->
       <div v-else class="unknown-item-type">
         <v-icon icon="mdi-alert" size="48" color="warning" />
@@ -189,6 +200,7 @@ import ImageUrlComponent from './ImageUrlComponent.vue'
 import TextNode from './TextNode.vue'
 import ShapeNode from './ShapeNode.vue'
 import EffectNodeDisplay from './EffectNodeDisplay.vue'
+import TerrainNodeDisplay from './TerrainNodeDisplay.vue'
 import { useItemsStore } from '@/stores/items'
 import { useFilesStore } from '@/stores/files'
 import { useDmScreensStore } from '@/stores/dmScreens'
@@ -291,6 +303,8 @@ const itemTitle = computed(() => {
       return props.item.data.title || 'Image'
     case 'EffectNode':
       return props.item.data.effectConfig?.effectType || 'Effect'
+    case 'TerrainNode':
+      return props.item.data.terrainConfig?.terrainType || 'Terrain'
     default:
       return 'Item'
   }
@@ -311,7 +325,7 @@ const shouldApplyContentScaling = computed(() => {
   const type = props.item.type
   // Don't scale backgrounds, shapes, text, effects, or tokens
   if (props.item.data.isBackground) return false
-  if (type === 'ShapeNode' || type === 'TextNode' || type === 'EffectNode' || type === 'TokenNode') return false
+  if (type === 'ShapeNode' || type === 'TextNode' || type === 'EffectNode' || type === 'TokenNode' || type === 'TerrainNode') return false
   // Only apply scaling for library items when scaled
   return isScaled.value
 })
@@ -327,8 +341,8 @@ const wrapperStyle = computed(() => {
 // Content style (scale down if below 300px)
 // NOTE: Shapes and Effects should NOT be scaled - they resize directly
 const contentStyle = computed(() => {
-  // Don't apply scaling to ShapeNode or EffectNode - they use direct sizing
-  if (props.item.type === 'ShapeNode' || props.item.type === 'EffectNode') {
+  // Don't apply scaling to ShapeNode, EffectNode, or TerrainNode - they use direct sizing
+  if (props.item.type === 'ShapeNode' || props.item.type === 'EffectNode' || props.item.type === 'TerrainNode') {
     return {}
   }
   
@@ -452,6 +466,18 @@ function handleBeamPathUpdate(path: string) {
         ...props.item.data.effectConfig,
         beamPath: path,
       },
+    },
+  }
+  emit('update', updatedItem)
+}
+
+function handleTerrainImageGenerated(imageUrl: string) {
+  // Save the generated terrain image to the item data
+  const updatedItem: DmScreenItem = {
+    ...props.item,
+    data: {
+      ...props.item.data,
+      generatedTerrainImage: imageUrl,
     },
   }
   emit('update', updatedItem)
@@ -648,9 +674,10 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
   padding: 0;
 }
 
-/* Ensure shapes and effects fill their containers directly without transform scaling */
+/* Ensure shapes, effects, and terrain fill their containers directly without transform scaling */
 .dm-screen-item-wrapper.is-shape .shape-node,
-.dm-screen-item-wrapper.is-effect .effect-node-container {
+.dm-screen-item-wrapper.is-effect .effect-node-container,
+.dm-screen-item-wrapper.is-terrain .terrain-node-container {
   width: 100%;
   height: 100%;
 }

@@ -11,6 +11,7 @@ export type DmScreenItemType =
   | 'ShapeNode'
   | 'TokenNode' // Compact circular token view of LibraryItem or UserFile
   | 'EffectNode' // WebGL particle/lighting effects (fire, snow, fog, etc.)
+  | 'TerrainNode' // Procedurally generated terrain elements (caves, buildings, trees, etc.)
 
 // Effect types for EffectNode
 export type EffectType = 
@@ -436,6 +437,10 @@ export interface DmScreenItem {
     
     // For EffectNode (particle/lighting effects)
     effectConfig?: EffectConfig // Full effect configuration
+    
+    // For TerrainNode (procedurally generated terrain)
+    terrainConfig?: TerrainConfig // Terrain generation configuration
+    generatedTerrainImage?: string | null // Cached generated terrain as data URL
     
     // Background image flag (legacy - now use layer instead)
     isBackground?: boolean
@@ -1158,4 +1163,684 @@ export const EFFECT_PRESETS: EffectPreset[] = [
       blendMode: 'screen',
     },
   },
+]
+
+// =====================================================
+// TERRAIN NODE TYPES - Procedurally Generated Map Elements
+// =====================================================
+
+// Terrain types for TerrainNode
+export type TerrainType = 
+  | 'cave'           // Organic cave system (cellular automata)
+  | 'dungeon'        // Structured dungeon rooms (BSP)
+  | 'building'       // Top-down building interior with rooms
+  | 'house'          // Top-down building exterior with roof
+  | 'treeSingle'     // Single tree canopy
+  | 'treeCluster'    // Cluster of trees
+  | 'bush'           // Bush/shrub
+  | 'rocks'          // Rock formation
+  | 'cliff'          // Cliff edge/wall
+  | 'river'          // Winding river
+  | 'path'           // Dirt/stone path
+  | 'ruins'          // Ruined structure
+  | 'campsite'       // Campsite with tents/fire pit markers
+  // Ground terrains
+  | 'mountains'      // Mountain range from above with contours
+  | 'grassland'      // Meadow/plains with grass
+  | 'ocean'          // Sea with islands
+  | 'lake'           // Lake with shore
+  | 'beach'          // Shoreline with sand and water
+  | 'desert'         // Sandy desert with dunes
+  | 'snow'           // Snowy/icy terrain
+  | 'swamp'          // Marshland/wetland
+  | 'volcano'        // Volcanic terrain with lava
+  | 'canyon'         // Deep canyon/ravine
+
+// Terrain generation configuration
+export interface TerrainConfig {
+  terrainType: TerrainType
+  seed: number                    // Random seed for reproducibility
+  complexity: number              // 0-1: Simple to complex
+  scale: number                   // Size multiplier
+  
+  // Colors (all terrains)
+  primaryColor: string            // Main color
+  secondaryColor: string          // Accent/variation color
+  accentColor?: string            // Third color for highlights
+  shadowColor?: string            // Shadow/depth color
+  
+  // Quality settings
+  resolution?: 'low' | 'medium' | 'high' | 'ultra'  // Rendering resolution (512/768/1024/1536)
+  detailLevel?: number            // 0-1: Amount of detail/texture
+  
+  // Cave/Dungeon specific
+  fillDensity?: number            // 0-1: How filled the space is (caves)
+  smoothIterations?: number       // Number of smoothing passes
+  connectRegions?: boolean        // Whether to connect disconnected areas
+  wallThickness?: number          // Thickness of walls (1-5)
+  corridorWidth?: number          // Width of corridors (1-4)
+  
+  // Building specific
+  roomCount?: number              // Number of rooms (2-10)
+  doorStyle?: 'open' | 'closed' | 'arch'
+  hasWindows?: boolean
+  hasFurniture?: boolean          // Add furniture markers
+  buildingStyle?: 'stone' | 'wood' | 'brick' | 'ruins'
+  
+  // Tree/Vegetation specific
+  foliageStyle?: 'round' | 'pointed' | 'irregular'
+  foliageDensity?: number         // 0-1: How full the canopy is
+  trunkVisible?: boolean
+  trunkColor?: string
+  hasHighlights?: boolean         // Light patches on foliage
+  hasShadows?: boolean            // Shadow beneath
+  flowerColor?: string            // For bushes with flowers
+  
+  // Terrain specific
+  texturePattern?: 'noise' | 'crosshatch' | 'stipple' | 'solid'
+  borderStyle?: 'rough' | 'smooth' | 'none'
+  hasOutline?: boolean
+  outlineColor?: string
+  outlineWidth?: number
+  
+  // Path/River specific
+  pathWidth?: number
+  curviness?: number              // 0-1: How curvy
+  hasStones?: boolean             // Stepping stones for rivers
+  hasBorder?: boolean             // Edge/border decoration
+  
+  // Lake/Water specific
+  lakeStyle?: 'simple' | 'natural' | 'complex'  // Shape complexity
+  waterDepthZones?: number        // 1-5: Number of depth gradient zones
+  hasIslands?: boolean            // Add islands in water
+  islandCount?: number            // 0-5: Number of islands
+  hasReeds?: boolean              // Vegetation around shore
+  reedDensity?: number            // 0-1: Amount of shore vegetation
+  shoreDetail?: number            // 0-1: How jagged/organic the shore is
+  hasWaves?: boolean              // Show wave patterns on water
+  waveIntensity?: number          // 0-1: Wave pattern strength
+  hasShoreSand?: boolean          // Sandy beach ring around water
+  waterTransparency?: number      // 0-1: How transparent/clear the water looks
+  
+  // Grassland specific
+  grassDensity?: number           // 0-1: Grass blade density
+  hasFlowers?: boolean            // Wildflowers in grass
+  flowerDensity?: number          // 0-1: Flower density
+  grassBladeSize?: number         // 0-1: Size of grass blades (0.5 = small, 1 = large)
+  hasPathPatches?: boolean        // Worn dirt patches in grass
+  
+  // Animation (optional)
+  animated?: boolean
+  animationSpeed?: number
+  
+  // Output
+  generatedSvgPath?: string       // The generated SVG path data
+  generatedCanvasData?: string    // Base64 canvas image for complex textures
+}
+
+// Terrain preset for the panel
+export interface TerrainPreset {
+  id: string
+  name: string
+  terrainType: TerrainType
+  icon: string
+  description: string
+  category: 'dungeons' | 'nature' | 'structures' | 'terrain' | 'ground'
+  defaultConfig: TerrainConfig
+  previewColor: string            // Color for panel preview
+}
+
+// Get default terrain config for a type
+export function getDefaultTerrainConfig(terrainType: TerrainType = 'cave'): TerrainConfig {
+  const base: TerrainConfig = {
+    terrainType,
+    seed: Math.floor(Math.random() * 1000000),
+    complexity: 0.5,
+    scale: 1,
+    primaryColor: '#4a4a4a',
+    secondaryColor: '#2a2a2a',
+    shadowColor: '#1a1a1a',
+  }
+  
+  switch (terrainType) {
+    case 'cave':
+      return {
+        ...base,
+        primaryColor: '#4a3d3a',  // Brown rock
+        secondaryColor: '#2d2420', // Dark rock
+        accentColor: '#5c4d48',   // Light rock
+        shadowColor: '#1a1512',
+        fillDensity: 0.45,
+        smoothIterations: 4,
+        connectRegions: true,
+        wallThickness: 2,
+        texturePattern: 'noise',
+        borderStyle: 'rough',
+        hasOutline: true,
+        outlineColor: '#1a1512',
+        outlineWidth: 2,
+      }
+    case 'dungeon':
+      return {
+        ...base,
+        primaryColor: '#3d3d4a',  // Stone floor
+        secondaryColor: '#2a2a35', // Dark stone
+        accentColor: '#4d4d5a',   // Light stone
+        shadowColor: '#1a1a20',
+        roomCount: 5,
+        doorStyle: 'open',
+        wallThickness: 3,
+        texturePattern: 'crosshatch',
+        borderStyle: 'rough',
+        hasOutline: true,
+        outlineColor: '#1a1a20',
+        outlineWidth: 3,
+      }
+    case 'building':
+      return {
+        ...base,
+        primaryColor: '#8b7355',  // Wood floor
+        secondaryColor: '#6b5345', // Dark wood
+        accentColor: '#ab8b65',   // Light wood
+        shadowColor: '#4a3a2a',
+        roomCount: 4,
+        doorStyle: 'open',
+        hasWindows: true,
+        hasFurniture: true,
+        buildingStyle: 'wood',
+        wallThickness: 2,
+        texturePattern: 'crosshatch',
+        hasOutline: true,
+        outlineColor: '#3a2a1a',
+        outlineWidth: 2,
+      }
+    case 'house':
+      return {
+        ...base,
+        primaryColor: '#8b7355',  // Wall color
+        secondaryColor: '#6b4423', // Roof color
+        accentColor: '#8b5533',   // Roof highlight
+        shadowColor: '#3a2a1a',
+        wallThickness: 2,
+        hasOutline: true,
+        outlineColor: '#2a1a0a',
+        outlineWidth: 1,
+      }
+    case 'treeSingle':
+      return {
+        ...base,
+        primaryColor: '#2d5a2d',  // Dark green
+        secondaryColor: '#4a8a4a', // Mid green
+        accentColor: '#6ab06a',   // Light green
+        trunkColor: '#5c4033',
+        foliageStyle: 'round',
+        foliageDensity: 0.8,
+        trunkVisible: true,
+        hasHighlights: true,
+        hasShadows: true,
+        borderStyle: 'rough',
+      }
+    case 'treeCluster':
+      return {
+        ...base,
+        primaryColor: '#2d5a2d',
+        secondaryColor: '#4a8a4a',
+        accentColor: '#6ab06a',
+        trunkColor: '#5c4033',
+        foliageStyle: 'round',
+        foliageDensity: 0.7,
+        trunkVisible: false,
+        hasHighlights: true,
+        hasShadows: true,
+        borderStyle: 'rough',
+      }
+    case 'bush':
+      return {
+        ...base,
+        primaryColor: '#3d6a3d',
+        secondaryColor: '#5a8a5a',
+        accentColor: '#7aaa7a',
+        foliageStyle: 'irregular',
+        foliageDensity: 0.9,
+        hasHighlights: true,
+        hasShadows: true,
+        borderStyle: 'rough',
+      }
+    case 'rocks':
+      return {
+        ...base,
+        primaryColor: '#6a6a6a',  // Gray rock
+        secondaryColor: '#4a4a4a',
+        accentColor: '#8a8a8a',
+        shadowColor: '#2a2a2a',
+        texturePattern: 'stipple',
+        borderStyle: 'rough',
+        hasOutline: true,
+        outlineColor: '#2a2a2a',
+        outlineWidth: 1,
+      }
+    case 'cliff':
+      return {
+        ...base,
+        primaryColor: '#7a7060',
+        secondaryColor: '#5a5040',
+        accentColor: '#9a9080',
+        shadowColor: '#3a3020',
+        texturePattern: 'noise',
+        borderStyle: 'rough',
+        hasOutline: true,
+        outlineColor: '#2a2010',
+        outlineWidth: 3,
+      }
+    case 'river':
+      return {
+        ...base,
+        primaryColor: '#4a90c0',  // Water blue
+        secondaryColor: '#3a70a0',
+        accentColor: '#6ab0e0',
+        pathWidth: 30,
+        curviness: 0.7,
+        hasStones: false,
+        hasBorder: true,
+        animated: true,
+        animationSpeed: 0.5,
+      }
+    case 'path':
+      return {
+        ...base,
+        primaryColor: '#8a7560',  // Dirt
+        secondaryColor: '#6a5540',
+        accentColor: '#aa9580',
+        pathWidth: 20,
+        curviness: 0.3,
+        hasStones: true,
+        hasBorder: true,
+        texturePattern: 'stipple',
+      }
+    case 'ruins':
+      return {
+        ...base,
+        primaryColor: '#7a7a7a',
+        secondaryColor: '#5a5a5a',
+        accentColor: '#9a9a9a',
+        roomCount: 3,
+        wallThickness: 2,
+        buildingStyle: 'ruins',
+        texturePattern: 'noise',
+        hasOutline: true,
+        outlineColor: '#3a3a3a',
+        outlineWidth: 2,
+      }
+    case 'campsite':
+      return {
+        ...base,
+        primaryColor: '#8a7560',  // Dirt ground
+        secondaryColor: '#6a5540',
+        accentColor: '#c9a571',   // Tent fabric
+        texturePattern: 'stipple',
+        borderStyle: 'rough',
+        hasFurniture: true,
+      }
+    // Ground terrain types
+    case 'mountains':
+      return {
+        ...base,
+        primaryColor: '#6a5a4a',  // Rock
+        secondaryColor: '#8a7a6a', // Lighter rock
+        accentColor: '#ffffff',   // Snow peaks
+        shadowColor: '#3a2a1a',
+        hasOutline: true,
+        outlineColor: '#2a1a0a',
+        outlineWidth: 1,
+      }
+    case 'grassland':
+      return {
+        ...base,
+        primaryColor: '#3d7a40',  // Base grass
+        secondaryColor: '#5aa050', // Light grass
+        accentColor: '#2d5a30',   // Dark grass patches
+        shadowColor: '#1e3a1e',
+        resolution: 'high',
+        texturePattern: 'noise',
+        detailLevel: 0.7,
+        grassDensity: 0.8,
+        hasFlowers: true,
+        flowerDensity: 0.3,
+        grassBladeSize: 0.6,
+        hasPathPatches: false,
+      }
+    case 'ocean':
+      return {
+        ...base,
+        primaryColor: '#2060a0',  // Deep water
+        secondaryColor: '#4080c0', // Shallow water
+        accentColor: '#c4b090',   // Sand/islands
+        shadowColor: '#103060',
+      }
+    case 'lake':
+      return {
+        ...base,
+        primaryColor: '#2868a8',  // Deep lake water
+        secondaryColor: '#4090c8', // Mid-depth water
+        accentColor: '#60b0e8',   // Shallow water
+        shadowColor: '#1a4878',   // Very deep
+        resolution: 'high',
+        lakeStyle: 'natural',
+        waterDepthZones: 4,
+        hasIslands: true,
+        islandCount: 2,
+        hasReeds: true,
+        reedDensity: 0.6,
+        shoreDetail: 0.7,
+        hasWaves: true,
+        waveIntensity: 0.4,
+        hasShoreSand: true,
+        waterTransparency: 0.3,
+      }
+    case 'beach':
+      return {
+        ...base,
+        primaryColor: '#d4b896',  // Sand
+        secondaryColor: '#4090c0', // Water
+        accentColor: '#e8d8b8',   // Light sand
+        shadowColor: '#a08060',
+      }
+    case 'desert':
+      return {
+        ...base,
+        primaryColor: '#d4a860',  // Sand
+        secondaryColor: '#c49040', // Darker sand
+        accentColor: '#e8c880',   // Light sand
+        shadowColor: '#8a6030',
+      }
+    case 'snow':
+      return {
+        ...base,
+        primaryColor: '#e8f0f8',  // Snow
+        secondaryColor: '#d0e0f0', // Shadow snow
+        accentColor: '#f8f8ff',   // Bright snow
+        shadowColor: '#a0b0c0',
+        outlineColor: '#8090a0',
+      }
+    case 'swamp':
+      return {
+        ...base,
+        primaryColor: '#4a6040',  // Murky green
+        secondaryColor: '#5a7050', // Moss
+        accentColor: '#3a5030',   // Dark water
+        shadowColor: '#2a3020',
+      }
+    case 'volcano':
+      return {
+        ...base,
+        primaryColor: '#3a2a2a',  // Dark rock
+        secondaryColor: '#ff4400', // Lava
+        accentColor: '#ffaa00',   // Hot lava
+        shadowColor: '#1a0a0a',
+      }
+    case 'canyon':
+      return {
+        ...base,
+        primaryColor: '#9a6a4a',  // Canyon rock
+        secondaryColor: '#7a5030', // Shadow
+        accentColor: '#ba8a6a',   // Highlight
+        shadowColor: '#4a3020',
+        hasOutline: true,
+        outlineColor: '#2a1a0a',
+      }
+    default:
+      return base
+  }
+}
+
+// Terrain presets for the panel
+export const TERRAIN_PRESETS: TerrainPreset[] = [
+  // Dungeons Category
+  {
+    id: 'cave',
+    name: 'Cave System',
+    terrainType: 'cave',
+    icon: 'mdi-cave',
+    description: 'Organic cave with natural rock walls',
+    category: 'dungeons',
+    defaultConfig: getDefaultTerrainConfig('cave'),
+    previewColor: '#4a3d3a',
+  },
+  {
+    id: 'dungeon',
+    name: 'Dungeon Rooms',
+    terrainType: 'dungeon',
+    icon: 'mdi-castle',
+    description: 'Structured dungeon with connected rooms',
+    category: 'dungeons',
+    defaultConfig: getDefaultTerrainConfig('dungeon'),
+    previewColor: '#3d3d4a',
+  },
+  {
+    id: 'ruins',
+    name: 'Ruins',
+    terrainType: 'ruins',
+    icon: 'mdi-pillar',
+    description: 'Crumbling ancient ruins',
+    category: 'dungeons',
+    defaultConfig: getDefaultTerrainConfig('ruins'),
+    previewColor: '#7a7a7a',
+  },
+  
+  // Nature Category
+  {
+    id: 'treeSingle',
+    name: 'Tree',
+    terrainType: 'treeSingle',
+    icon: 'mdi-tree',
+    description: 'Single tree with canopy',
+    category: 'nature',
+    defaultConfig: getDefaultTerrainConfig('treeSingle'),
+    previewColor: '#2d5a2d',
+  },
+  {
+    id: 'treeCluster',
+    name: 'Tree Cluster',
+    terrainType: 'treeCluster',
+    icon: 'mdi-forest',
+    description: 'Group of overlapping trees',
+    category: 'nature',
+    defaultConfig: getDefaultTerrainConfig('treeCluster'),
+    previewColor: '#3d6a3d',
+  },
+  {
+    id: 'bush',
+    name: 'Bush',
+    terrainType: 'bush',
+    icon: 'mdi-flower',
+    description: 'Shrub or bush',
+    category: 'nature',
+    defaultConfig: getDefaultTerrainConfig('bush'),
+    previewColor: '#4a7a4a',
+  },
+  {
+    id: 'rocks',
+    name: 'Rocks',
+    terrainType: 'rocks',
+    icon: 'mdi-chart-bubble',
+    description: 'Rock formation or boulders',
+    category: 'nature',
+    defaultConfig: getDefaultTerrainConfig('rocks'),
+    previewColor: '#6a6a6a',
+  },
+  
+  // Structures Category
+  {
+    id: 'building',
+    name: 'Building Interior',
+    terrainType: 'building',
+    icon: 'mdi-home-floor-1',
+    description: 'Top-down building with rooms and furniture',
+    category: 'structures',
+    defaultConfig: getDefaultTerrainConfig('building'),
+    previewColor: '#8b7355',
+  },
+  {
+    id: 'house',
+    name: 'Building (Roof)',
+    terrainType: 'house',
+    icon: 'mdi-home-roof',
+    description: 'Top-down building exterior with roof',
+    category: 'structures',
+    defaultConfig: getDefaultTerrainConfig('house'),
+    previewColor: '#6b4423',
+  },
+  {
+    id: 'campsite',
+    name: 'Campsite',
+    terrainType: 'campsite',
+    icon: 'mdi-campfire',
+    description: 'Camping area with tents',
+    category: 'structures',
+    defaultConfig: getDefaultTerrainConfig('campsite'),
+    previewColor: '#8a7560',
+  },
+  
+  // Terrain Category
+  {
+    id: 'cliff',
+    name: 'Cliff Edge',
+    terrainType: 'cliff',
+    icon: 'mdi-image-filter-hdr',
+    description: 'Rocky cliff or elevation change',
+    category: 'terrain',
+    defaultConfig: getDefaultTerrainConfig('cliff'),
+    previewColor: '#7a7060',
+  },
+  {
+    id: 'river',
+    name: 'River',
+    terrainType: 'river',
+    icon: 'mdi-waves',
+    description: 'Winding river or stream',
+    category: 'terrain',
+    defaultConfig: getDefaultTerrainConfig('river'),
+    previewColor: '#4a90c0',
+  },
+  {
+    id: 'path',
+    name: 'Path',
+    terrainType: 'path',
+    icon: 'mdi-road',
+    description: 'Dirt or stone path',
+    category: 'terrain',
+    defaultConfig: getDefaultTerrainConfig('path'),
+    previewColor: '#8a7560',
+  },
+  
+  // Ground Terrain Category
+  {
+    id: 'mountains',
+    name: 'Mountains',
+    terrainType: 'mountains',
+    icon: 'mdi-terrain',
+    description: 'Mountain range with elevation contours',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('mountains'),
+    previewColor: '#6a5a4a',
+  },
+  {
+    id: 'grassland',
+    name: 'Grassland',
+    terrainType: 'grassland',
+    icon: 'mdi-grass',
+    description: 'Meadow or plains with grass',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('grassland'),
+    previewColor: '#4a8a4a',
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean & Islands',
+    terrainType: 'ocean',
+    icon: 'mdi-island',
+    description: 'Sea with scattered islands',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('ocean'),
+    previewColor: '#2060a0',
+  },
+  {
+    id: 'lake',
+    name: 'Lake',
+    terrainType: 'lake',
+    icon: 'mdi-water',
+    description: 'Lake with surrounding shore',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('lake'),
+    previewColor: '#3080b0',
+  },
+  {
+    id: 'beach',
+    name: 'Beach',
+    terrainType: 'beach',
+    icon: 'mdi-beach',
+    description: 'Sandy shoreline with waves',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('beach'),
+    previewColor: '#d4b896',
+  },
+  {
+    id: 'desert',
+    name: 'Desert',
+    terrainType: 'desert',
+    icon: 'mdi-weather-sunny',
+    description: 'Sandy desert with dunes',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('desert'),
+    previewColor: '#d4a860',
+  },
+  {
+    id: 'snow',
+    name: 'Snow/Ice',
+    terrainType: 'snow',
+    icon: 'mdi-snowflake',
+    description: 'Snowy or icy terrain',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('snow'),
+    previewColor: '#e8f0f8',
+  },
+  {
+    id: 'swamp',
+    name: 'Swamp',
+    terrainType: 'swamp',
+    icon: 'mdi-water-opacity',
+    description: 'Marshland with murky water',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('swamp'),
+    previewColor: '#4a6040',
+  },
+  {
+    id: 'volcano',
+    name: 'Volcano',
+    terrainType: 'volcano',
+    icon: 'mdi-fire',
+    description: 'Volcanic terrain with lava',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('volcano'),
+    previewColor: '#8a2a1a',
+  },
+  {
+    id: 'canyon',
+    name: 'Canyon',
+    terrainType: 'canyon',
+    icon: 'mdi-arrow-expand-down',
+    description: 'Deep canyon or ravine',
+    category: 'ground',
+    defaultConfig: getDefaultTerrainConfig('canyon'),
+    previewColor: '#9a6a4a',
+  },
+]
+
+// Terrain categories for organized display
+export const TERRAIN_CATEGORIES = [
+  { id: 'dungeons', name: 'Dungeons', icon: 'mdi-castle' },
+  { id: 'nature', name: 'Nature', icon: 'mdi-tree' },
+  { id: 'structures', name: 'Structures', icon: 'mdi-home' },
+  { id: 'terrain', name: 'Terrain', icon: 'mdi-terrain' },
+  { id: 'ground', name: 'Ground', icon: 'mdi-map' },
 ]

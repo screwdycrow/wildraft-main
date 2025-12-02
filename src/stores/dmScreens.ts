@@ -714,6 +714,43 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     return newItem
   }
   
+  function addTerrainNode(
+    dmScreenId: string, 
+    libraryId: number, 
+    preset: { id: string; name: string; terrainType: string; defaultConfig: any },
+    position: { x: number; y: number }, 
+    targetLayer?: string
+  ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+    
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+    
+    const newItem: DmScreenItem = {
+      id: `terrain-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'TerrainNode',
+      layer: layerId,
+      order: maxOrder + 1,
+      data: {
+        terrainConfig: { ...preset.defaultConfig },
+      },
+      nodeOptions: {
+        x: position.x,
+        y: position.y,
+        position: position,
+        width: 200,
+        height: 200,
+        resizable: true,
+      },
+      isMinimized: false,
+    }
+    
+    addItem(dmScreenId, libraryId, newItem)
+    return newItem
+  }
+  
   function addBackgroundImage(
     dmScreenId: string, 
     libraryId: number, 
@@ -1411,6 +1448,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     addShapeNode,
     addShapeNodeWithPreset,
     addEffectNode,
+    addTerrainNode,
     addBackgroundImage,
     addUserFile,
     

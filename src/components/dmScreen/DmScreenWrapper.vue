@@ -84,10 +84,11 @@
         <!-- Unified Bottom Toolbar -->
         <Panel v-if="!isPortalMode" position="bottom-center" class="unified-bottom-panel">
           <div class="unified-toolbar">
-            <!-- Left: Effects & Shapes Panels -->
+            <!-- Left: Effects, Shapes & Terrain Panels -->
             <div class="toolbar-left">
               <EffectsPanel @add-effect="handleAddEffect" />
               <ShapesPanel @add-shape="handleAddShape" />
+              <TerrainPanel @add-terrain="handleAddTerrain" />
             </div>
             
             <!-- Center: Main Actions (slot for toolbar from parent) -->
@@ -1020,10 +1021,11 @@ import LibraryItemSelector from './LibraryItemSelector.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import EffectsPanel from './EffectsPanel.vue'
 import ShapesPanel from './ShapesPanel.vue'
+import TerrainPanel from './TerrainPanel.vue'
 import KitbashingDrawers from './KitbashingDrawers.vue'
 import VttToolbar from './VttToolbar.vue'
 import MeasurementRuler from './MeasurementRuler.vue'
-import type { EffectPreset, SVGShapePreset } from '@/types/dmScreen.types'
+import type { EffectPreset, SVGShapePreset, TerrainPreset } from '@/types/dmScreen.types'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useFilesStore } from '@/stores/files'
@@ -2639,6 +2641,57 @@ async function handleDrop(event: DragEvent) {
       }
     }
     
+    // Handle terrain drops from TerrainPanel
+    if (parsed && parsed.type === 'terrain-node') {
+      const dropPosition = project({ x: event.clientX, y: event.clientY })
+      const terrainSize = 200
+      
+      dmScreensStore.addTerrainNode(
+        props.dmScreen.id,
+        props.dmScreen.libraryId,
+        parsed.terrainPreset,
+        { x: dropPosition.x - terrainSize / 2, y: dropPosition.y - terrainSize / 2 },
+        parsed.targetLayer || 'screen'
+      )
+      
+      toast.success(`Added ${parsed.terrainPreset.name} terrain`)
+      return
+    }
+    
+    // Handle text/plain terrain format
+    if (textData && textData.startsWith('terrain:')) {
+      // Parse format: terrain:terrainId:layerId
+      const parts = textData.split(':')
+      const terrainId = parts[1]
+      const targetLayer = parts[2] || 'screen'
+      
+      // Find the terrain preset
+      const { TERRAIN_PRESETS } = await import('@/types/dmScreen.types')
+      const preset = TERRAIN_PRESETS.find(p => p.id === terrainId)
+      
+      if (preset) {
+        const dropPosition = project({ x: event.clientX, y: event.clientY })
+        const terrainSize = 200
+        
+        // Generate a new seed for this instance
+        const configWithNewSeed = {
+          ...preset.defaultConfig,
+          seed: Math.floor(Math.random() * 1000000),
+        }
+        
+        dmScreensStore.addTerrainNode(
+          props.dmScreen.id,
+          props.dmScreen.libraryId,
+          { ...preset, defaultConfig: configWithNewSeed },
+          { x: dropPosition.x - terrainSize / 2, y: dropPosition.y - terrainSize / 2 },
+          targetLayer
+        )
+        
+        toast.success(`Added ${preset.name} terrain`)
+        return
+      }
+    }
+    
     // Handle file drops (existing logic)
     if (!parsed || !parsed.fileId) {
       if (textData && textData.startsWith('file:')) {
@@ -2726,6 +2779,22 @@ function handleAddShape(preset: SVGShapePreset, layerId: string) {
   )
   
   toast.success(`Added ${preset.name} shape`)
+}
+
+// Handle adding terrain from click (adds at viewport center)
+function handleAddTerrain(preset: TerrainPreset, layerId: string) {
+  const terrainSize = 200
+  const center = getViewportCenter(terrainSize, terrainSize)
+  
+  dmScreensStore.addTerrainNode(
+    props.dmScreen.id,
+    props.dmScreen.libraryId,
+    preset,
+    center,
+    layerId
+  )
+  
+  toast.success(`Added ${preset.name} terrain`)
 }
 
 // Handle adding file from kitbashing drawers

@@ -179,7 +179,8 @@
         'resizing': isResizing,
         'is-token': isTokenNode,
         'is-effect': isEffectNode,
-        'is-shape': isShapeNode
+        'is-shape': isShapeNode,
+        'is-terrain': isTerrainNode
       }"
       @dblclick.stop="handleDoubleClick"
     >
@@ -231,18 +232,31 @@
         @save="saveShapeSettings"
       />
     </v-dialog>
+    
+    <!-- Terrain Node Settings -->
+    <v-dialog v-model="showTerrainSettings" max-width="500" scrollable persistent>
+      <TerrainNodeSettings
+        v-if="showTerrainSettings"
+        ref="terrainSettingsRef"
+        :config="currentTerrainConfig"
+        @save="saveTerrainSettings"
+        @cancel="showTerrainSettings = false"
+        @regenerate="handleTerrainRegenerate"
+      />
+    </v-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import type { DmScreenItem, SVGShapeData } from '@/types/dmScreen.types'
+import type { DmScreenItem, SVGShapeData, TerrainConfig, EffectConfig } from '@/types/dmScreen.types'
 import DmScreenItemWrapper from './DmScreenItemWrapper.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import EffectNodeSettings from './EffectNodeSettings.vue'
 import TokenNodeSettings from './TokenNodeSettings.vue'
 import ShapeNodeSettings from './ShapeNodeSettings.vue'
+import TerrainNodeSettings from './TerrainNodeSettings.vue'
 
 // =====================================================
 // PROPS
@@ -298,9 +312,11 @@ const currentPosition = ref({ x: 0, y: 0 })
 const showEffectSettings = ref(false)
 const showTokenSettings = ref(false)
 const showShapeSettings = ref(false)
+const showTerrainSettings = ref(false)
 const effectSettingsRef = ref<InstanceType<typeof EffectNodeSettings> | null>(null)
 const tokenSettingsRef = ref<InstanceType<typeof TokenNodeSettings> | null>(null)
 const shapeSettingsRef = ref<InstanceType<typeof ShapeNodeSettings> | null>(null)
+const terrainSettingsRef = ref<InstanceType<typeof TerrainNodeSettings> | null>(null)
 
 // Token settings state (local state for editing)
 const tokenShowLabel = ref(true)
@@ -334,33 +350,49 @@ watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
   }
 }, { immediate: false })
 
-// Sync token settings from props
-watch(() => props.data.item, (item) => {
-  if (item.type === 'TokenNode') {
-    tokenShowLabel.value = item.data.tokenShowLabel !== false
-    tokenBorderWidth.value = item.data.tokenBorderWidth || 0
-    tokenBorderColor.value = item.data.tokenBorderColor || '#6366f1'
-  }
-  // Sync effect settings from props
-  if (item.type === 'EffectNode' && item.data.effectConfig) {
-    const config = item.data.effectConfig
-    effectIntensity.value = config.intensity ?? 0.7
-    effectSpeed.value = config.speed ?? 1
-    effectScale.value = config.scale ?? 1
-    effectOpacity.value = config.opacity ?? 0.9
-    effectColor.value = config.color || '#ff6600'
-    effectSecondaryColor.value = config.secondaryColor || '#ffcc00'
-    effectParticleCount.value = config.particleCount ?? 50
-    effectPulseSpeed.value = config.pulseSpeed ?? 2
-    effectGlowIntensity.value = config.glowIntensity ?? 0.8
-    effectLightPoolIntensity.value = config.lightPoolIntensity ?? 0.5
-    effectLightPoolSize.value = config.lightPoolSize ?? 1.0
-    effectBlendMode.value = config.blendMode || 'screen'
-    effectUseCircleMask.value = config.useCircleMask ?? false
-    effectMaskFeatherOpacity.value = config.maskFeatherOpacity ?? 0.5
-    effectMaskFeatherSize.value = config.maskFeatherSize ?? 0.5
-  }
-}, { immediate: true, deep: true })
+// Sync token settings from props (only watch specific token properties)
+watch(
+  () => [
+    props.data.item.type,
+    props.data.item.data.tokenShowLabel,
+    props.data.item.data.tokenBorderWidth,
+    props.data.item.data.tokenBorderColor
+  ],
+  () => {
+    const item = props.data.item
+    if (item.type === 'TokenNode') {
+      tokenShowLabel.value = item.data.tokenShowLabel !== false
+      tokenBorderWidth.value = item.data.tokenBorderWidth || 0
+      tokenBorderColor.value = item.data.tokenBorderColor || '#6366f1'
+    }
+  },
+  { immediate: true }
+)
+
+// Sync effect settings from props (only watch effectConfig)
+watch(
+  () => props.data.item.data.effectConfig,
+  (config: EffectConfig | undefined) => {
+    if (props.data.item.type === 'EffectNode' && config) {
+      effectIntensity.value = config.intensity ?? 0.7
+      effectSpeed.value = config.speed ?? 1
+      effectScale.value = config.scale ?? 1
+      effectOpacity.value = config.opacity ?? 0.9
+      effectColor.value = config.color || '#ff6600'
+      effectSecondaryColor.value = config.secondaryColor || '#ffcc00'
+      effectParticleCount.value = config.particleCount ?? 50
+      effectPulseSpeed.value = config.pulseSpeed ?? 2
+      effectGlowIntensity.value = config.glowIntensity ?? 0.8
+      effectLightPoolIntensity.value = config.lightPoolIntensity ?? 0.5
+      effectLightPoolSize.value = config.lightPoolSize ?? 1.0
+      effectBlendMode.value = config.blendMode || 'screen'
+      effectUseCircleMask.value = config.useCircleMask ?? false
+      effectMaskFeatherOpacity.value = config.maskFeatherOpacity ?? 0.5
+      effectMaskFeatherSize.value = config.maskFeatherSize ?? 0.5
+    }
+  },
+  { immediate: true, deep: true }
+)
 
 // =====================================================
 // COMPUTED
@@ -422,6 +454,10 @@ const isShapeNode = computed(() => {
   return props.data.item.type === 'ShapeNode'
 })
 
+const isTerrainNode = computed(() => {
+  return props.data.item.type === 'TerrainNode'
+})
+
 const currentEffectConfig = computed(() => {
   return props.data.item.data.effectConfig || {
     effectType: 'fire' as const,
@@ -463,6 +499,31 @@ const currentShapeData = computed<SVGShapeData>(() => {
       blur: 8,
       opacity: 0.3,
     },
+  }
+})
+
+const currentTerrainConfig = computed<TerrainConfig>(() => {
+  if (props.data.item.data.terrainConfig) {
+    return props.data.item.data.terrainConfig
+  }
+  // Return default terrain config
+  return {
+    terrainType: 'cave',
+    seed: Math.floor(Math.random() * 1000000),
+    complexity: 0.5,
+    scale: 1,
+    primaryColor: '#4a3d3a',
+    secondaryColor: '#2d2420',
+    shadowColor: '#1a1512',
+    fillDensity: 0.45,
+    smoothIterations: 4,
+    connectRegions: true,
+    wallThickness: 2,
+    texturePattern: 'noise',
+    borderStyle: 'rough',
+    hasOutline: true,
+    outlineColor: '#1a1512',
+    outlineWidth: 2,
   }
 })
 
@@ -584,7 +645,7 @@ function handleResizeMove(event: MouseEvent) {
   let anchorY = 0 // -1 = top edge anchored, 0 = center, 1 = bottom edge anchored
   
   // For shapes and effects, resize from center (like tokens)
-  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value
+  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value || isTerrainNode.value
   
   if (shouldResizeFromCenter) {
     // Center-based resizing: all handles resize symmetrically from center
@@ -914,11 +975,13 @@ function restoreFromToken() {
 }
 
 function handleDoubleClick() {
-  // Only open settings for effect and shape nodes, not tokens
+  // Only open settings for effect, shape, and terrain nodes, not tokens
   if (isEffectNode.value) {
     showEffectSettings.value = true
   } else if (isShapeNode.value) {
     showShapeSettings.value = true
+  } else if (isTerrainNode.value) {
+    showTerrainSettings.value = true
   }
   // Tokens should not open settings on double-click
 }
@@ -930,6 +993,8 @@ function openSettings() {
     showTokenSettings.value = true
   } else if (isShapeNode.value) {
     showShapeSettings.value = true
+  } else if (isTerrainNode.value) {
+    showTerrainSettings.value = true
   }
 }
 
@@ -1005,6 +1070,59 @@ function saveShapeSettings() {
   )
   
   showShapeSettings.value = false
+}
+
+function saveTerrainSettings() {
+  if (!terrainSettingsRef.value) return
+  
+  const terrainConfig = terrainSettingsRef.value.getConfig()
+  const item = props.data.item
+  
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      terrainConfig: terrainConfig,
+    },
+  }
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
+  
+  showTerrainSettings.value = false
+}
+
+function handleTerrainRegenerate() {
+  if (!terrainSettingsRef.value) return
+  
+  const terrainConfig = terrainSettingsRef.value.getConfig()
+  const item = props.data.item
+  
+  // Save the new config (with new seed)
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      terrainConfig: terrainConfig,
+    },
+  }
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
+  
+  // Dispatch a custom event to trigger regeneration in the TerrainNodeDisplay
+  // This avoids watcher loops and reactive issues
+  window.dispatchEvent(new CustomEvent('terrain-regenerate', { 
+    detail: { itemId: item.id } 
+  }))
 }
 
 // =====================================================
@@ -1101,9 +1219,7 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.dm-screen-flow-node.selected {
-  /* Selection border is now handled by .selection-border element */
-}
+/* Selection border is now handled by .selection-border element */
 
 .dm-screen-flow-node.is-dragging {
   z-index: 1000;
