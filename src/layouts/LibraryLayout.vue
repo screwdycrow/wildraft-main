@@ -6,49 +6,45 @@
 
       
       <v-toolbar-title class="d-flex align-center">
-        <div>
-          <span class="text-h6 font-weight-bold">{{ currentLibrary?.name || 'Library' }}</span>
-          <v-chip
-            v-if="currentLibrary"
-            :color="roleColor"
-            size="x-small"
-            class="ml-2"
-          >
-            {{ currentLibrary.role || 'Owner' }}
-          </v-chip>
-          <portal-control-menu class="mx-2" />
-          <dm-screen-control-menu class="mx-2" />
-
-        </div>
+        <span 
+          class="text-h6 font-weight-bold library-title"
+          style="cursor: pointer;"
+          @click="goToDashboard"
+        >
+          {{ currentLibrary?.name || 'Library' }}
+        </span>
+        
+        <!-- Portal Control Menu -->
+        <portal-control-menu class="ml-4" />
+        
+        <!-- DM Screen Control Menu -->
+        <dm-screen-control-menu class="ml-2" />
       </v-toolbar-title>
 
       <v-spacer />
-
+      
+      <!-- Compact Digital Clock (Centered) -->
+      <digital-clock compact class="clock-center" />
+      
+      <v-spacer />
+      
       <!-- Dice Roller -->
-      <dice-roller class="mx-2" />
+      <dice-roller class="mr-1" />
       
-      <!-- Portal Control Menu -->
-
-      <v-btn
-        icon="mdi-magnify"
-        variant="text"
-      />
-
-      <v-btn icon="mdi-bell-outline" variant="text" />
+      <quick-actions class="mr-2" />
       
+      <!-- Right Sidebar Toggle -->
       <v-btn
-        :icon="rightDrawer ? 'mdi-page-layout-sidebar-right' : 'mdi-page-layout-body'"
-        variant="text"
+        icon
+        class="sidebar-toggle-btn mr-2"
         :permanent="!mobile"
         @click="rightDrawer = !rightDrawer"
       >
-        <v-icon />
+        <v-icon :icon="rightDrawer ? 'mdi-page-layout-sidebar-right' : 'mdi-page-layout-body'" />
         <v-tooltip activator="parent" location="bottom">
           {{ rightDrawer ? 'Hide sidebar' : 'Show sidebar' }}
         </v-tooltip>
       </v-btn>
-      
-      <quick-actions />
       
       <user-menu />
     </v-app-bar>
@@ -124,9 +120,10 @@
 
             <v-list-item
               :to="{ name: 'Library', params: { id: libraryId } }"
-              prepend-icon="mdi-view-dashboard-outline"
+              prepend-icon="mdi-home"
               :title="!effectiveRail ? 'Overview' : undefined"
               exact  
+              class="library-menu-item"
             />
 
             <v-divider class="my-2" />
@@ -192,7 +189,7 @@
 
             <v-list-item
               :to="{ name: 'LibraryPortalViews', params: { id: libraryId } }"
-              prepend-icon="mdi-view-dashboard-variant"
+              prepend-icon="mdi-monitor"
               :title="!effectiveRail ? 'Portal Views' : undefined"
               :value="'portal-views'"
             />
@@ -444,6 +441,7 @@ import DiceRoller from '@/components/dice/DiceRoller.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 import PortalControlMenu from '@/components/portal/PortalControlMenu.vue'
 import DmScreenControlMenu from '@/components/dmScreen/DmScreenControlMenu.vue'
+import DigitalClock from '@/components/common/DigitalClock.vue'
 import GlobalItemViewerDialog from '@/components/dialogs/GlobalItemViewerDialog.vue'
 import GlobalItemEditorDialog from '@/components/dialogs/GlobalItemEditorDialog.vue'
 import GlobalFileViewerDialog from '@/components/dialogs/GlobalFileViewerDialog.vue'
@@ -528,6 +526,10 @@ function toggleRail() {
   if (!mobile.value) {
     rail.value = !rail.value
   }
+}
+
+function goToDashboard() {
+  router.push({ name: 'Dashboard' })
 }
 
 // Handle tab navigation with arrow keys
@@ -705,14 +707,37 @@ onMounted(async () => {
 
 /* Subtle left sidebar styling - less prominent */
 :deep(.glass-sidebar) {
-  background: rgba(var(--v-theme-surface), 0.3) !important;
-  backdrop-filter: blur(8px);
+  background: transparent !important;
+  backdrop-filter: none;
   border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 :deep(.v-list-item--active) {
-  background: rgba(220, 20, 60, 0.15) !important;
-  border-left: 2px solid rgba(220, 20, 60, 0.6);
+  background: transparent !important;
+  border-left: none !important;
+}
+
+.library-title {
+  transition: all 0.2s ease;
+  opacity: 0.9;
+}
+
+.library-title:hover {
+  opacity: 1;
+  color: rgb(var(--v-theme-primary));
+}
+
+.library-menu-item {
+  transition: all 0.2s ease;
+}
+
+.library-menu-item :deep(.v-list-item__prepend) {
+  opacity: 0.8;
+}
+
+.library-menu-item:hover :deep(.v-list-item__prepend) {
+  opacity: 1;
+  transform: scale(1.1);
 }
 
 :deep(.v-list-subheader) {
@@ -724,8 +749,9 @@ onMounted(async () => {
 .sidebar-tabs-wrapper {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: none !important;
   opacity: 0.8;
+  background: transparent !important;
 }
 
 .sidebar-tabs {
@@ -756,25 +782,29 @@ onMounted(async () => {
   padding: 0 8px;
   font-size: 0.875rem;
   opacity: 0.7;
+  background: transparent !important;
 }
 
 :deep(.v-tab--selected) {
   opacity: 1;
+  background: transparent !important;
 }
 
 /* Subtle list items */
 :deep(.v-list-item) {
   opacity: 0.8;
+  background: transparent !important;
 }
 
 :deep(.v-list-item:hover) {
   opacity: 1;
+  background: transparent !important;
 }
 
 /* Subtle dividers */
 :deep(.v-divider) {
-  opacity: 0.3;
-  border-color: rgba(255, 255, 255, 0.05) !important;
+  opacity: 0;
+  border-color: transparent !important;
 }
 
 /* Compact folder list styling */
@@ -782,6 +812,7 @@ onMounted(async () => {
   min-height: 32px;
   padding-top: 4px;
   padding-bottom: 4px;
+  background: transparent !important;
 }
 
 .folders-list :deep(.v-list-item__prepend) {
@@ -807,6 +838,7 @@ onMounted(async () => {
   padding-bottom: 4px;
   margin-left: 0 !important;
   font-size: 0.8125rem; /* 13px */
+  background: transparent !important;
 }
 
 .folders-list :deep(.v-list-group__items .v-list-item__prepend) {
@@ -829,24 +861,49 @@ onMounted(async () => {
 }
 
 .draggable-tag:hover {
-  background: rgba(var(--v-theme-primary), 0.1);
+  background: transparent;
 }
 
 .folders-list :deep(.v-list-group__header) {
   min-height: 32px;
   padding-top: 4px;
   padding-bottom: 4px;
+  background: transparent !important;
 }
 
 .folders-list :deep(.v-list-group__header .v-list-item) {
   min-height: 32px;
   padding-top: 4px;
   padding-bottom: 4px;
+  background: transparent !important;
 }
 
 .folders-list :deep(.v-chip) {
   height: 16px;
   font-size: 10px;
   padding: 0 4px;
+}
+
+/* Sidebar toggle button - match QuickActions style */
+.sidebar-toggle-btn {
+  background: rgba(var(--v-theme-primary), 0.2) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3) !important;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.sidebar-toggle-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.3) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.4);
+  opacity: 1;
+}
+
+/* Center the clock in the app bar */
+.clock-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 </style>

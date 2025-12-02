@@ -9,30 +9,17 @@
       offset="8"
     >
       <template #activator="{ props }">
-        <v-text-field
-          v-model="inputText"
+        <v-btn
+          icon
           v-bind="props"
-          placeholder="Roll dice (e.g., 2d20 1d6+3)"
-          prepend-inner-icon="mdi-dice-multiple"
-          variant="outlined"
-          density="compact"
-          hide-details
-          clearable
-          class="dice-input"
-          @keydown.enter="handleRoll"
-          @focus="showMenu = true"
+          class="dice-roller-btn"
+          size="default"
         >
-          <template #append-inner>
-            <v-btn
-              icon="mdi-send"
-              size="x-small"
-              variant="text"
-              color="primary"
-              :loading="isRolling"
-              @click="handleRoll"
-            />
-          </template>
-        </v-text-field>
+          <v-icon icon="mdi-dice-multiple" size="24" />
+          <v-tooltip activator="parent" location="bottom">
+            Dice Roller
+          </v-tooltip>
+        </v-btn>
       </template>
 
       <!-- Dropdown Chat -->
@@ -277,8 +264,21 @@ function formatTime(date: Date): string {
 
 <style scoped>
 .dice-roller {
-  min-width: 250px;
-  max-width: 300px;
+  min-width: auto;
+  max-width: none;
+}
+
+.dice-roller-btn {
+  background: rgba(var(--v-theme-primary), 0.2) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(var(--v-theme-primary), 0.3) !important;
+  transition: all 0.3s ease;
+}
+
+.dice-roller-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.3) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.4);
 }
 
 .dice-input {

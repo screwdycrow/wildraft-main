@@ -1244,10 +1244,37 @@ const showMovementTrail = computed(() => {
 // Grid options from settings (with VTT defaults)
 const gridOptions = computed<GridOptions>(() => {
   const defaults = getDefaultGridOptions()
-  return {
+  const settings = props.dmScreen.settings || {}
+  
+  // Extract grid-related properties from settings
+  const opts = {
     ...defaults,
-    ...props.dmScreen.settings?.grid,
+    showGrid: settings.showGrid ?? defaults.showGrid,
+    gridSize: settings.gridSize ?? defaults.gridSize,
+    gridColor: settings.gridColor ?? defaults.gridColor,
+    gridLineWidth: settings.gridLineWidth ?? defaults.gridLineWidth,
+    gridOpacity: settings.gridOpacity ?? defaults.gridOpacity,
+    snapToGrid: settings.snapToGrid ?? defaults.snapToGrid,
+    offsetX: settings.offsetX ?? defaults.offsetX,
+    offsetY: settings.offsetY ?? defaults.offsetY,
+    feetPerSquare: settings.feetPerSquare ?? defaults.feetPerSquare,
+    showCoordinates: settings.showCoordinates ?? defaults.showCoordinates,
+    gridStyle: settings.gridStyle ?? defaults.gridStyle,
+    showMajorGridLines: settings.showMajorGridLines ?? defaults.showMajorGridLines,
+    majorGridInterval: settings.majorGridInterval ?? defaults.majorGridInterval,
+    majorGridColor: settings.majorGridColor ?? defaults.majorGridColor,
+    diagonalRule: settings.diagonalRule ?? defaults.diagonalRule,
+    showMeasurementsOnPortal: settings.showMeasurementsOnPortal ?? defaults.showMeasurementsOnPortal,
   }
+  
+  console.log('[DmScreenWrapper] gridOptions computed:', {
+    settings: settings,
+    gridOpacity: settings.gridOpacity,
+    gridSize: settings.gridSize,
+    computed: opts
+  })
+  
+  return opts
 })
 
 // Lock background images setting
@@ -1651,10 +1678,31 @@ function handlePortalResetView() {
 
 function initializeLocalSettings() {
   const defaults = getDefaultGridOptions()
-  localGridOptions.value = { ...defaults, ...gridOptions.value }
+  const settings = props.dmScreen.settings || {}
+  
+  // Initialize local grid options from flattened settings
+  localGridOptions.value = { 
+    showGrid: settings.showGrid ?? defaults.showGrid,
+    gridSize: settings.gridSize ?? defaults.gridSize,
+    gridColor: settings.gridColor ?? defaults.gridColor,
+    gridLineWidth: settings.gridLineWidth ?? defaults.gridLineWidth,
+    gridOpacity: settings.gridOpacity ?? defaults.gridOpacity,
+    snapToGrid: settings.snapToGrid ?? defaults.snapToGrid,
+    offsetX: settings.offsetX ?? defaults.offsetX,
+    offsetY: settings.offsetY ?? defaults.offsetY,
+    feetPerSquare: settings.feetPerSquare ?? defaults.feetPerSquare,
+    showCoordinates: settings.showCoordinates ?? defaults.showCoordinates,
+    gridStyle: settings.gridStyle ?? defaults.gridStyle,
+    showMajorGridLines: settings.showMajorGridLines ?? defaults.showMajorGridLines,
+    majorGridInterval: settings.majorGridInterval ?? defaults.majorGridInterval,
+    majorGridColor: settings.majorGridColor ?? defaults.majorGridColor,
+    diagonalRule: settings.diagonalRule ?? defaults.diagonalRule,
+    showMeasurementsOnPortal: settings.showMeasurementsOnPortal ?? defaults.showMeasurementsOnPortal,
+  }
+  
   localLockBackgroundImages.value = lockBackgroundImages.value
   localBackgroundOpacity.value = backgroundOpacity.value
-  localDiagonalRule.value = gridOptions.value.diagonalRule || 'standard'
+  localDiagonalRule.value = settings.diagonalRule || 'standard'
 }
 
 // =====================================================
@@ -2150,10 +2198,7 @@ function handleVttToolChange(tool: VttToolMode) {
 function handleToggleGrid() {
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
-    grid: {
-      ...gridOptions.value,
-      showGrid: !gridOptions.value.showGrid,
-    },
+    showGrid: !gridOptions.value.showGrid,
   }
   dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
 }
@@ -2161,10 +2206,7 @@ function handleToggleGrid() {
 function handleToggleSnap() {
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
-    grid: {
-      ...gridOptions.value,
-      snapToGrid: !gridOptions.value.snapToGrid,
-    },
+    snapToGrid: !gridOptions.value.snapToGrid,
   }
   dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
 }
@@ -2175,10 +2217,7 @@ function handleDiagonalRuleChange(rule: 'standard' | 'alternating' | 'euclidean'
   // Also persist to settings
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
-    grid: {
-      ...gridOptions.value,
-      diagonalRule: rule,
-    },
+    diagonalRule: rule,
   }
   dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
 }
@@ -2358,7 +2397,23 @@ function saveSettings() {
   
   const updatedSettings: DmScreenSettings = {
     ...props.dmScreen.settings,
-    grid: { ...localGridOptions.value },
+    // Flatten grid options directly into settings
+    showGrid: localGridOptions.value.showGrid,
+    gridSize: localGridOptions.value.gridSize,
+    gridColor: localGridOptions.value.gridColor,
+    gridLineWidth: localGridOptions.value.gridLineWidth,
+    gridOpacity: localGridOptions.value.gridOpacity ?? 0.6,
+    snapToGrid: localGridOptions.value.snapToGrid,
+    offsetX: localGridOptions.value.offsetX,
+    offsetY: localGridOptions.value.offsetY,
+    feetPerSquare: localGridOptions.value.feetPerSquare,
+    showCoordinates: localGridOptions.value.showCoordinates,
+    gridStyle: localGridOptions.value.gridStyle,
+    showMajorGridLines: localGridOptions.value.showMajorGridLines,
+    majorGridInterval: localGridOptions.value.majorGridInterval,
+    majorGridColor: localGridOptions.value.majorGridColor,
+    diagonalRule: localGridOptions.value.diagonalRule,
+    showMeasurementsOnPortal: localGridOptions.value.showMeasurementsOnPortal,
     lockBackgroundImages: localLockBackgroundImages.value,
     backgroundOpacity: localBackgroundOpacity.value,
   }
@@ -2825,10 +2880,7 @@ defineExpose({
   toggleGrid: () => {
     const updatedSettings: DmScreenSettings = {
       ...props.dmScreen.settings,
-      grid: {
-        ...gridOptions.value,
-        showGrid: !gridOptions.value.showGrid,
-      },
+      showGrid: !gridOptions.value.showGrid,
     }
     dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
   },
@@ -2895,14 +2947,14 @@ defineExpose({
   background: rgba(20, 20, 30, 0.5);
 }
 
-/* VTT Grid on TOP of all nodes */
+/* VTT Grid above everything except toolbar and kitbashing drawers */
 .dm-screen-flow :deep(.vue-flow__background) {
-  z-index: 9999 !important;
+  z-index: 9998 !important;
   pointer-events: none !important;
 }
 
 .dm-screen-flow :deep(.vue-flow__background svg) {
-  z-index: 9999 !important;
+  z-index: 9998 !important;
 }
 
 .empty-state-overlay {
@@ -2965,6 +3017,7 @@ defineExpose({
   transform: translateX(-50%) !important;
   padding: 0 !important;
   margin: 0 !important;
+  z-index: 10000 !important;
 }
 
 /* Movement Distance Display */
@@ -3065,6 +3118,7 @@ defineExpose({
   transform: translateY(-50%) !important;
   padding: 0 !important;
   margin: 0 !important;
+  z-index: 10000 !important;
 }
 
 /* Unified Bottom Toolbar Panel */
@@ -3076,6 +3130,7 @@ defineExpose({
   transform: none !important;
   padding: 0 !important;
   margin: 0 !important;
+  z-index: 10000 !important;
 }
 
 .unified-toolbar {

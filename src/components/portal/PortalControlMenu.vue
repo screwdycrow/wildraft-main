@@ -2,40 +2,30 @@
   <v-menu location="bottom" :close-on-content-click="false" max-width="400">
     <template #activator="{ props: menuProps }">
       <v-btn
-        v-if="!hasLoadedPortals"
+        icon
         v-bind="menuProps"
-        variant="text"
-        size="small"
         class="portal-control-button"
+        size="default"
       >
-        <v-icon icon="mdi-television" size="small" class="mr-1" />
-        <span class="portal-name">Connect Portal</span>
-      </v-btn>
-      <v-btn
-        v-else
-        v-bind="menuProps"
-        variant="text"
-        class="portal-control-button"
-      >
-        <v-icon icon="mdi-monitor-dashboard" class="mr-2" />
-        <span class="portal-name">{{ activePortal?.name || 'No Active Portal' }}</span>
-        <v-icon icon="mdi-menu-down" class="ml-1" />
-        
-        <!-- Connection Status Badge -->
+        <v-icon icon="mdi-monitor" size="20" />
         <v-badge
+          v-if="hasLoadedPortals && activePortal"
           :color="isConnected ? 'success' : 'error'"
-          :content="isConnected ? '●' : '○'"
-          floating
-          offset-x="-8"
-          offset-y="8"
+          dot
+          location="bottom right"
+          offset-x="2"
+          offset-y="2"
         />
+        <v-tooltip activator="parent" location="bottom">
+          {{ activePortal?.name || (hasLoadedPortals ? 'No Active Portal' : 'Portal Controls') }}
+        </v-tooltip>
       </v-btn>
     </template>
 
     <v-card class="portal-control-card">
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-3">
-        <v-icon icon="mdi-monitor-dashboard" size="small" class="mr-2" />
+        <v-icon icon="mdi-monitor" size="small" class="mr-2" />
         <span class="text-subtitle-2">Portal Controls</span>
         <v-spacer />
         <v-chip
@@ -76,7 +66,7 @@
             variant="outlined"
             density="compact"
             placeholder="Select a portal..."
-            prepend-inner-icon="mdi-view-dashboard-variant"
+            prepend-inner-icon="mdi-monitor"
             :loading="isLoadingPortals"
             @update:model-value="handlePortalChange"
           >
@@ -1230,7 +1220,18 @@ const dmScreenResetView = () => {
 
 <style scoped>
 .portal-control-button {
-  text-transform: none;
+  background: rgba(var(--v-theme-surface), 0.2) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.portal-control-button:hover {
+  background: rgba(var(--v-theme-surface), 0.3) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 1;
 }
 
 .portal-name {

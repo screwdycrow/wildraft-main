@@ -108,18 +108,20 @@
             :rules="[(v) => !!v || 'Title is required']"
             variant="outlined"
             required
-            class=""
+            class="note-title-field"
+            density="comfortable"
           />
 
           <tip-tap-editor
             v-model="formData.data.content"
             placeholder="Start writing your note..."
-            min-height="400px"
+            min-height="500px"
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
             :user-files="item?.userFiles || []"
             @update:user-file-ids="formData.userFileIds = $event"
+            class="note-editor"
           />
         </v-window-item>
 
@@ -134,19 +136,20 @@
             v-model="chapter.title"
             variant="outlined"
             density="comfortable"
-            class=""
+            class="note-title-field"
             placeholder="Chapter title"
           />
 
           <tip-tap-editor
             v-model="chapter.content"
             placeholder="Start writing this chapter..."
-            min-height="400px"
+            min-height="500px"
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
             :user-files="item?.userFiles || []"
             @update:user-file-ids="formData.userFileIds = $event"
+            class="note-editor"
           />
         </v-window-item>
       </v-window>
@@ -669,12 +672,150 @@ async function handleSubmit() {
 }
 
 .note-window {
-  min-height: 540px;
+  min-height: 600px;
+}
+
+/* Title field styling */
+.note-title-field {
+  margin-bottom: 32px;
+  transition: all 0.2s ease;
+}
+
+.note-title-field :deep(.v-field) {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: all 0.2s ease;
+}
+
+.note-title-field :deep(.v-field__input) {
+  padding: 16px 20px;
+  min-height: 64px;
+  transition: all 0.2s ease;
+}
+
+.note-title-field :deep(.v-field--focused) {
+  transform: translateY(-1px);
+}
+
+/* Editor wrapper styling */
+.note-editor {
+  margin-top: 8px;
+}
+
+.note-editor :deep(.editor-content) {
+  padding: 32px 40px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.note-editor :deep(.editor-content:hover) {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.note-editor :deep(.tiptap-content:focus-within) {
+  outline: none;
+}
+
+.note-editor :deep(.editor-content:has(.tiptap-content:focus-within)) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 197, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(148, 197, 255, 0.1);
+}
+
+.note-editor :deep(.tiptap-content) {
+  font-size: 1.125rem;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 400;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.note-editor :deep(.tiptap-content p) {
+  margin: 0.75em 0;
+  padding: 0;
+}
+
+.note-editor :deep(.tiptap-content h1) {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 1.5em 0 0.75em 0;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.note-editor :deep(.tiptap-content h2) {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.25em 0 0.6em 0;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.note-editor :deep(.tiptap-content h3) {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1em 0 0.5em 0;
+  color: rgba(255, 255, 255, 0.93);
+}
+
+.note-editor :deep(.tiptap-content ul),
+.note-editor :deep(.tiptap-content ol) {
+  padding-left: 2em;
+  margin: 0.75em 0;
+  line-height: 1.85;
+}
+
+.note-editor :deep(.tiptap-content li) {
+  margin: 0.4em 0;
+  padding-left: 0.5em;
+}
+
+.note-editor :deep(.tiptap-content blockquote) {
+  border-left: 4px solid rgba(148, 197, 255, 0.5);
+  padding-left: 1.5em;
+  margin: 1.25em 0;
+  font-style: italic;
+  opacity: 0.9;
+  font-size: 1.1em;
+  line-height: 1.8;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1em 1.5em;
+  border-radius: 0 8px 8px 0;
+}
+
+.note-editor :deep(.tiptap-content hr) {
+  border: none;
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  margin: 2em 0;
+}
+
+.note-editor :deep(.tiptap-content .is-empty::before) {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 1.125rem;
+  font-style: italic;
 }
 
 @media (max-width: 1280px) {
   .chapters-scroll {
     max-height: calc(60vh - 120px);
+  }
+  
+  .note-editor :deep(.editor-content) {
+    padding: 24px 28px;
+  }
+  
+  .note-editor :deep(.tiptap-content) {
+    font-size: 1.05rem;
+    max-width: 100%;
   }
 }
 </style>

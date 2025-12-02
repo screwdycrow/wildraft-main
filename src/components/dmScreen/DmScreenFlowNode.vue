@@ -111,325 +111,49 @@
         </v-btn>
         
         <!-- Token Settings -->
-        <v-menu
+        <v-btn
           v-if="isTokenNode"
-          :close-on-content-click="false"
-          location="bottom"
+          icon
+          size="x-small"
+          variant="text"
+          color="white"
+          @click.stop="openSettings"
         >
-          <template #activator="{ props: menuProps }">
-            <v-btn
-              v-bind="menuProps"
-              icon
-              size="x-small"
-              variant="text"
-              color="white"
-              @click.stop
-            >
-              <v-icon size="small">mdi-cog</v-icon>
-              <v-tooltip activator="parent" location="bottom">
-                Token Settings
-              </v-tooltip>
-            </v-btn>
-          </template>
-          <v-card min-width="250" class="token-settings-menu">
-            <v-card-text class="pa-3">
-              <div class="text-subtitle-2 mb-3">Token Settings</div>
-              
-              <!-- Show Label -->
-              <v-switch
-                v-model="tokenShowLabel"
-                label="Show Name"
-                density="compact"
-                hide-details
-                color="primary"
-                class="mb-2"
-              />
-              
-              <!-- Border Width -->
-              <div class="text-caption mb-1">Border Width</div>
-              <v-slider
-                v-model="tokenBorderWidth"
-                :min="0"
-                :max="8"
-                :step="1"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-2"
-              />
-              
-              <!-- Border Color -->
-              <div class="text-caption mb-1">Border Color</div>
-              <div class="d-flex gap-1 flex-wrap mb-2">
-                <div
-                  v-for="color in borderColorPresets"
-                  :key="color"
-                  class="color-preset"
-                  :class="{ active: tokenBorderColor === color }"
-                  :style="{ backgroundColor: color }"
-                  @click="tokenBorderColor = color"
-                />
-              </div>
-              <v-text-field
-                v-model="tokenBorderColor"
-                label="Custom Color"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="mb-2"
-              >
-                <template #prepend-inner>
-                  <div 
-                    class="color-preview" 
-                    :style="{ backgroundColor: tokenBorderColor }"
-                  />
-                </template>
-              </v-text-field>
-              
-              <v-btn
-                block
-                size="small"
-                color="primary"
-                variant="tonal"
-                @click="saveTokenSettings"
-              >
-                Apply
-              </v-btn>
-            </v-card-text>
-          </v-card>
-        </v-menu>
+          <v-icon size="small">mdi-cog</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            Token Settings
+          </v-tooltip>
+        </v-btn>
         
         <!-- Effect Settings -->
-        <v-menu
+        <v-btn
           v-if="isEffectNode"
-          :close-on-content-click="false"
-          location="bottom"
+          icon
+          size="x-small"
+          variant="text"
+          color="white"
+          @click.stop="openSettings"
         >
-          <template #activator="{ props: menuProps }">
-            <v-btn
-              v-bind="menuProps"
-              icon
-              size="x-small"
-              variant="text"
-              color="white"
-              @click.stop
-            >
-              <v-icon size="small">mdi-tune-variant</v-icon>
-              <v-tooltip activator="parent" location="bottom">
-                Effect Settings
-              </v-tooltip>
-            </v-btn>
-          </template>
-          <v-card min-width="300" max-width="350" class="effect-settings-menu">
-            <v-card-text class="pa-3">
-              <div class="text-subtitle-2 mb-3 d-flex align-center">
-                <v-icon :icon="currentEffectIcon" size="small" class="mr-2" :color="effectColor" />
-                {{ effectTypeName }} Settings
-              </div>
-              
-              <!-- Intensity -->
-              <div class="text-caption mb-1">Intensity</div>
-              <v-slider
-                v-model="effectIntensity"
-                :min="0.1"
-                :max="1.5"
-                :step="0.1"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-3"
-              />
-              
-              <!-- Speed -->
-              <div class="text-caption mb-1">Animation Speed</div>
-              <v-slider
-                v-model="effectSpeed"
-                :min="0.2"
-                :max="3"
-                :step="0.1"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-3"
-              />
-              
-              <!-- Scale -->
-              <div class="text-caption mb-1">Effect Scale</div>
-              <v-slider
-                v-model="effectScale"
-                :min="0.3"
-                :max="2"
-                :step="0.1"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-3"
-              />
-              
-              <!-- Primary Color -->
-              <div class="text-caption mb-1">Primary Color</div>
-              <div class="d-flex gap-1 flex-wrap mb-2">
-                <div
-                  v-for="color in effectColorPresets"
-                  :key="color"
-                  class="color-preset"
-                  :class="{ active: effectColor === color }"
-                  :style="{ backgroundColor: color }"
-                  @click="effectColor = color"
-                />
-              </div>
-              <v-text-field
-                v-model="effectColor"
-                label="Custom"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="mb-3"
-              >
-                <template #prepend-inner>
-                  <div 
-                    class="color-preview" 
-                    :style="{ backgroundColor: effectColor }"
-                  />
-                </template>
-              </v-text-field>
-              
-              <!-- Secondary Color -->
-              <div class="text-caption mb-1">Secondary Color</div>
-              <div class="d-flex gap-1 flex-wrap mb-2">
-                <div
-                  v-for="color in effectColorPresets"
-                  :key="'sec-' + color"
-                  class="color-preset"
-                  :class="{ active: effectSecondaryColor === color }"
-                  :style="{ backgroundColor: color }"
-                  @click="effectSecondaryColor = color"
-                />
-              </div>
-              <v-text-field
-                v-model="effectSecondaryColor"
-                label="Custom"
-                density="compact"
-                hide-details
-                variant="outlined"
-                class="mb-3"
-              >
-                <template #prepend-inner>
-                  <div 
-                    class="color-preview" 
-                    :style="{ backgroundColor: effectSecondaryColor }"
-                  />
-                </template>
-              </v-text-field>
-              
-              <!-- Particle Count (for particle effects) -->
-              <template v-if="isParticleEffect">
-                <div class="text-caption mb-1">Particle Density</div>
-                <v-slider
-                  v-model="effectParticleCount"
-                  :min="10"
-                  :max="100"
-                  :step="5"
-                  thumb-label
-                  density="compact"
-                  hide-details
-                  class="mb-3"
-                />
-              </template>
-              
-              <!-- Pulse Speed (for light effects) -->
-              <template v-if="isLightEffect">
-                <div class="text-caption mb-1">Pulse Speed</div>
-                <v-slider
-                  v-model="effectPulseSpeed"
-                  :min="0.5"
-                  :max="4"
-                  :step="0.25"
-                  thumb-label
-                  density="compact"
-                  hide-details
-                  class="mb-3"
-                />
-                
-                <div class="text-caption mb-1">Glow Intensity</div>
-                <v-slider
-                  v-model="effectGlowIntensity"
-                  :min="0.2"
-                  :max="1.5"
-                  :step="0.1"
-                  thumb-label
-                  density="compact"
-                  hide-details
-                  class="mb-3"
-                />
-              </template>
-              
-              <!-- Blend Mode Selection -->
-              <v-divider class="my-3" />
-              <div class="text-caption font-weight-medium mb-2 d-flex align-center">
-                <v-icon icon="mdi-blend" size="small" class="mr-1" />
-                Blend Mode (Lighting Effect)
-              </div>
-              <v-select
-                v-model="effectBlendMode"
-                :items="blendModeOptions"
-                item-title="text"
-                item-value="value"
-                density="compact"
-                variant="outlined"
-                hide-details
-                class="mb-3"
-              />
-              
-              <!-- Light Pool Settings (screen blend lighting) -->
-              <div class="text-caption font-weight-medium mb-2 d-flex align-center">
-                <v-icon icon="mdi-lightbulb-on" size="small" class="mr-1" />
-                Light Pool (Illumination)
-              </div>
-              
-              <div class="text-caption mb-1">Light Intensity</div>
-              <v-slider
-                v-model="effectLightPoolIntensity"
-                :min="0"
-                :max="1"
-                :step="0.05"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-3"
-              >
-                <template #prepend>
-                  <span class="text-caption">Off</span>
-                </template>
-                <template #append>
-                  <span class="text-caption">Max</span>
-                </template>
-              </v-slider>
-              
-              <div class="text-caption mb-1">Light Size</div>
-              <v-slider
-                v-model="effectLightPoolSize"
-                :min="0.5"
-                :max="2.5"
-                :step="0.1"
-                thumb-label
-                density="compact"
-                hide-details
-                class="mb-3"
-              />
-              
-              <v-btn
-                block
-                size="small"
-                color="primary"
-                variant="tonal"
-                @click="saveEffectSettings"
-              >
-                Apply
-              </v-btn>
-            </v-card-text>
-          </v-card>
-        </v-menu>
+          <v-icon size="small">mdi-tune-variant</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            Effect Settings
+          </v-tooltip>
+        </v-btn>
+        
+        <!-- Shape Settings -->
+        <v-btn
+          v-if="isShapeNode"
+          icon
+          size="x-small"
+          variant="text"
+          color="white"
+          @click.stop="openSettings"
+        >
+          <v-icon size="small">mdi-shape</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            Shape Settings
+          </v-tooltip>
+        </v-btn>
         
         <v-btn
           icon
@@ -457,6 +181,7 @@
         'is-effect': isEffectNode,
         'is-shape': isShapeNode
       }"
+      @dblclick.stop="handleDoubleClick"
     >
       <dm-screen-item-wrapper
         :key="data.item.id"
@@ -470,17 +195,54 @@
         :rotation="rotation"
         @update="handleItemUpdate"
         @delete="handleDelete"
+        @open-settings="handleDoubleClick"
       />
     </div>
+    
+    <!-- Settings Dialogs -->
+    <!-- Effect Node Settings -->
+    <v-dialog v-model="showEffectSettings" max-width="450" scrollable persistent>
+      <EffectNodeSettings
+        v-if="showEffectSettings"
+        ref="effectSettingsRef"
+        :config="currentEffectConfig"
+        @save="saveEffectSettings"
+      />
+    </v-dialog>
+    
+    <!-- Token Node Settings -->
+    <v-dialog v-model="showTokenSettings" max-width="350" scrollable persistent>
+      <TokenNodeSettings
+        v-if="showTokenSettings"
+        ref="tokenSettingsRef"
+        :show-label="tokenShowLabel"
+        :border-width="tokenBorderWidth"
+        :border-color="tokenBorderColor"
+        @save="saveTokenSettings"
+      />
+    </v-dialog>
+    
+    <!-- Shape Node Settings -->
+    <v-dialog v-model="showShapeSettings" max-width="500" scrollable persistent>
+      <ShapeNodeSettings
+        v-if="showShapeSettings"
+        ref="shapeSettingsRef"
+        :shape-data="currentShapeData"
+        @save="saveShapeSettings"
+      />
+    </v-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import type { DmScreenItem } from '@/types/dmScreen.types'
+import type { DmScreenItem, SVGShapeData } from '@/types/dmScreen.types'
 import DmScreenItemWrapper from './DmScreenItemWrapper.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import EffectNodeSettings from './EffectNodeSettings.vue'
+import TokenNodeSettings from './TokenNodeSettings.vue'
+import ShapeNodeSettings from './ShapeNodeSettings.vue'
 
 // =====================================================
 // PROPS
@@ -532,29 +294,25 @@ const resizeStartPosition = ref({ x: 0, y: 0 })
 const currentDimensions = ref({ width: 0, height: 0 })
 const currentPosition = ref({ x: 0, y: 0 })
 
+// Settings dialog state
+const showEffectSettings = ref(false)
+const showTokenSettings = ref(false)
+const showShapeSettings = ref(false)
+const effectSettingsRef = ref<InstanceType<typeof EffectNodeSettings> | null>(null)
+const tokenSettingsRef = ref<InstanceType<typeof TokenNodeSettings> | null>(null)
+const shapeSettingsRef = ref<InstanceType<typeof ShapeNodeSettings> | null>(null)
+
 // Token settings state (local state for editing)
 const tokenShowLabel = ref(true)
 const tokenBorderWidth = ref(0)
 const tokenBorderColor = ref('#6366f1')
 
-// Border color presets
-const borderColorPresets = [
-  '#6366f1', // Indigo
-  '#ef4444', // Red
-  '#22c55e', // Green
-  '#f59e0b', // Amber
-  '#3b82f6', // Blue
-  '#8b5cf6', // Purple
-  '#ec4899', // Pink
-  '#ffffff', // White
-  '#000000', // Black
-  'transparent',
-]
 
 // Effect settings state (local state for editing)
 const effectIntensity = ref(0.7)
 const effectSpeed = ref(1)
 const effectScale = ref(1)
+const effectOpacity = ref(0.9)
 const effectColor = ref('#ff6600')
 const effectSecondaryColor = ref('#ffcc00')
 const effectParticleCount = ref(50)
@@ -563,31 +321,11 @@ const effectGlowIntensity = ref(0.8)
 const effectLightPoolIntensity = ref(0.5)
 const effectLightPoolSize = ref(1.0)
 const effectBlendMode = ref('screen')
+const effectUseCircleMask = ref(false)
+const effectMaskFeatherOpacity = ref(0.5)
+const effectMaskFeatherSize = ref(0.5)
 
-// Blend mode options for lighting effects
-const blendModeOptions = [
-  { value: 'normal', text: 'Normal (No Blend)' },
-  { value: 'screen', text: 'Screen (Soft Light)' },
-  { value: 'color-dodge', text: 'Color Dodge (Intense)' },
-  { value: 'lighten', text: 'Lighten' },
-  { value: 'overlay', text: 'Overlay' },
-  { value: 'hard-light', text: 'Hard Light' },
-  { value: 'soft-light', text: 'Soft Light' },
-]
 
-// Effect color presets
-const effectColorPresets = [
-  '#ff6600', // Fire Orange
-  '#ffcc00', // Yellow
-  '#ff4444', // Red
-  '#44aaff', // Cyan
-  '#6666ff', // Blue
-  '#aa66ff', // Purple
-  '#ff66aa', // Pink
-  '#66ff66', // Green
-  '#ffffff', // White
-  '#aabbcc', // Fog Gray
-]
 
 // Sync rotation with props when not actively rotating
 watch(() => props.data.item.nodeOptions?.rotation, (newRotation) => {
@@ -609,6 +347,7 @@ watch(() => props.data.item, (item) => {
     effectIntensity.value = config.intensity ?? 0.7
     effectSpeed.value = config.speed ?? 1
     effectScale.value = config.scale ?? 1
+    effectOpacity.value = config.opacity ?? 0.9
     effectColor.value = config.color || '#ff6600'
     effectSecondaryColor.value = config.secondaryColor || '#ffcc00'
     effectParticleCount.value = config.particleCount ?? 50
@@ -617,6 +356,9 @@ watch(() => props.data.item, (item) => {
     effectLightPoolIntensity.value = config.lightPoolIntensity ?? 0.5
     effectLightPoolSize.value = config.lightPoolSize ?? 1.0
     effectBlendMode.value = config.blendMode || 'screen'
+    effectUseCircleMask.value = config.useCircleMask ?? false
+    effectMaskFeatherOpacity.value = config.maskFeatherOpacity ?? 0.5
+    effectMaskFeatherSize.value = config.maskFeatherSize ?? 0.5
   }
 }, { immediate: true, deep: true })
 
@@ -693,57 +435,37 @@ const currentEffectConfig = computed(() => {
   }
 })
 
-const currentEffectIcon = computed(() => {
-  const effectType = currentEffectConfig.value.effectType
-  const iconMap: Record<string, string> = {
-    fire: 'mdi-fire',
-    torch: 'mdi-torch',
-    campfire: 'mdi-campfire',
-    snow: 'mdi-snowflake',
-    rain: 'mdi-weather-rainy',
-    fog: 'mdi-weather-fog',
-    smoke: 'mdi-smoke',
-    sparkles: 'mdi-shimmer',
-    lightRing: 'mdi-circle-outline',
-    aura: 'mdi-blur-radial',
-    magicCircle: 'mdi-star-circle-outline',
-    fireflies: 'mdi-bee',
-    dust: 'mdi-grain',
-    embers: 'mdi-flare',
+const currentShapeData = computed<SVGShapeData>(() => {
+  if (props.data.item.data.shapeData) {
+    return props.data.item.data.shapeData
   }
-  return iconMap[effectType] || 'mdi-creation'
-})
-
-const effectTypeName = computed(() => {
-  const effectType = currentEffectConfig.value.effectType
-  const nameMap: Record<string, string> = {
-    fire: 'Fire',
-    torch: 'Torch',
-    campfire: 'Campfire',
-    snow: 'Snow',
-    rain: 'Rain',
-    fog: 'Fog',
-    smoke: 'Smoke',
-    sparkles: 'Sparkles',
-    lightRing: 'Light Ring',
-    aura: 'Aura',
-    magicCircle: 'Magic Circle',
-    fireflies: 'Fireflies',
-    dust: 'Dust',
-    embers: 'Embers',
+  // Return default shape data with no fill
+  return {
+    shapeType: 'rectangle',
+    fill: {
+      type: 'none',
+      color: '#6366f1',
+      opacity: 0.8,
+    },
+    stroke: {
+      enabled: true,
+      color: '#ffffff',
+      width: 2,
+      opacity: 1,
+      lineCap: 'round',
+      lineJoin: 'round',
+    },
+    shadow: {
+      enabled: false,
+      color: '#000000',
+      offsetX: 0,
+      offsetY: 2,
+      blur: 8,
+      opacity: 0.3,
+    },
   }
-  return nameMap[effectType] || 'Effect'
 })
 
-const isParticleEffect = computed(() => {
-  const particleTypes = ['fire', 'torch', 'campfire', 'snow', 'rain', 'fog', 'smoke', 'sparkles', 'fireflies', 'dust', 'embers']
-  return particleTypes.includes(currentEffectConfig.value.effectType)
-})
-
-const isLightEffect = computed(() => {
-  const lightTypes = ['lightRing', 'aura', 'magicCircle']
-  return lightTypes.includes(currentEffectConfig.value.effectType)
-})
 
 // Items that can be converted to tokens (LibraryItemId and UserFileId, not backgrounds)
 const canConvertToToken = computed(() => {
@@ -1191,16 +913,39 @@ function restoreFromToken() {
   )
 }
 
+function handleDoubleClick() {
+  // Only open settings for effect and shape nodes, not tokens
+  if (isEffectNode.value) {
+    showEffectSettings.value = true
+  } else if (isShapeNode.value) {
+    showShapeSettings.value = true
+  }
+  // Tokens should not open settings on double-click
+}
+
+function openSettings() {
+  if (isEffectNode.value) {
+    showEffectSettings.value = true
+  } else if (isTokenNode.value) {
+    showTokenSettings.value = true
+  } else if (isShapeNode.value) {
+    showShapeSettings.value = true
+  }
+}
+
 function saveTokenSettings() {
+  if (!tokenSettingsRef.value) return
+  
+  const values = tokenSettingsRef.value.getValues()
   const item = props.data.item
   
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
       ...item.data,
-      tokenShowLabel: tokenShowLabel.value,
-      tokenBorderWidth: tokenBorderWidth.value,
-      tokenBorderColor: tokenBorderColor.value,
+      tokenShowLabel: values.tokenShowLabel,
+      tokenBorderWidth: values.tokenBorderWidth,
+      tokenBorderColor: values.tokenBorderColor,
     },
   }
   
@@ -1210,34 +955,21 @@ function saveTokenSettings() {
     item.id,
     updatedItem
   )
+  
+  showTokenSettings.value = false
 }
 
 function saveEffectSettings() {
+  if (!effectSettingsRef.value) return
+  
+  const config = effectSettingsRef.value.getConfig()
   const item = props.data.item
-  
-  const existingConfig = item.data.effectConfig || { effectType: 'fire' as const, opacity: 0.9 }
-  
-  const updatedConfig = {
-    ...existingConfig,
-    intensity: effectIntensity.value,
-    speed: effectSpeed.value,
-    scale: effectScale.value,
-    color: effectColor.value,
-    secondaryColor: effectSecondaryColor.value,
-    particleCount: effectParticleCount.value,
-    pulseSpeed: effectPulseSpeed.value,
-    glowIntensity: effectGlowIntensity.value,
-    lightPoolIntensity: effectLightPoolIntensity.value,
-    lightPoolSize: effectLightPoolSize.value,
-    blendMode: effectBlendMode.value,
-    opacity: existingConfig.opacity ?? 0.9,
-  }
   
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
       ...item.data,
-      effectConfig: updatedConfig,
+      effectConfig: config,
     },
   }
   
@@ -1247,6 +979,32 @@ function saveEffectSettings() {
     item.id,
     updatedItem
   )
+  
+  showEffectSettings.value = false
+}
+
+function saveShapeSettings() {
+  if (!shapeSettingsRef.value) return
+  
+  const shapeData = shapeSettingsRef.value.getShapeData()
+  const item = props.data.item
+  
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      shapeData: shapeData,
+    },
+  }
+  
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
+  
+  showShapeSettings.value = false
 }
 
 // =====================================================
@@ -1446,7 +1204,14 @@ onUnmounted(() => {
   background: #6366f1;
 }
 
-.resize-handle.edge.top,
+.resize-handle.edge.top {
+  width: 40px;
+  height: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
 .resize-handle.edge.bottom {
   width: 40px;
   height: 8px;
@@ -1455,7 +1220,14 @@ onUnmounted(() => {
   cursor: ns-resize;
 }
 
-.resize-handle.edge.left,
+.resize-handle.edge.left {
+  width: 8px;
+  height: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
 .resize-handle.edge.right {
   width: 8px;
   height: 40px;
@@ -1554,5 +1326,45 @@ onUnmounted(() => {
   height: 20px;
   border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Settings Section Styling */
+.settings-section {
+  background: rgba(var(--v-theme-surface), 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.setting-item {
+  padding: 8px 0;
+}
+
+.setting-item:not(:last-child) {
+  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.1);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+/* Improved color presets */
+.color-preset {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-preset:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.color-preset.active {
+  border-color: rgb(var(--v-theme-primary));
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary-rgb, 99, 102, 241), 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: scale(1.1);
 }
 </style>

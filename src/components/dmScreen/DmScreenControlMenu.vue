@@ -2,14 +2,23 @@
   <v-menu location="bottom" :close-on-content-click="false" max-width="300">
     <template #activator="{ props: menuProps }">
       <v-btn
+        icon
         v-bind="menuProps"
-        variant="text"
-        size="small"
         class="dm-screen-control-button"
+        size="default"
       >
-        <v-icon icon="mdi-monitor-dashboard" size="small" class="mr-1" />
-        <span class="dm-screen-name">{{ activeDmScreen?.name || 'No Active DM Screen' }}</span>
-        <v-icon icon="mdi-menu-down" size="small" class="ml-1" />
+        <v-icon icon="mdi-monitor-dashboard" size="20" />
+        <v-badge
+          v-if="activeDmScreen"
+          color="primary"
+          dot
+          location="bottom right"
+          offset-x="2"
+          offset-y="2"
+        />
+        <v-tooltip activator="parent" location="bottom">
+          {{ activeDmScreen?.name || 'DM Screen' }}
+        </v-tooltip>
       </v-btn>
     </template>
 
@@ -302,8 +311,18 @@ async function handleSendToPortal() {
 
 <style scoped>
 .dm-screen-control-button {
-  text-transform: none;
-  font-size: 0.875rem;
+  background: rgba(var(--v-theme-surface), 0.2) !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.dm-screen-control-button:hover {
+  background: rgba(var(--v-theme-surface), 0.3) !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 1;
 }
 
 .dm-screen-name {

@@ -535,54 +535,84 @@ onBeforeUnmount(() => {
 }
 
 .editor-content {
-  padding: 16px;
+  padding: 24px 32px;
+  transition: all 0.3s ease;
+  border-radius: 8px;
 }
 
 :deep(.tiptap-content) {
   min-height: v-bind(minHeight);
   outline: none;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  letter-spacing: 0.005em;
+  color: rgba(255, 255, 255, 0.9);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: color 0.2s ease;
 }
 
 :deep(.tiptap-content p) {
-  margin: 0.5em 0;
+  margin: 0.7em 0;
+  padding: 0;
 }
 
 :deep(.tiptap-content h1) {
-  font-size: 2em;
-  font-weight: bold;
-  margin: 0.67em 0;
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 1.25em 0 0.6em 0;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 :deep(.tiptap-content h2) {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 0.75em 0;
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.1em 0 0.55em 0;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 :deep(.tiptap-content h3) {
-  font-size: 1.17em;
-  font-weight: bold;
-  margin: 0.83em 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.95em 0 0.5em 0;
+  color: rgba(255, 255, 255, 0.93);
 }
 
 :deep(.tiptap-content ul),
 :deep(.tiptap-content ol) {
-  padding-left: 1.5em;
-  margin: 0.5em 0;
+  padding-left: 1.75em;
+  margin: 0.7em 0;
+  line-height: 1.8;
+}
+
+:deep(.tiptap-content li) {
+  margin: 0.35em 0;
+  padding-left: 0.4em;
 }
 
 :deep(.tiptap-content blockquote) {
-  border-left: 3px solid rgba(255, 255, 255, 0.2);
-  padding-left: 1em;
-  margin-left: 0;
+  border-left: 4px solid rgba(148, 197, 255, 0.5);
+  padding-left: 1.25em;
+  margin: 1.1em 0;
   font-style: italic;
-  opacity: 0.8;
+  opacity: 0.9;
+  font-size: 1.05em;
+  line-height: 1.75;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.9em 1.25em;
+  border-radius: 0 8px 8px 0;
 }
 
 :deep(.tiptap-content hr) {
   border: none;
-  border-top: 2px solid rgba(255, 255, 255, 0.2);
-  margin: 1em 0;
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  margin: 1.75em 0;
 }
 
 :deep(.tiptap-content code) {
@@ -605,16 +635,24 @@ onBeforeUnmount(() => {
 }
 
 :deep(.tiptap-content a) {
-  color: #3498db;
+  color: rgba(148, 197, 255, 0.9);
   text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+:deep(.tiptap-content a:hover) {
+  color: rgba(148, 197, 255, 1);
 }
 
 :deep(.tiptap-content .is-empty::before) {
   content: attr(data-placeholder);
   float: left;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.25);
   pointer-events: none;
   height: 0;
+  font-size: 1.0625rem;
+  font-style: italic;
 }
 
 :deep(.tiptap-content [data-type="file-attachment"]) {
@@ -626,15 +664,22 @@ onBeforeUnmount(() => {
   max-width: 100%;
   height: auto;
   display: block;
-  margin: 1em 0;
+  margin: 1.5em 0;
   cursor: pointer;
   position: relative;
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:deep(.tiptap-content .editor-image:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 :deep(.tiptap-content .resizable-image-wrapper) {
   display: inline-block;
-  margin: 1em 0;
+  margin: 1.5em 0;
   max-width: 100%;
 }
 

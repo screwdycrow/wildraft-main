@@ -1,12 +1,20 @@
 <template>
-  <div class="digital-clock">
+  <div class="digital-clock" :class="{ 'compact': compact }">
     <div class="clock-time">{{ formattedTime }}</div>
-    <div class="clock-date">{{ formattedDate }}</div>
+    <div v-if="!compact" class="clock-date">{{ formattedDate }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+interface Props {
+  compact?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  compact: false
+})
 
 const currentTime = ref(new Date())
 
@@ -48,8 +56,23 @@ onUnmounted(() => {
   padding: 16px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   backdrop-filter: blur(10px);
+}
+
+.digital-clock.compact {
+  padding: 6px 12px;
+  background: rgba(var(--v-theme-surface), 0.2);
+  border: none;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.digital-clock.compact:hover {
+  opacity: 1;
+  background: rgba(var(--v-theme-surface), 0.3);
 }
 
 .clock-time {
@@ -60,6 +83,15 @@ onUnmounted(() => {
   letter-spacing: 2px;
   margin-bottom: 8px;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.digital-clock.compact .clock-time {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 0;
+  text-shadow: none;
+  color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
 .clock-date {
@@ -76,6 +108,10 @@ onUnmounted(() => {
   }
   
   .clock-date {
+    font-size: 0.75rem;
+  }
+  
+  .digital-clock.compact .clock-time {
     font-size: 0.75rem;
   }
 }

@@ -100,8 +100,10 @@
               item-key="id"
               handle=".tag-drag-handle"
               :disabled="!canEdit"
+              group="tags"
               class="v-row"
               @end="() => onTagReorder(null)"
+              @change="(evt) => onTagMove(evt, null)"
             >
               <template #item="{ element: tag }">
                 <v-col cols="12" sm="6" md="4" lg="3">
@@ -152,6 +154,14 @@
               </h2>
               <v-chip size="small" class="ml-2">{{ getTagsInFolder(folder.id).length }}</v-chip>
               <v-spacer />
+              <v-btn
+                v-if="canEdit"
+                icon="mdi-plus"
+                variant="text"
+                size="small"
+                class="mr-1"
+                @click="openCreateTagDialogWithFolder(folder.id)"
+              />
               <v-menu v-if="canEdit" location="bottom end">
                 <template #activator="{ props }">
                   <v-btn
@@ -181,12 +191,15 @@
             <v-expand-transition>
               <div v-show="!collapsedFolders.has(folder.id)">
                 <draggable
-                  :model-value="getTagsInFolder(folder.id)"
+                  :model-value="localFolderTags[folder.id] || []"
+                  @update:model-value="(val) => localFolderTags[folder.id] = val"
                   item-key="id"
                   handle=".tag-drag-handle"
                   :disabled="!canEdit"
+                  group="tags"
                   class="v-row"
                   @end="() => onTagReorder(folder.id)"
+                  @change="(evt) => onTagMove(evt, folder.id)"
                 >
                   <template #item="{ element: tag }">
                     <v-col cols="12" sm="6" md="4" lg="3">
@@ -203,7 +216,7 @@
                 </draggable>
 
                 <!-- Add Tag Button (Dashed Card) -->
-                <v-col v-if="canEdit" cols="12" sm="6" md="4" lg="3">
+                <v-col v-if="canEdit && getTagsInFolder(folder.id).length === 0" cols="12" sm="6" md="4" lg="3">
                   <v-card
                     class="glass-card add-tag-card"
                     elevation="0"
@@ -365,6 +378,7 @@ const preselectedFolderId = ref<number | null>(null)
 // Local copies for drag-and-drop
 const localFolders = ref<TagFolder[]>([])
 const localUncategorizedTags = ref<Tag[]>([])
+const localFolderTags = ref<Record<number, Tag[]>>({})
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -393,10 +407,23 @@ const uncategorizedTags = computed(() => {
 // Sync local state with store
 watch(() => tagsStore.sortedFolders, (newFolders) => {
   localFolders.value = [...newFolders]
+  // Initialize local folder tags
+  newFolders.forEach(folder => {
+    if (!localFolderTags.value[folder.id]) {
+      localFolderTags.value[folder.id] = []
+    }
+  })
 }, { immediate: true, deep: true })
 
 watch(uncategorizedTags, (newTags) => {
   localUncategorizedTags.value = [...newTags]
+}, { immediate: true, deep: true })
+
+// Sync folder tags
+watch(() => tagsStore.tags, (newTags) => {
+  localFolders.value.forEach(folder => {
+    localFolderTags.value[folder.id] = getTagsInFolder(folder.id)
+  })
 }, { immediate: true, deep: true })
 
 function getTagsInFolder(folderId: number): Tag[] {
@@ -507,7 +534,7 @@ async function onTagReorder(folderId: number | null) {
   if (!libraryId.value) return
   
   const tags = folderId !== null 
-    ? getTagsInFolder(folderId)
+    ? (localFolderTags.value[folderId] || [])
     : localUncategorizedTags.value
   
   const tagIds = tags.map(t => t.id)
@@ -516,7 +543,73 @@ async function onTagReorder(folderId: number | null) {
     await tagsStore.reorderTagsInFolder(libraryId.value, folderId, tagIds)
   } catch (error) {
     toast.error('Failed to reorder tags')
+    // Refresh tags on error to restore correct order
+    if (libraryId.value) {
+      await tagsStore.fetchTags(libraryId.value)
+    }
   }
+}
+
+async function onTagMove(evt: any, targetFolderId: number | null) {
+  if (!libraryId.value || !evt) return
+  
+  // Handle tag added from another folder (cross-folder drag)
+  if (evt.added) {
+    const { element: tag } = evt.added
+    const currentFolderId = tag.folderId || null
+    
+    // Only update if moving to a different folder
+    if (currentFolderId !== targetFolderId) {
+      try {
+        // Update the tag's folderId in backend
+        await tagsStore.updateTag(libraryId.value, tag.id, { 
+          folderId: targetFolderId
+        })
+        
+        // Update the tag object in store to reflect new folderId
+        const tagInStore = tagsStore.tags.find(t => t.id === tag.id)
+        if (tagInStore) {
+          tagInStore.folderId = targetFolderId || undefined
+        }
+        
+        // Update the tag in local arrays
+        tag.folderId = targetFolderId || undefined
+        
+        // Reorder source folder (after tag was removed by draggable)
+        if (currentFolderId !== null) {
+          const sourceTags = localFolderTags.value[currentFolderId] || []
+          const sourceTagIds = sourceTags.map(t => t.id)
+          if (sourceTagIds.length > 0) {
+            await tagsStore.reorderTagsInFolder(libraryId.value, currentFolderId, sourceTagIds)
+          }
+        } else {
+          const sourceTagIds = localUncategorizedTags.value.map(t => t.id)
+          if (sourceTagIds.length > 0) {
+            await tagsStore.reorderTagsInFolder(libraryId.value, null, sourceTagIds)
+          }
+        }
+        
+        // Reorder target folder (tag was already added by draggable)
+        const targetTags = targetFolderId === null 
+          ? localUncategorizedTags.value 
+          : (localFolderTags.value[targetFolderId] || [])
+        const targetTagIds = targetTags.map(t => t.id)
+        if (targetTagIds.length > 0) {
+          await tagsStore.reorderTagsInFolder(libraryId.value, targetFolderId, targetTagIds)
+        }
+        
+        toast.success('Tag moved successfully')
+      } catch (error) {
+        toast.error('Failed to move tag')
+        // Refresh tags on error to restore correct state
+        if (libraryId.value) {
+          await tagsStore.fetchTags(libraryId.value)
+        }
+      }
+    }
+    // If same folder, onTagReorder will handle it via @end
+  }
+  // If only moved within same list (evt.moved), onTagReorder will handle it via @end
 }
 
 // ==================== FOLDER HANDLERS ====================

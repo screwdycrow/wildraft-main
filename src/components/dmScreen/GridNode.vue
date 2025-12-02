@@ -104,20 +104,20 @@ const scaleLineStyle = computed(() => ({
 </script>
 
 <style scoped>
-/* Grid on TOP of everything - high z-index */
+/* Grid above everything except toolbar and kitbashing drawers */
 .vtt-grid-background {
-  z-index: 9999 !important;
+  z-index: 9998 !important;
   pointer-events: none !important;
 }
 
 .vtt-major-grid-background {
-  z-index: 9999 !important;
+  z-index: 9998 !important;
   pointer-events: none !important;
 }
 
 /* Override VueFlow Background default styles */
 :deep(.vue-flow__background) {
-  z-index: 9999 !important;
+  z-index: 9998 !important;
   pointer-events: none !important;
 }
 

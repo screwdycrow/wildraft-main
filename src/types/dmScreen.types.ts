@@ -33,6 +33,11 @@ export type EffectType =
   | 'electricBeam'
   | 'energyBeam'
   | 'fireColumn'
+  | 'shadowTendrils'
+  | 'whirlpool'
+  | 'grass'
+  | 'water'
+  | 'lava'
 
 // Effect preset configuration
 export interface EffectPreset {
@@ -67,6 +72,10 @@ export interface EffectConfig {
   lightPoolSize?: number       // 0.5-3, multiplier for light pool size (1 = 100% of node)
   // Beam path (for beam effects)
   beamPath?: string            // SVG path d attribute for beam to follow
+  // Mask settings
+  useCircleMask?: boolean      // Use circular mask instead of full area
+  maskFeatherOpacity?: number  // 0-1, feathering opacity at edges (0 = hard edge, 1 = fully feathered)
+  maskFeatherSize?: number     // 0-1, feathering size/radius (0 = no feather, 1 = maximum feather)
 }
 
 // =====================================================
@@ -187,7 +196,7 @@ export function getDefaultSVGShapeData(shapeType: SVGShapeType = 'rectangle'): S
   return {
     shapeType,
     fill: {
-      type: 'solid',
+      type: 'none',
       color: '#6366f1',
       opacity: 0.8,
     },
@@ -499,12 +508,11 @@ export interface MeasurementLine {
 }
 
 // DM Screen Settings (flexible JSON object)
-export interface DmScreenSettings {
+export interface DmScreenSettings extends GridOptions {
   layout?: string
   columns?: number
   theme?: string
   autoSave?: boolean
-  grid?: GridOptions
   layers?: DmScreenLayer[] // Layer definitions with order, visibility, opacity
   backgroundImageId?: number // UserFile ID for background image (legacy, kept for backward compatibility)
   backgroundImageWidth?: number // Width of background image in pixels (default: 2500)
@@ -1053,6 +1061,101 @@ export const EFFECT_PRESETS: EffectPreset[] = [
       lightPoolIntensity: 0.5,
       lightPoolSize: 1.0,
       beamPath: 'M 50 0 L 50 100', // Default vertical line
+    },
+  },
+  {
+    id: 'shadowTendrils',
+    name: 'Shadow Tendrils',
+    effectType: 'shadowTendrils',
+    icon: 'mdi-tentacle',
+    description: 'Writhing shadow tendrils',
+    defaultConfig: {
+      effectType: 'shadowTendrils',
+      intensity: 0.7,
+      color: '#1a1a1a',
+      secondaryColor: '#424242',
+      speed: 1,
+      scale: 1,
+      opacity: 0.8,
+      blendMode: 'multiply',
+      particleCount: 8,
+      particleSize: 30,
+      spread: 70,
+      lightPoolIntensity: 0.1,
+      lightPoolSize: 1.2,
+    },
+  },
+  {
+    id: 'whirlpool',
+    name: 'Whirlpool',
+    effectType: 'whirlpool',
+    icon: 'mdi-weather-tornado',
+    description: 'Swirling whirlpool/cyclone effect',
+    defaultConfig: {
+      effectType: 'whirlpool',
+      intensity: 0.7,
+      color: '#4a90e2',
+      secondaryColor: '#87ceeb',
+      speed: 1,
+      scale: 1,
+      opacity: 0.75,
+      blendMode: 'normal',
+      particleCount: 50,
+      particleSize: 8,
+      spread: 100,
+      lightPoolIntensity: 0.2,
+      lightPoolSize: 1.0,
+    },
+  },
+  {
+    id: 'grass',
+    name: 'Grass',
+    effectType: 'grass',
+    icon: 'mdi-grass',
+    description: 'Grassy terrain tile',
+    defaultConfig: {
+      effectType: 'grass',
+      intensity: 0.7,
+      color: '#4a7c3a',
+      secondaryColor: '#6b9c5a',
+      speed: 0.3,
+      scale: 1,
+      opacity: 1,
+      blendMode: 'normal',
+    },
+  },
+  {
+    id: 'water',
+    name: 'Water',
+    effectType: 'water',
+    icon: 'mdi-water',
+    description: 'Animated water tile with waves',
+    defaultConfig: {
+      effectType: 'water',
+      intensity: 0.6,
+      color: '#4a90e2',
+      secondaryColor: '#6bb3ff',
+      speed: 1,
+      scale: 1,
+      opacity: 0.7,
+      blendMode: 'normal',
+    },
+  },
+  {
+    id: 'lava',
+    name: 'Lava',
+    effectType: 'lava',
+    icon: 'mdi-fire',
+    description: 'Molten lava tile with bubbles',
+    defaultConfig: {
+      effectType: 'lava',
+      intensity: 0.8,
+      color: '#ff4400',
+      secondaryColor: '#ff8800',
+      speed: 0.8,
+      scale: 1,
+      opacity: 0.9,
+      blendMode: 'screen',
     },
   },
 ]

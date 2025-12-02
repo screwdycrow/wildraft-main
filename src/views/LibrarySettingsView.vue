@@ -68,6 +68,51 @@
       </v-col>
     </v-row>
 
+    <!-- Library Information -->
+    <v-row class="mb-6" v-if="isOwner">
+      <v-col cols="12">
+        <v-card class="glass-card" elevation="0">
+          <v-card-title class="text-h5 font-weight-bold pa-6 d-flex align-center">
+            <v-icon icon="mdi-information" color="primary" class="mr-3" />
+            Library Information
+          </v-card-title>
+          <v-card-text class="px-6 pb-6">
+            <v-form ref="libraryFormRef" @submit.prevent="handleUpdate">
+              <v-text-field
+                v-model="libraryForm.name"
+                label="Library Name"
+                prepend-inner-icon="mdi-book-open-variant"
+                variant="outlined"
+                :rules="nameRules"
+                class="mb-4"
+                required
+              />
+              <v-textarea
+                v-model="libraryForm.description"
+                label="Description"
+                prepend-inner-icon="mdi-text"
+                variant="outlined"
+                rows="3"
+                class="mb-4"
+                auto-grow
+              />
+              <div class="d-flex justify-end">
+                <v-btn
+                  color="primary"
+                  variant="flat"
+                  prepend-icon="mdi-content-save"
+                  @click="handleUpdate"
+                  :loading="isUpdating"
+                >
+                  Save Changes
+                </v-btn>
+              </div>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Theme Selection -->
     <v-row class="mb-6">
       <v-col cols="12">
@@ -387,13 +432,25 @@ const showInviteDialog = ref(false)
 const showChangeRoleDialog = ref(false)
 
 const inviteFormRef = ref<VForm>()
+const libraryFormRef = ref<VForm>()
 const selectedAccess = ref<LibraryAccess | null>(null)
 const newRole = ref<'OWNER' | 'EDITOR' | 'VIEWER'>('EDITOR')
+const isUpdating = ref(false)
 
 const inviteForm = ref({
   email: '',
   role: 'EDITOR' as 'OWNER' | 'EDITOR' | 'VIEWER',
 })
+
+const libraryForm = ref({
+  name: '',
+  description: '',
+})
+
+const nameRules = [
+  (v: string) => !!v || 'Library name is required',
+  (v: string) => (v && v.length >= 3) || 'Library name must be at least 3 characters',
+]
 
 const roleOptions = [
   { title: 'Owner', value: 'OWNER' },
@@ -588,6 +645,36 @@ async function confirmRevokeAccess(access: LibraryAccess) {
     toast.error('Failed to revoke access')
   }
 }
+
+async function handleUpdate() {
+  if (!libraryStore.currentLibrary) return
+
+  const { valid } = await libraryFormRef.value!.validate()
+  if (!valid) return
+
+  isUpdating.value = true
+  try {
+    await libraryStore.updateLibrary(libraryStore.currentLibrary.id, {
+      name: libraryForm.value.name,
+      description: libraryForm.value.description || undefined,
+    })
+    toast.success('Library updated successfully!')
+  } catch (error) {
+    toast.error('Failed to update library')
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+// Initialize library form when library loads
+watch(() => libraryStore.currentLibrary, (library) => {
+  if (library) {
+    libraryForm.value = {
+      name: library.name || '',
+      description: library.description || '',
+    }
+  }
+}, { immediate: true })
 
 // Ensure library is loaded when component mounts or route changes
 watch([() => libraryId.value, () => libraryStore.currentLibrary], async ([newId, currentLib]) => {

@@ -152,6 +152,7 @@
         :width="props.item.nodeOptions?.width"
         :height="props.item.nodeOptions?.height"
         @update:data="handleShapeDataUpdate"
+        @open-settings="handleShapeOpenSettings"
       />
 
       <!-- EffectNode (particle/lighting effects) -->
@@ -214,6 +215,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   update: [item: DmScreenItem]
   delete: [itemId: string]
+  'open-settings': []
 }>()
 
 const itemsStore = useItemsStore()
@@ -433,6 +435,10 @@ function handleShapeDataUpdate(data: any) {
     }
   }
   emit('update', updatedItem)
+}
+
+function handleShapeOpenSettings() {
+  emit('open-settings')
 }
 
 function handleBeamPathUpdate(path: string) {

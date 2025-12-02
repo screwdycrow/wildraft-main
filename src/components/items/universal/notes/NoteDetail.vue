@@ -4,7 +4,7 @@
       <!-- Sections -->
       <v-col class="note-sidebar" cols="12" md="2">
         <div class="sidebar-content-wrapper">
-          <div class="mb-4">
+          <div class="sidebar-nav-section">
             <v-card-text class="pa-0">
               <v-list nav density="compact">
                 <v-list-item
@@ -44,7 +44,7 @@
       </v-col>
 
       <!-- Content -->
-      <v-col class="note-content-col" cols="12" md="10">
+      <v-col class="note-content-col" cols="12" md="7">
         <div class="note-content-wrapper">
           <v-card-text class="pa-6">
             <div class="note-body">
@@ -66,26 +66,55 @@
                 v-if="activeSection === 'main'"
                 v-html="renderedMainContent"
                 class="prose"
+                ref="contentRef"
               />
               <article
                 v-else
                 v-html="activeChapterContent"
                 class="prose"
+                ref="contentRef"
               />
             </div>
           </v-card-text>
         </div>
-      
       </v-col>
 
-      <!--  -->
+      <!-- Content Outline -->
+      <v-col class="note-outline-col" cols="12" md="3">
+        <div class="outline-wrapper">
+          <div class="outline-header">
+            <v-icon icon="mdi-format-list-text" size="small" class="mr-2" />
+            <span class="text-caption font-weight-medium">Contents</span>
+          </div>
+          <nav class="outline-nav">
+            <ul class="outline-list">
+              <li
+                v-for="heading in contentOutline"
+                :key="heading.id"
+                :class="['outline-item', `outline-level-${heading.level}`]"
+              >
+                <a
+                  :href="`#${heading.id}`"
+                  @click.prevent="scrollToHeading(heading.id)"
+                  class="outline-link"
+                >
+                  {{ heading.text }}
+                </a>
+              </li>
+            </ul>
+            <div v-if="contentOutline.length === 0" class="outline-empty">
+              <span class="text-caption text-grey-lighten-1">No headings found</span>
+            </div>
+          </nav>
+        </div>
+      </v-col>
 
     </v-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick, onMounted } from 'vue'
 import type { LibraryItem, NoteData, NoteChapter } from '@/types/item.types'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import { useFilesStore } from '@/stores/files'
@@ -94,6 +123,12 @@ import { resolveImageUrlsInHtml } from '@/utils/imageResolver'
 interface Props {
   item: LibraryItem
   initialChapterId?: string
+}
+
+interface Heading {
+  id: string
+  text: string
+  level: number
 }
 
 const props = defineProps<Props>()
@@ -108,6 +143,8 @@ const noteData = computed<NoteData>(() => props.item.data as NoteData)
 // Initialize activeSection - if initialChapterId is provided, we'll set it in the watch
 const activeSection = ref<'main' | string>(props.initialChapterId || 'main')
 const featuredImageUrl = ref<string>('')
+const contentRef = ref<HTMLElement | null>(null)
+const contentOutline = ref<Heading[]>([])
 
 // Log when component receives initialChapterId
 watch(() => props.initialChapterId, (chapterId) => {
@@ -208,6 +245,69 @@ const activeChapterContent = computed(() => {
   return activeChapter.value.content
 })
 
+// Extract headings from content for outline
+function extractHeadings(html: string): Heading[] {
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(html, 'text/html')
+  const headings: Heading[] = []
+  
+  // Find all h1, h2, h3 elements
+  const headingElements = doc.querySelectorAll('h1, h2, h3')
+  
+  headingElements.forEach((heading, index) => {
+    const level = parseInt(heading.tagName.charAt(1))
+    const text = heading.textContent?.trim() || ''
+    
+    if (text) {
+      // Generate ID if not present
+      let id = heading.id
+      if (!id) {
+        id = `heading-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        heading.id = id
+      }
+      
+      headings.push({ id, text, level })
+    }
+  })
+  
+  return headings
+}
+
+// Update outline when content changes
+watch([renderedMainContent, activeChapterContent, activeSection], async () => {
+  await nextTick()
+  const html = activeSection.value === 'main' 
+    ? renderedMainContent.value 
+    : activeChapterContent.value
+  
+  // Extract headings from HTML string
+  contentOutline.value = extractHeadings(html)
+  
+  // Add IDs to headings in the DOM after render
+  await nextTick()
+  if (contentRef.value) {
+    const headings = contentRef.value.querySelectorAll('h1, h2, h3')
+    headings.forEach((heading, index) => {
+      if (!heading.id) {
+        const text = heading.textContent?.trim() || ''
+        const id = `heading-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+        heading.id = id
+        // Update outline with correct ID
+        if (contentOutline.value[index]) {
+          contentOutline.value[index].id = id
+        }
+      }
+    })
+  }
+}, { immediate: true })
+
+function scrollToHeading(id: string) {
+  const element = contentRef.value?.querySelector(`#${id}`)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 const fileIds = computed(() => {
   if (!props.item.userFiles?.length) return []
   filesStore.addFiles(props.item.userFiles)
@@ -251,71 +351,82 @@ function formatDate(dateString: string) {
 }
 
 .note-sidebar {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  background: transparent;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 20px;
-  align-self: flex-start;
-  max-height: calc(100vh - 40px);
+  height: 100%;
+  min-height: calc(100vh - 40px);
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: 16px;
 }
 
 /* Sidebar content wrapper */
 .sidebar-content-wrapper {
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 12px 0;
   gap: 16px;
+  height: 100%;
+  flex: 1;
 }
 
 /* Scrollbar styling for sidebar */
-.sidebar-content-wrapper::-webkit-scrollbar {
+.note-sidebar::-webkit-scrollbar {
   width: 6px;
 }
 
-.sidebar-content-wrapper::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+.note-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.note-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 3px;
 }
 
-.sidebar-content-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-}
-
-.sidebar-content-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+.note-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* Firefox scrollbar */
-.sidebar-content-wrapper {
+.note-sidebar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Sidebar nav section */
+.sidebar-nav-section {
+  flex: 0 0 auto;
 }
 
 /* Attachment grid styling */
 .attached-files-grid {
-  padding: 12px;
+  padding: 12px 0;
+  margin-top: auto;
+  flex: 0 0 auto;
 }
 
-/* Reduce spacing in attachment grid */
+/* Fix attachment grid to be 2x2 */
 .attached-files-grid :deep(.v-row) {
   margin: 0 !important;
-  gap: 4px !important;
+  gap: 8px !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
 }
 
 .attached-files-grid :deep(.v-col) {
-  padding: 2px !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 auto !important;
 }
 
 .attached-files-grid :deep(.v-card),
 .attached-files-grid :deep(.media-card) {
   margin: 0 !important;
+  width: 100% !important;
 }
 
 /* Note content wrapper */
@@ -426,17 +537,30 @@ function formatDate(dateString: string) {
 .section-header h1 {
   margin: 0;
   flex: 1;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
 }
 
 .note-body {
-  line-height: 1.7;
-  font-size: 1rem;
-  padding-left: 64px;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  padding-right: 64px;
-color: rgb(var(--v-theme-on-surface),0.78);
-  
+  line-height: 1.9;
+  font-size: 1.125rem;
+  padding-left: 48px;
+  padding-top: 32px;
+  padding-bottom: 48px;
+  padding-right: 48px;
+  color: rgba(255, 255, 255, 0.88);
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  max-width: 100%;
+  margin: 0;
+  transition: all 0.3s ease;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
 }
 
 .note-body .empty {
@@ -444,15 +568,84 @@ color: rgb(var(--v-theme-on-surface),0.78);
   opacity: 0.6;
 }
 
-.prose :deep(h1),
-.prose :deep(h2),
-.prose :deep(h3) {
-  margin-top: 1.5rem;
+.prose :deep(h1) {
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 1.75em 0 0.75em 0;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
+  scroll-margin-top: 20px;
+}
+
+.prose :deep(h2) {
+  font-size: 2.125rem;
   font-weight: 600;
+  line-height: 1.3;
+  margin: 1.5em 0 0.6em 0;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.95);
+  font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
+  scroll-margin-top: 20px;
+}
+
+.prose :deep(h3) {
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 1.25em 0 0.5em 0;
+  color: rgba(255, 255, 255, 0.93);
+  font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
+  scroll-margin-top: 20px;
 }
 
 .prose :deep(p) {
-  margin: 0 0 1rem 0;
+  margin: 0.85em 0;
+  padding: 0;
+  line-height: 1.9;
+}
+
+.prose :deep(ul),
+.prose :deep(ol) {
+  padding-left: 2em;
+  margin: 1em 0;
+  line-height: 1.9;
+}
+
+.prose :deep(li) {
+  margin: 0.5em 0;
+  padding-left: 0.5em;
+}
+
+.prose :deep(blockquote) {
+  border-left: 4px solid rgba(148, 197, 255, 0.5);
+  padding-left: 1.5em;
+  margin: 1.5em 0;
+  font-style: italic;
+  opacity: 0.9;
+  font-size: 1.1em;
+  line-height: 1.85;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.25em 1.75em;
+  border-radius: 0 8px 8px 0;
+}
+
+.prose :deep(hr) {
+  border: none;
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  margin: 2.5em 0;
+}
+
+.prose :deep(a) {
+  color: rgba(148, 197, 255, 0.9);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.2s ease;
+}
+
+.prose :deep(a:hover) {
+  color: rgba(148, 197, 255, 1);
 }
 
 /* Table Styles - Make sure tables are visible! */
@@ -583,6 +776,117 @@ color: rgb(var(--v-theme-on-surface),0.78);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Content Outline */
+.note-outline-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.outline-wrapper {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 16px;
+  padding-left: 24px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.outline-wrapper:hover {
+  opacity: 1;
+}
+
+/* Scrollbar styling for outline */
+.outline-wrapper::-webkit-scrollbar {
+  width: 4px;
+}
+
+.outline-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.outline-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.outline-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.outline-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.outline-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+}
+
+.outline-nav {
+  flex: 1;
+}
+
+.outline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.outline-item {
+  margin-bottom: 4px;
+}
+
+.outline-level-1 {
+  margin-left: 0;
+  font-weight: 600;
+}
+
+.outline-level-2 {
+  margin-left: 12px;
+  font-weight: 500;
+}
+
+.outline-level-3 {
+  margin-left: 24px;
+  font-weight: 400;
+  font-size: 0.9em;
+}
+
+.outline-link {
+  display: block;
+  padding: 4px 8px;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outline-link:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  padding-left: 10px;
+}
+
+.outline-empty {
+  padding: 8px;
+  text-align: center;
+  opacity: 0.5;
+}
+
 @media (max-width: 959px) {
   .nav-column {
     order: 2;
@@ -595,6 +899,39 @@ color: rgb(var(--v-theme-on-surface),0.78);
 
   .sidebar-column {
     order: 3;
+  }
+  
+  .note-body {
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-top: 24px;
+    font-size: 1.05rem;
+    line-height: 1.85;
+  }
+  
+  .section-header h1 {
+    font-size: 2rem;
+  }
+  
+  .prose :deep(h1) {
+    font-size: 2.25rem;
+  }
+  
+  .prose :deep(h2) {
+    font-size: 1.875rem;
+  }
+  
+  .prose :deep(h3) {
+    font-size: 1.5rem;
+  }
+  
+  .note-outline-col {
+    display: none;
+  }
+  
+  .note-content-col {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
   }
 }
 </style>

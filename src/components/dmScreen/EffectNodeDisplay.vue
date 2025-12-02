@@ -219,7 +219,7 @@ const pathSegments = computed(() => {
 
 // Which effects have a light pool
 const hasLightPool = computed(() => {
-  const lightTypes = ['fire', 'torch', 'campfire', 'embers', 'lightRing', 'aura', 'magicCircle', 'sparkles', 'fireflies', 'spiritualWeapon', 'thunder', 'electricBeam', 'energyBeam', 'fireColumn']
+  const lightTypes = ['fire', 'torch', 'campfire', 'embers', 'lightRing', 'aura', 'magicCircle', 'sparkles', 'fireflies', 'spiritualWeapon', 'thunder', 'electricBeam', 'energyBeam', 'fireColumn', 'whirlpool']
   return lightTypes.includes(effectConfig.value.effectType)
 })
 
@@ -315,7 +315,7 @@ function alphaHex(value: number): string {
 const containerGlowStyle = computed(() => {
   const config = effectConfig.value
   const color = config.color
-  const glowTypes = ['fire', 'torch', 'campfire', 'embers', 'lightRing', 'aura', 'magicCircle', 'sparkles', 'fireflies', 'spiritualWeapon', 'thunder', 'electricBeam', 'energyBeam', 'fireColumn']
+  const glowTypes = ['fire', 'torch', 'campfire', 'embers', 'lightRing', 'aura', 'magicCircle', 'sparkles', 'fireflies', 'spiritualWeapon', 'thunder', 'electricBeam', 'energyBeam', 'fireColumn', 'whirlpool']
   
   if (glowTypes.includes(config.effectType)) {
     const intensity = config.glowIntensity || 0.8
@@ -349,6 +349,54 @@ function lerpColor(color1: string, color2: string, t: number): number {
   const b = Math.round(b1 + (b2 - b1) * t)
   
   return (r << 16) | (g << 8) | b
+}
+
+// Apply circular mask with feathering to a container
+function applyCircleMask(container: PIXI.Container, config: EffectConfig, width: number, height: number) {
+  if (!config.useCircleMask) return
+  
+  // Create a canvas to draw the radial gradient mask
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  const centerX = width / 2
+  const centerY = height / 2
+  const radius = Math.min(width, height) * 0.5
+  
+  // Feather size: 0 = no feather (hard edge), 1 = maximum feather (30% of radius)
+  const featherSizeRatio = config.maskFeatherSize ?? 0.5
+  const maxFeatherSize = radius * 0.3
+  const featherSize = maxFeatherSize * featherSizeRatio
+  
+  // Feather opacity: controls how smooth the transition is
+  const featherOpacity = config.maskFeatherOpacity ?? 0.5
+  
+  // Create radial gradient
+  const innerRadius = Math.max(0, radius - featherSize)
+  const gradient = ctx.createRadialGradient(centerX, centerY, innerRadius, centerX, centerY, radius)
+  
+  // Center is fully opaque
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
+  // Start fading at the feather point (smooth transition based on opacity)
+  const fadeStart = 1 - (featherSize / radius)
+  gradient.addColorStop(fadeStart, 'rgba(255, 255, 255, 1)')
+  // Edge fades based on opacity setting (0 = hard, 1 = very smooth)
+  const edgeAlpha = 1 - featherOpacity
+  gradient.addColorStop(1, `rgba(255, 255, 255, ${edgeAlpha})`)
+  
+  // Fill the entire canvas with the gradient
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, width, height)
+  
+  // Create PIXI texture from canvas
+  const texture = PIXI.Texture.from(canvas)
+  const maskSprite = new PIXI.Sprite(texture)
+  
+  container.mask = maskSprite
+  container.addChild(maskSprite)
 }
 
 async function initPixi() {
@@ -409,6 +457,8 @@ function createEffect() {
     case 'lightRing':
     case 'aura':
     case 'magicCircle':
+    case 'teleportCircle':
+    case 'summoningCircle':
       createLightRingEffect(config, cx, cy, width, height, scale)
       break
     case 'sparkles':
@@ -417,15 +467,26 @@ function createEffect() {
       break
     case 'fog':
     case 'smoke':
+    case 'mistyStep':
+    case 'deathCloud':
+    case 'poisonCloud':
+    case 'darkness':
       createFogEffect(config, cx, cy, width, height, scale)
       break
     case 'snow':
     case 'rain':
+    case 'blizzard':
       createWeatherEffect(config, cx, cy, width, height, scale)
       break
     case 'embers':
     case 'dust':
       createParticleEffect(config, cx, cy, width, height, scale)
+      break
+    case 'shadowTendrils':
+      createTendrilsEffect(config, cx, cy, width, height, scale)
+      break
+    case 'whirlpool':
+      createWhirlpoolEffect(config, cx, cy, width, height, scale)
       break
     case 'spiritualWeapon':
       createSpiritualWeaponEffect(config, cx, cy, width, height, scale)
@@ -437,6 +498,15 @@ function createEffect() {
     case 'energyBeam':
     case 'fireColumn':
       createBeamEffect(config, cx, cy, width, height, scale)
+      break
+    case 'grass':
+      createGrassEffect(config, cx, cy, width, height, scale)
+      break
+    case 'water':
+      createWaterEffect(config, cx, cy, width, height, scale)
+      break
+    case 'lava':
+      createLavaEffect(config, cx, cy, width, height, scale)
       break
     default:
       createFireEffect(config, cx, cy, width, height, scale)
@@ -537,6 +607,11 @@ function drawSmokeParticle(g: PIXI.Graphics, size: number, color: number, alpha:
 function createFireEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
   if (!app) return
 
+  // Main container for mask
+  const mainContainer = new PIXI.Container()
+  app.stage.addChild(mainContainer)
+  applyCircleMask(mainContainer, config, width, height)
+
   // Create layered containers for depth
   const backContainer = new PIXI.Container()
   const midContainer = new PIXI.Container()
@@ -544,11 +619,11 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
   const sparkContainer = new PIXI.Container()
   const smokeContainer = new PIXI.Container()
   
-  app.stage.addChild(backContainer)
-  app.stage.addChild(midContainer)
-  app.stage.addChild(frontContainer)
-  app.stage.addChild(sparkContainer)
-  app.stage.addChild(smokeContainer)
+  mainContainer.addChild(backContainer)
+  mainContainer.addChild(midContainer)
+  mainContainer.addChild(frontContainer)
+  mainContainer.addChild(sparkContainer)
+  mainContainer.addChild(smokeContainer)
 
   const s = config.scale * scale
   // LOTS of particles for volume
@@ -560,22 +635,23 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
   const color2 = hexToNumber(config.secondaryColor || '#ffff00')
 
   // Layered base glows - creating a bright central hotspot
+  const opacity = config.opacity ?? 0.9
   const baseBack = new PIXI.Graphics()
   baseBack.circle(0, 0, 55 * s)
-  baseBack.fill({ color: color1, alpha: 0.15 })
+  baseBack.fill({ color: color1, alpha: 0.15 * opacity })
   baseBack.circle(0, 0, 45 * s)
-  baseBack.fill({ color: color1, alpha: 0.2 })
+  baseBack.fill({ color: color1, alpha: 0.2 * opacity })
   baseBack.x = cx
   baseBack.y = cy + height * 0.2
   backContainer.addChild(baseBack)
 
   const baseMid = new PIXI.Graphics()
   baseMid.circle(0, 0, 38 * s)
-  baseMid.fill({ color: color2, alpha: 0.25 })
+  baseMid.fill({ color: color2, alpha: 0.25 * opacity })
   baseMid.circle(0, 0, 28 * s)
-  baseMid.fill({ color: color2, alpha: 0.4 })
+  baseMid.fill({ color: color2, alpha: 0.4 * opacity })
   baseMid.circle(0, 0, 20 * s)
-  baseMid.fill({ color: 0xffffaa, alpha: 0.45 })
+  baseMid.fill({ color: 0xffffaa, alpha: 0.45 * opacity })
   baseMid.x = cx
   baseMid.y = cy + height * 0.18
   midContainer.addChild(baseMid)
@@ -583,13 +659,13 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
   // Bright central hotspot - the heart of the fire
   const baseCore = new PIXI.Graphics()
   baseCore.circle(0, 0, 16 * s)
-  baseCore.fill({ color: 0xffffcc, alpha: 0.5 })
+  baseCore.fill({ color: 0xffffcc, alpha: 0.5 * opacity })
   baseCore.circle(0, 0, 12 * s)
-  baseCore.fill({ color: 0xffffee, alpha: 0.65 })
+  baseCore.fill({ color: 0xffffee, alpha: 0.65 * opacity })
   baseCore.circle(0, 0, 8 * s)
-  baseCore.fill({ color: 0xffffff, alpha: 0.8 })
+  baseCore.fill({ color: 0xffffff, alpha: 0.8 * opacity })
   baseCore.circle(0, 0, 4 * s)
-  baseCore.fill({ color: 0xffffff, alpha: 0.95 })
+  baseCore.fill({ color: 0xffffff, alpha: 0.95 * opacity })
   baseCore.x = cx
   baseCore.y = cy + height * 0.16
   frontContainer.addChild(baseCore)
@@ -597,7 +673,7 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
   // Additional inner glow ring that pulses
   const innerGlow = new PIXI.Graphics()
   innerGlow.circle(0, 0, 22 * s)
-  innerGlow.fill({ color: 0xffff88, alpha: 0.35 })
+  innerGlow.fill({ color: 0xffff88, alpha: 0.35 * opacity })
   innerGlow.x = cx
   innerGlow.y = cy + height * 0.17
   midContainer.addChild(innerGlow)
@@ -863,18 +939,18 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
     const corePulse = Math.sin(t * 6 * config.speed) * 0.2 + Math.sin(t * 18 * config.speed) * 0.1 + Math.random() * 0.08
     
     baseBack.scale.set(1 + flicker1)
-    baseBack.alpha = 0.18 + flicker1 * 0.4
+    baseBack.alpha = (0.18 + flicker1 * 0.4) * opacity
     
     baseMid.scale.set(1 + flicker2)
-    baseMid.alpha = 0.32 + flicker2 * 0.35
+    baseMid.alpha = (0.32 + flicker2 * 0.35) * opacity
     
     // Bright pulsing central core
     baseCore.scale.set(1 + flicker3 * 1.3)
-    baseCore.alpha = 0.7 + corePulse * 0.3
+    baseCore.alpha = (0.7 + corePulse * 0.3) * opacity
     
     // Inner glow ring pulses opposite to core for dynamic effect
     innerGlow.scale.set(1 + corePulse * 0.8)
-    innerGlow.alpha = 0.3 + flicker2 * 0.25 + Math.sin(t * 10 * config.speed) * 0.1
+    innerGlow.alpha = (0.3 + flicker2 * 0.25 + Math.sin(t * 10 * config.speed) * 0.1) * opacity
 
     // Update flames
     for (const p of flames) {
@@ -897,7 +973,7 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
 
       let scaleMult: number
       let alphaMult: number
-      const baseAlpha = p.layer === 'front' ? 0.95 : (p.layer === 'back' ? 0.65 : 0.8)
+      const baseAlpha = (p.layer === 'front' ? 0.95 : (p.layer === 'back' ? 0.65 : 0.8)) * opacity
 
       if (p.shape === 'round') {
         // ROUND: Start big, shrink and fade away
@@ -1002,12 +1078,12 @@ function createFireEffect(config: EffectConfig, cx: number, cy: number, width: n
         // Fade in: start tiny, grow
         const fadeIn = age / 0.2
         smokeScale = 0.2 + 0.5 * Math.pow(fadeIn, 0.6)
-        smokeAlpha = Math.pow(fadeIn, 0.5) * 0.12
+        smokeAlpha = Math.pow(fadeIn, 0.5) * 0.12 * opacity
       } else {
         // Continue expanding and fade out
         const expandProgress = (age - 0.2) / 0.8
         smokeScale = 0.7 + expandProgress * 1.3
-        smokeAlpha = (1 - Math.pow(expandProgress, 0.7)) * 0.12
+        smokeAlpha = (1 - Math.pow(expandProgress, 0.7)) * 0.12 * opacity
       }
       p.g.scale.set(smokeScale)
       p.g.alpha = smokeAlpha
@@ -1028,19 +1104,21 @@ function createLightRingEffect(config: EffectConfig, cx: number, cy: number, wid
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const maxR = Math.min(width, height) * 0.38
   const color1 = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || config.color)
   const ringCount = config.effectType === 'magicCircle' ? 3 : 2
+  const opacity = config.opacity ?? 0.9
 
   // Center fill
   const center = new PIXI.Graphics()
   center.circle(0, 0, maxR * 0.25)
-  center.fill({ color: color1, alpha: 0.5 })
+  center.fill({ color: color1, alpha: 0.5 * opacity })
   center.circle(0, 0, maxR * 0.12)
-  center.fill({ color: 0xffffff, alpha: 0.4 })
+  center.fill({ color: 0xffffff, alpha: 0.4 * opacity })
   center.x = cx
   center.y = cy
   container.addChild(center)
@@ -1052,19 +1130,19 @@ function createLightRingEffect(config: EffectConfig, cx: number, cy: number, wid
     const r = maxR * (1 - i * 0.22)
     const thick = (3 - i * 0.5) * scale
     
-    g.setStrokeStyle({ width: thick, color: i === 0 ? color1 : color2, alpha: 0.85 - i * 0.15 })
+    g.setStrokeStyle({ width: thick, color: i === 0 ? color1 : color2, alpha: (0.85 - i * 0.15) * opacity })
     g.circle(0, 0, r)
     g.stroke()
     
     // Inner glow ring
-    g.setStrokeStyle({ width: thick * 3, color: i === 0 ? color1 : color2, alpha: 0.2 })
+    g.setStrokeStyle({ width: thick * 3, color: i === 0 ? color1 : color2, alpha: 0.2 * opacity })
     g.circle(0, 0, r)
     g.stroke()
 
     if (config.effectType === 'magicCircle' && i === 0) {
       for (let j = 0; j < 6; j++) {
         const a = (j / 6) * Math.PI * 2
-        g.setStrokeStyle({ width: 2 * scale, color: color2, alpha: 0.6 })
+        g.setStrokeStyle({ width: 2 * scale, color: color2, alpha: 0.6 * opacity })
         g.moveTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5)
         g.lineTo(Math.cos(a) * r, Math.sin(a) * r)
         g.stroke()
@@ -1080,12 +1158,12 @@ function createLightRingEffect(config: EffectConfig, cx: number, cy: number, wid
   const pulse = config.pulseSpeed || 2
   startAnimation((t) => {
     center.scale.set(1 + Math.sin(t * pulse * 1.5) * 0.18)
-    center.alpha = 0.45 + Math.sin(t * pulse * 2) * 0.2
+    center.alpha = (0.45 + Math.sin(t * pulse * 2) * 0.2) * opacity
 
     for (const r of rings) {
       r.g.rotation += 0.008 * config.speed * r.dir
       r.g.scale.set(1 + Math.sin(t * pulse + r.phase) * 0.05)
-      r.g.alpha = 0.7 + Math.sin(t * 1.5 + r.phase) * 0.25
+      r.g.alpha = (0.7 + Math.sin(t * 1.5 + r.phase) * 0.25) * opacity
     }
   })
 }
@@ -1098,12 +1176,14 @@ function createSparklesEffect(config: EffectConfig, cx: number, cy: number, widt
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   // Very few sparkles for performance
   const count = Math.min(12, Math.round(8 * config.intensity))
   const color1 = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || '#ffffff')
+  const opacity = config.opacity ?? 0.9
 
   interface Sparkle { g: PIXI.Graphics; x: number; y: number; phase: number; speed: number }
   const sparkles: Sparkle[] = []
@@ -1114,9 +1194,9 @@ function createSparklesEffect(config: EffectConfig, cx: number, cy: number, widt
     // Simple filled circle with color blend
     const col = i % 2 === 0 ? color1 : color2
     g.circle(0, 0, size)
-    g.fill({ color: col, alpha: 0.9 })
+    g.fill({ color: col, alpha: 0.9 * opacity })
     g.circle(0, 0, size * 0.5)
-    g.fill({ color: 0xffffff, alpha: 0.7 })
+    g.fill({ color: 0xffffff, alpha: 0.7 * opacity })
 
     const bx = Math.random() * width
     const by = Math.random() * height
@@ -1130,7 +1210,7 @@ function createSparklesEffect(config: EffectConfig, cx: number, cy: number, widt
   startAnimation((t) => {
     for (const sp of sparkles) {
       const twinkle = Math.sin(t * sp.speed * 3 + sp.phase)
-      sp.g.alpha = 0.3 + (twinkle + 1) * 0.35
+      sp.g.alpha = (0.3 + (twinkle + 1) * 0.35) * opacity
       sp.g.scale.set(0.6 + (twinkle + 1) * 0.25)
 
       if (config.effectType === 'fireflies') {
@@ -1142,67 +1222,195 @@ function createSparklesEffect(config: EffectConfig, cx: number, cy: number, widt
 }
 
 // =====================================================
-// FOG / SMOKE - Large visible clouds
+// FOG / SMOKE - Large visible clouds with blur and masks
 // =====================================================
 function createFogEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
   if (!app) return
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const color = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || config.color)
   const isSmoke = config.effectType === 'smoke'
-  // Few but large and visible particles
-  const count = Math.min(6, Math.round(4 * config.intensity))
+  // More clouds for better coverage, but smaller
+  const count = Math.min(15, Math.round(10 * config.intensity))
 
-  interface Cloud { g: PIXI.Graphics; vx: number; vy: number; phase: number }
+  interface Cloud {
+    g: PIXI.Graphics
+    mask: PIXI.Graphics
+    container: PIXI.Container
+    blurFilter: PIXI.BlurFilter | null
+    vx: number
+    vy: number
+    phase: number
+    baseSize: number
+    baseAlpha: number
+  }
   const clouds: Cloud[] = []
 
   for (let i = 0; i < count; i++) {
-    const g = new PIXI.Graphics()
-    const size = (50 + Math.random() * 40) * s
+    const cloudContainer = new PIXI.Container()
+    container.addChild(cloudContainer)
     
-    // Multiple overlapping circles for cloud effect - MORE VISIBLE
-    const col = i % 2 === 0 ? color : color2
-    g.circle(0, 0, size)
-    g.fill({ color: col, alpha: 0.45 })
-    g.circle(size * 0.3, -size * 0.2, size * 0.7)
-    g.fill({ color: col, alpha: 0.35 })
-    g.circle(-size * 0.25, size * 0.15, size * 0.6)
-    g.fill({ color: col, alpha: 0.3 })
+    // Create blur filter for each cloud
+    let blurFilter: PIXI.BlurFilter | null = null
+    try {
+      blurFilter = new PIXI.BlurFilter()
+      blurFilter.blur = 12 * s // More blur for cloudier look
+      blurFilter.quality = 4 // Higher quality blur
+      cloudContainer.filters = [blurFilter]
+    } catch (e) {
+      console.warn('BlurFilter not available, using manual blur effect')
+    }
 
-    g.x = Math.random() * width
-    g.y = isSmoke ? height * 0.7 + Math.random() * height * 0.3 : Math.random() * height
-    container.addChild(g)
+    const g = new PIXI.Graphics()
+    const baseSize = (45 + Math.random() * 40) * s // Slightly bigger particles: 45-85
+    const baseAlpha = config.opacity * (0.5 + Math.random() * 0.3)
+    
+    // Create feathered mask
+    const mask = new PIXI.Graphics()
+    
+    // Draw cloud with many overlapping circles for more cloud-like appearance
+    const col = i % 2 === 0 ? color : color2
+    const numCircles = 12 + Math.floor(Math.random() * 8) // 12-19 circles per cloud for more cloudiness
+    
+    for (let j = 0; j < numCircles; j++) {
+      const angle = (j / numCircles) * Math.PI * 2
+      const offset = (Math.random() - 0.5) * baseSize * 0.7
+      const circleX = Math.cos(angle) * offset
+      const circleY = Math.sin(angle) * offset
+      const circleSize = baseSize * (0.35 + Math.random() * 0.6)
+      const circleAlpha = baseAlpha * (0.5 + Math.random() * 0.5)
+      
+      // Main cloud circle with softer edges (achieved through multiple layers)
+      // Outer soft edge
+      g.circle(circleX, circleY, circleSize * 1.2)
+      g.fill({ color: col, alpha: circleAlpha * 0.2 })
+      // Mid soft edge
+      g.circle(circleX, circleY, circleSize * 1.1)
+      g.fill({ color: col, alpha: circleAlpha * 0.4 })
+      // Main cloud circle
+      g.circle(circleX, circleY, circleSize)
+      g.fill({ color: col, alpha: circleAlpha })
+      
+      // Additional smaller circles for detail and cloudiness
+      const numDetails = 2 + Math.floor(Math.random() * 3)
+      for (let d = 0; d < numDetails; d++) {
+        const detailX = circleX + (Math.random() - 0.5) * circleSize * 0.6
+        const detailY = circleY + (Math.random() - 0.5) * circleSize * 0.6
+        const detailSize = circleSize * (0.25 + Math.random() * 0.35)
+        g.circle(detailX, detailY, detailSize)
+        g.fill({ color: col, alpha: circleAlpha * (0.6 + Math.random() * 0.3) })
+      }
+    }
+    
+    // Create feathered circular mask using radial gradient technique
+    const maskSize = baseSize * 1.5
+    // Draw mask with smooth feathering - create gradient effect with concentric circles
+    const maskLayers = 30
+    for (let layer = 0; layer < maskLayers; layer++) {
+      const progress = layer / maskLayers
+      // Use smoothstep for better feathering
+      const smoothProgress = progress * progress * (3 - 2 * progress)
+      const radius = maskSize * (0.15 + smoothProgress * 0.85)
+      // Alpha increases from center to edge for mask (white = visible, alpha controls visibility)
+      // Use exponential falloff for smoother edge
+      const alpha = Math.pow(smoothProgress, 1.5)
+      mask.circle(0, 0, radius)
+      mask.fill({ color: 0xffffff, alpha: alpha / maskLayers * 3 })
+    }
+    
+    cloudContainer.addChild(g)
+    cloudContainer.mask = mask
+    cloudContainer.addChild(mask)
+    
+    // Position
+    cloudContainer.x = Math.random() * width
+    cloudContainer.y = isSmoke ? height * 0.7 + Math.random() * height * 0.3 : Math.random() * height
 
     clouds.push({
       g,
-      vx: (Math.random() - 0.5) * 0.4 * config.speed * s,
-      vy: isSmoke ? -0.5 * config.speed * s : (Math.random() - 0.5) * 0.15 * config.speed * s,
+      mask,
+      container: cloudContainer,
+      blurFilter,
+      vx: (Math.random() - 0.5) * 1.2 * config.speed * s, // Faster: 0.4 -> 1.2
+      vy: isSmoke ? -1.5 * config.speed * s : (Math.random() - 0.5) * 0.5 * config.speed * s, // Faster: -0.5 -> -1.5, 0.15 -> 0.5
       phase: Math.random() * Math.PI * 2,
+      baseSize,
+      baseAlpha,
     })
   }
 
   startAnimation((t) => {
     for (const c of clouds) {
-      c.g.x += c.vx + Math.sin(t * 0.5 + c.phase) * 0.3 * s
-      c.g.y += c.vy
-      c.g.alpha = 0.35 + Math.sin(t * 0.3 + c.phase) * 0.15
-      c.g.scale.set(1 + Math.sin(t * 0.2 + c.phase) * 0.08)
+      const cloudContainer = c.container
+      if (!cloudContainer) continue
+      
+      cloudContainer.x += c.vx + Math.sin(t * 0.5 + c.phase) * 0.3 * s
+      cloudContainer.y += c.vy
+      
+      // Calculate distance from edges for fade-out
+      const edgeFadeDistance = Math.min(width, height) * 0.15 // Fade zone is 15% of smaller dimension
+      const distFromLeft = cloudContainer.x
+      const distFromRight = width - cloudContainer.x
+      const distFromTop = cloudContainer.y
+      const distFromBottom = height - cloudContainer.y
+      
+      // Calculate fade factor (1.0 = fully visible, 0.0 = fully faded)
+      let edgeFade = 1.0
+      if (distFromLeft < edgeFadeDistance) {
+        edgeFade = Math.min(edgeFade, distFromLeft / edgeFadeDistance)
+      }
+      if (distFromRight < edgeFadeDistance) {
+        edgeFade = Math.min(edgeFade, distFromRight / edgeFadeDistance)
+      }
+      if (distFromTop < edgeFadeDistance) {
+        edgeFade = Math.min(edgeFade, distFromTop / edgeFadeDistance)
+      }
+      if (distFromBottom < edgeFadeDistance) {
+        edgeFade = Math.min(edgeFade, distFromBottom / edgeFadeDistance)
+      }
+      
+      // Opacity variation with config opacity - respect the opacity setting
+      const alphaVariation = 0.9 + Math.sin(t * 0.3 + c.phase) * 0.1
+      cloudContainer.alpha = c.baseAlpha * alphaVariation * edgeFade
+      
+      // Scale variation for breathing effect
+      const scaleVariation = 1 + Math.sin(t * 0.2 + c.phase) * 0.1
+      cloudContainer.scale.set(scaleVariation)
+      
+      // Update blur intensity slightly for more dynamic clouds
+      if (c.blurFilter) {
+        c.blurFilter.blur = (12 + Math.sin(t * 0.15 + c.phase) * 2) * s
+      }
 
-      // Wrap
-      if (c.g.x < -100 * s) c.g.x = width + 100 * s
-      if (c.g.x > width + 100 * s) c.g.x = -100 * s
+      // Wrap (with fade consideration - only wrap when fully faded)
+      if (cloudContainer.x < -c.baseSize * 2) {
+        cloudContainer.x = width + c.baseSize * 2
+        cloudContainer.alpha = 0 // Start invisible
+      }
+      if (cloudContainer.x > width + c.baseSize * 2) {
+        cloudContainer.x = -c.baseSize * 2
+        cloudContainer.alpha = 0 // Start invisible
+      }
       if (isSmoke) {
-        if (c.g.y < -100 * s) {
-          c.g.y = height * 0.8
-          c.g.x = cx + (Math.random() - 0.5) * width * 0.5
+        if (cloudContainer.y < -c.baseSize * 2) {
+          cloudContainer.y = height * 0.8
+          cloudContainer.x = cx + (Math.random() - 0.5) * width * 0.5
+          cloudContainer.alpha = 0 // Start invisible
         }
       } else {
-        if (c.g.y < -100 * s) c.g.y = height + 100 * s
-        if (c.g.y > height + 100 * s) c.g.y = -100 * s
+        if (cloudContainer.y < -c.baseSize * 2) {
+          cloudContainer.y = height + c.baseSize * 2
+          cloudContainer.alpha = 0 // Start invisible
+        }
+        if (cloudContainer.y > height + c.baseSize * 2) {
+          cloudContainer.y = -c.baseSize * 2
+          cloudContainer.alpha = 0 // Start invisible
+        }
       }
     }
   })
@@ -1216,11 +1424,13 @@ function createWeatherEffect(config: EffectConfig, cx: number, cy: number, width
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const isSnow = config.effectType === 'snow'
   const count = Math.min(30, Math.round(20 * config.intensity * Math.sqrt(scale)))
   const color = hexToNumber(config.color)
+  const opacity = config.opacity ?? 0.9
 
   interface Drop { g: PIXI.Graphics; vx: number; vy: number; phase: number }
   const drops: Drop[] = []
@@ -1231,10 +1441,10 @@ function createWeatherEffect(config: EffectConfig, cx: number, cy: number, width
 
     if (isSnow) {
       g.circle(0, 0, size)
-      g.fill({ color: 0xffffff, alpha: 0.85 })
+      g.fill({ color: 0xffffff, alpha: 0.85 * opacity })
     } else {
       g.rect(-0.5, -size * 2, 1, size * 4)
-      g.fill({ color, alpha: 0.6 })
+      g.fill({ color, alpha: 0.6 * opacity })
     }
 
     g.x = Math.random() * width
@@ -1276,12 +1486,14 @@ function createParticleEffect(config: EffectConfig, cx: number, cy: number, widt
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const isEmbers = config.effectType === 'embers'
   const maxP = Math.min(20, Math.round(12 * config.intensity))
   const color1 = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || '#ff8800')
+  const opacity = config.opacity ?? 0.9
 
   interface EmberParticle {
     g: PIXI.Graphics
@@ -1370,7 +1582,7 @@ function createParticleEffect(config: EffectConfig, cx: number, cy: number, widt
     p.life = p.max
 
     const col = Math.random() > 0.5 ? color1 : color2
-    drawEmberParticle(p.g, p.size, col, isEmbers ? 0.95 : 0.6, p.emberType)
+    drawEmberParticle(p.g, p.size, col, (isEmbers ? 0.95 : 0.6) * opacity, p.emberType)
   }
 
   // Initial spawn
@@ -1399,7 +1611,7 @@ function createParticleEffect(config: EffectConfig, cx: number, cy: number, widt
       }
 
       const ratio = p.life / p.max
-      p.g.alpha = ratio * (isEmbers ? 0.9 : 0.55)
+      p.g.alpha = ratio * (isEmbers ? 0.9 : 0.55) * opacity
 
       // Flickering for embers
       if (isEmbers) {
@@ -1425,10 +1637,12 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const color1 = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || config.color)
+  const opacity = config.opacity ?? 0.9
 
   // Load sword texture
   let swordTexture: PIXI.Texture | null = null
@@ -1439,9 +1653,9 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
     // Fallback: create a simple sword shape
     const fallbackSword = new PIXI.Graphics()
     fallbackSword.rect(-3, -40, 6, 80)
-    fallbackSword.fill({ color: 0xffd700, alpha: 0.9 })
+    fallbackSword.fill({ color: 0xffd700, alpha: 0.9 * opacity })
     fallbackSword.rect(-8, 35, 16, 8)
-    fallbackSword.fill({ color: 0xffd700, alpha: 0.9 })
+    fallbackSword.fill({ color: 0xffd700, alpha: 0.9 * opacity })
     fallbackSword.x = cx
     fallbackSword.y = cy
     container.addChild(fallbackSword)
@@ -1482,9 +1696,9 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
   const glow = new PIXI.Graphics()
   const glowSize = Math.max(swordWidth, swordHeight) * 1.3
   glow.circle(0, 0, glowSize * 0.5)
-  glow.fill({ color: color1, alpha: 0.15 })
+  glow.fill({ color: color1, alpha: 0.15 * opacity })
   glow.circle(0, 0, glowSize * 0.35)
-  glow.fill({ color: color2, alpha: 0.25 })
+  glow.fill({ color: color2, alpha: 0.25 * opacity })
   glow.x = cx
   glow.y = cy
   container.addChildAt(glow, 0) // Behind sword
@@ -1507,9 +1721,9 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
     const sparkleSize = (2 + Math.random() * 3) * s
     const col = i % 2 === 0 ? color1 : color2
     g.circle(0, 0, sparkleSize)
-    g.fill({ color: col, alpha: 0.8 })
+    g.fill({ color: col, alpha: 0.8 * opacity })
     g.circle(0, 0, sparkleSize * 0.5)
-    g.fill({ color: 0xffffff, alpha: 0.9 })
+    g.fill({ color: 0xffffff, alpha: 0.9 * opacity })
     
     const angle = (i / sparkleCount) * Math.PI * 2
     const radius = Math.max(swordWidth, swordHeight) * (0.6 + Math.random() * 0.4)
@@ -1547,7 +1761,7 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
     // Pulse glow
     const glowPulse = 1 + Math.sin(t * 2 * config.speed) * 0.15
     glow.scale.set(glowPulse)
-    glow.alpha = 0.2 + Math.sin(t * 1.5 * config.speed) * 0.1
+    glow.alpha = (0.2 + Math.sin(t * 1.5 * config.speed) * 0.1) * opacity
     
     // Animate sparkles - orbit around sword
     for (const sp of sparkles) {
@@ -1557,7 +1771,7 @@ async function createSpiritualWeaponEffect(config: EffectConfig, cx: number, cy:
       
       // Twinkle effect
       const twinkle = Math.sin(t * sp.speed * 3 + sp.phase)
-      sp.g.alpha = 0.4 + (twinkle + 1) * 0.3
+      sp.g.alpha = (0.4 + (twinkle + 1) * 0.3) * opacity
       sp.g.scale.set(0.7 + (twinkle + 1) * 0.2)
     }
   })
@@ -1571,10 +1785,12 @@ function createThunderEffect(config: EffectConfig, cx: number, cy: number, width
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const color1 = hexToNumber(config.color)
   const color2 = hexToNumber(config.secondaryColor || '#ffffff')
+  const opacity = config.opacity ?? 0.9
 
   // Lightning bolt interface
   interface LightningBolt {
@@ -1960,7 +2176,7 @@ function createThunderEffect(config: EffectConfig, cx: number, cy: number, width
       const lifeRatio = spark.life / spark.maxLife
       spark.g.x = spark.x
       spark.g.y = spark.y
-      spark.g.alpha = lifeRatio
+      spark.g.alpha = lifeRatio * opacity
       spark.g.scale.set(0.5 + lifeRatio * 0.5)
 
       if (spark.life <= 0) {
@@ -1976,7 +2192,7 @@ function createThunderEffect(config: EffectConfig, cx: number, cy: number, width
 
       arc.life--
       const lifeRatio = arc.life / arc.maxLife
-      const alpha = lifeRatio * (0.6 + Math.random() * 0.4)
+      const alpha = lifeRatio * (0.6 + Math.random() * 0.4) * opacity
 
       // Redraw arc with fading
       drawElectricArc(arc, color1, alpha)
@@ -2007,24 +2223,24 @@ function createThunderEffect(config: EffectConfig, cx: number, cy: number, width
       
       // Outer glow - very soft
       flash.circle(centerX, centerY, maxRadius)
-      flash.fill({ color: 0xffffff, alpha: 0.08 })
+      flash.fill({ color: 0xffffff, alpha: 0.08 * opacity })
       
       // Mid glow
       flash.circle(centerX, centerY, maxRadius * 0.7)
-      flash.fill({ color: 0xffffff, alpha: 0.15 })
+      flash.fill({ color: 0xffffff, alpha: 0.15 * opacity })
       
       // Inner glow
       flash.circle(centerX, centerY, maxRadius * 0.5)
-      flash.fill({ color: 0xffffff, alpha: 0.25 })
+      flash.fill({ color: 0xffffff, alpha: 0.25 * opacity })
       
       // Bright center
       flash.circle(centerX, centerY, maxRadius * 0.3)
-      flash.fill({ color: 0xffffff, alpha: 0.35 })
+      flash.fill({ color: 0xffffff, alpha: 0.35 * opacity })
       
       // Add slight blue tint for electric feel
       const blueFlash = new PIXI.Graphics()
       blueFlash.circle(centerX, centerY, maxRadius * 0.4)
-      blueFlash.fill({ color: 0xaaccff, alpha: 0.1 })
+      blueFlash.fill({ color: 0xaaccff, alpha: 0.1 * opacity })
       
       container.addChild(flash)
       container.addChild(blueFlash)
@@ -2068,6 +2284,7 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
 
   const container = new PIXI.Container()
   app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
 
   const s = config.scale * scale
   const color1 = hexToNumber(config.color)
@@ -2075,6 +2292,7 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
   const isElectric = config.effectType === 'electricBeam'
   const isEnergy = config.effectType === 'energyBeam'
   const isFire = config.effectType === 'fireColumn'
+  const opacity = config.opacity ?? 0.9
 
   // Get beam path - use custom path if provided, otherwise default vertical line
   let beamPathPoints: { x: number; y: number; t: number }[] = []
@@ -2292,9 +2510,9 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
 
     if (isElectric) {
       // Electric beam: crackling energy with lightning
-      createBeamPolygon(1.0, 0.15, color1) // Outer glow
-      createBeamPolygon(0.8, 0.4, color1)  // Main beam
-      createBeamPolygon(0.4, 0.3, 0xffffff) // Bright core
+      createBeamPolygon(1.0, 0.15 * opacity, color1) // Outer glow
+      createBeamPolygon(0.8, 0.4 * opacity, color1)  // Main beam
+      createBeamPolygon(0.4, 0.3 * opacity, 0xffffff) // Bright core
       
       // Add lightning streaks along path
       for (let i = 0; i < 5; i++) {
@@ -2303,23 +2521,23 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
         const nextPoint = beamPathPoints[Math.min(pathIndex + 1, beamPathPoints.length - 1)]
         const offset = getPerpendicularOffset(point, nextPoint, beamWidth * 0.3)
         
-        mainBeam.setStrokeStyle({ width: 2 * s, color: 0xffffff, alpha: 0.6 })
+        mainBeam.setStrokeStyle({ width: 2 * s, color: 0xffffff, alpha: 0.6 * opacity })
         mainBeam.moveTo(point.x - offset.x, point.y - offset.y)
         mainBeam.lineTo(point.x + offset.x, point.y + offset.y)
         mainBeam.stroke()
       }
     } else if (isEnergy) {
       // Energy beam: smooth flowing energy
-      createBeamPolygon(1.0, 0.2, color1)   // Outer glow
-      createBeamPolygon(0.9, 0.35, color1)  // Main beam
-      createBeamPolygon(0.7, 0.4, color2)   // Mid layer
-      createBeamPolygon(0.5, 0.3, 0xffffff) // Bright core
+      createBeamPolygon(1.0, 0.2 * opacity, color1)   // Outer glow
+      createBeamPolygon(0.9, 0.35 * opacity, color1)  // Main beam
+      createBeamPolygon(0.7, 0.4 * opacity, color2)   // Mid layer
+      createBeamPolygon(0.5, 0.3 * opacity, 0xffffff) // Bright core
     } else {
       // Fire column: rising flames
-      createBeamPolygon(1.0, 0.2, color1)   // Outer glow
-      createBeamPolygon(0.8, 0.4, color1)   // Main column
-      createBeamPolygon(0.5, 0.5, color2)   // Inner hot core
-      createBeamPolygon(0.3, 0.4, 0xffffcc) // Bright center
+      createBeamPolygon(1.0, 0.2 * opacity, color1)   // Outer glow
+      createBeamPolygon(0.8, 0.4 * opacity, color1)   // Main column
+      createBeamPolygon(0.5, 0.5 * opacity, color2)   // Inner hot core
+      createBeamPolygon(0.3, 0.4 * opacity, 0xffffcc) // Bright center
     }
   }
 
@@ -2348,7 +2566,7 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
 
     // Redraw beam with animation
     drawBeam()
-    mainBeam.alpha = flicker
+    mainBeam.alpha = flicker * opacity
 
     // Update particles
     for (const p of particles) {
@@ -2377,7 +2595,7 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
       const lifeRatio = p.life / p.maxLife
       p.g.x = p.x
       p.g.y = p.y
-      p.g.alpha = lifeRatio * 0.9
+      p.g.alpha = lifeRatio * 0.9 * opacity
 
       // Scale based on life
       if (isFire) {
@@ -2393,6 +2611,1225 @@ function createBeamEffect(config: EffectConfig, cx: number, cy: number, width: n
         p.g.clear()
       }
     }
+  })
+}
+
+// =====================================================
+// SHADOW TENDRILS - Writhing, moving tentacle-like tendrils
+// =====================================================
+function createTendrilsEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
+  if (!app) return
+
+  const container = new PIXI.Container()
+  app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
+
+  const s = config.scale * scale
+  const color1 = hexToNumber(config.color)
+  const color2 = hexToNumber(config.secondaryColor || config.color)
+  const tendrilCount = Math.max(4, Math.min(8, Math.round(6 * config.intensity)))
+  const maxRadius = Math.min(width, height) * 0.45 // Maximum tendril reach
+
+  interface Tendril {
+    g: PIXI.Graphics
+    baseX: number
+    baseY: number
+    baseAngle: number
+    segmentCount: number
+    segmentLengths: number[]
+    baseAngles: number[]
+    phase: number
+    speed: number
+    thickness: number
+    waveOffsets: number[] // Pre-calculated wave offsets for smoothness
+  }
+
+  const tendrils: Tendril[] = []
+
+  // Create tendrils radiating from center
+  for (let i = 0; i < tendrilCount; i++) {
+    const g = new PIXI.Graphics()
+    container.addChild(g)
+
+    const angle = (i / tendrilCount) * Math.PI * 2
+    const baseX = cx + Math.cos(angle) * (width * 0.05)
+    const baseY = cy + Math.sin(angle) * (height * 0.05)
+
+    const segmentCount = 12 + Math.floor((i % 3) * 2) // More segments for smoother curves
+    const segmentLengths: number[] = []
+    const baseAngles: number[] = []
+    const waveOffsets: number[] = []
+    
+    let currentAngle = angle
+    let totalLength = 0
+
+    // Pre-calculate base structure
+    for (let j = 0; j < segmentCount; j++) {
+      const progress = j / segmentCount
+      // Segment length decreases towards the end
+      const baseLength = (20 + (1 - progress) * 15) * s
+      segmentLengths.push(baseLength)
+      
+      // Smooth angle variation using sine waves
+      const angleOffset = Math.sin(progress * Math.PI * 2 + i) * 0.6
+      currentAngle += angleOffset
+      baseAngles.push(currentAngle)
+      
+      // Pre-calculate wave offsets for smooth animation
+      waveOffsets.push(Math.sin(i * 0.7 + j * 0.5) * 0.3)
+      
+      totalLength += baseLength
+      // Don't break early - let all segments be created
+    }
+
+    tendrils.push({
+      g,
+      baseX,
+      baseY,
+      baseAngle: angle,
+      segmentCount: segmentLengths.length,
+      segmentLengths,
+      baseAngles,
+      phase: i * 0.8,
+      speed: 0.6 + (i % 3) * 0.2,
+      thickness: (4 + (i % 3) * 2) * s,
+      waveOffsets,
+    })
+  }
+
+  // Smooth interpolation helper
+  function smoothStep(t: number): number {
+    return t * t * (3 - 2 * t)
+  }
+
+  // Draw a single tendril with smooth curves
+  function drawTendril(tendril: Tendril, t: number) {
+    tendril.g.clear()
+    
+    if (tendril.segmentCount < 2) {
+      // Draw at least a small circle at base if no segments
+      tendril.g.circle(tendril.baseX, tendril.baseY, tendril.thickness)
+      tendril.g.fill({ color: color1, alpha: config.opacity })
+      return
+    }
+
+    const thickness = tendril.thickness
+    const color = color1
+    const speed = tendril.speed * config.speed
+
+    // Build smooth path points - always start with base point
+    const points: { x: number; y: number; alpha: number }[] = [
+      { x: tendril.baseX, y: tendril.baseY, alpha: config.opacity }
+    ]
+    let currentX = tendril.baseX
+    let currentY = tendril.baseY
+    let totalLength = 0
+
+    for (let i = 0; i < tendril.segmentCount; i++) {
+      const progress = i / tendril.segmentCount
+      const wavePhase = t * speed + tendril.phase + i * 0.25
+      
+      // Smooth wave motion using multiple sine waves for organic feel
+      const wave1 = Math.sin(wavePhase) * 0.5
+      const wave2 = Math.sin(wavePhase * 1.7 + tendril.phase) * 0.3
+      const wave3 = Math.sin(wavePhase * 0.6 + i * 0.4) * 0.2
+      const combinedWave = wave1 + wave2 + wave3
+      
+      // Perpendicular wave amplitude (smooth, no random)
+      const perpAmplitude = (4 + Math.sin(wavePhase * 0.5) * 2) * s
+      const perpOffset = combinedWave * perpAmplitude
+      
+      // Angle variation (smooth, deterministic)
+      const angleWave = Math.sin(wavePhase * 1.3) * 0.3 + Math.cos(wavePhase * 0.9) * 0.2
+      const currentAngle = tendril.baseAngles[i] + angleWave + tendril.waveOffsets[i]
+      
+      // Segment length variation (subtle)
+      const lengthVariation = 1 + Math.sin(wavePhase * 0.7) * 0.15
+      const segmentLength = tendril.segmentLengths[i] * lengthVariation
+      
+      // Calculate next point
+      const perpAngle = currentAngle + Math.PI / 2
+      currentX += Math.cos(currentAngle) * segmentLength
+      currentY += Math.sin(currentAngle) * segmentLength
+      currentX += Math.cos(perpAngle) * perpOffset
+      currentY += Math.sin(perpAngle) * perpOffset
+      
+      totalLength += segmentLength
+      
+      // Check bounds and fade out near edges
+      const distFromCenter = Math.sqrt(
+        Math.pow(currentX - cx, 2) + Math.pow(currentY - cy, 2)
+      )
+      const edgeFade = Math.max(0.4, 1 - (distFromCenter / maxRadius) * 0.6) // Less aggressive fade
+      const progressFade = 1 - progress * 0.25 // Less aggressive end fade
+      const alpha = Math.max(0.15, config.opacity * edgeFade * progressFade) // Ensure minimum visibility
+      
+      // Stop if too far (but allow more overflow)
+      if (distFromCenter > maxRadius * 1.5) {
+        break
+      }
+      
+      points.push({ x: currentX, y: currentY, alpha })
+    }
+
+    if (points.length < 2) return
+
+    // Draw smooth curve using Catmull-Rom-like interpolation
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = i > 0 ? points[i - 1] : points[i]
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      const p3 = i < points.length - 2 ? points[i + 2] : p2
+
+      // Thickness tapers smoothly towards the end
+      const t1 = i / (points.length - 1)
+      const t2 = (i + 1) / (points.length - 1)
+      const thickness1 = thickness * (1 - t1 * 0.7)
+      const thickness2 = thickness * (1 - t2 * 0.7)
+
+      // Calculate smooth direction using neighboring points
+      const dx1 = p2.x - p0.x
+      const dy1 = p2.y - p0.y
+      const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+      const dirX = len1 > 0 ? dx1 / len1 : 1
+      const dirY = len1 > 0 ? dy1 / len1 : 0
+
+      const perpX = -dirY
+      const perpY = dirX
+
+      // Create smooth tapered segment
+      const pointsArray: number[] = [
+        p1.x + perpX * thickness1, p1.y + perpY * thickness1,
+        p1.x - perpX * thickness1, p1.y - perpY * thickness1,
+        p2.x - perpX * thickness2, p2.y - perpY * thickness2,
+        p2.x + perpX * thickness2, p2.y + perpY * thickness2,
+      ]
+
+      const avgAlpha = Math.max(0.1, (p1.alpha + p2.alpha) / 2)
+      tendril.g.poly(pointsArray, true)
+      tendril.g.fill({ color, alpha: avgAlpha })
+    }
+
+    // Add subtle glow outline (smoother)
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      
+      const t1 = i / (points.length - 1)
+      const thickness1 = (thickness * 1.4) * (1 - t1 * 0.7)
+      
+      const dx = p2.x - p1.x
+      const dy = p2.y - p1.y
+      const len = Math.sqrt(dx * dx + dy * dy)
+      if (len === 0) continue
+
+      const avgAlpha = (p1.alpha + p2.alpha) / 2
+      tendril.g.setStrokeStyle({ 
+        width: thickness1 * 0.25, 
+        color: color2, 
+        alpha: avgAlpha * 0.4
+      })
+      tendril.g.moveTo(p1.x, p1.y)
+      tendril.g.lineTo(p2.x, p2.y)
+      tendril.g.stroke()
+    }
+  }
+
+  startAnimation((t) => {
+    for (const tendril of tendrils) {
+      drawTendril(tendril, t)
+    }
+  })
+}
+
+// =====================================================
+// WHIRLPOOL/CYCLONE - Rotating swirling vortex effect
+// =====================================================
+function createWhirlpoolEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
+  if (!app) return
+
+  const container = new PIXI.Container()
+  app.stage.addChild(container)
+  applyCircleMask(container, config, width, height)
+
+  const s = config.scale * scale
+  const color1 = hexToNumber(config.color)
+  const color2 = hexToNumber(config.secondaryColor || config.color)
+  const maxRadius = Math.min(width, height) * 0.45
+  const particleCount = Math.min(80, Math.round(50 * config.intensity))
+
+  interface SwirlParticle {
+    g: PIXI.Graphics
+    baseRadius: number
+    baseAngle: number
+    phase: number
+    speed: number
+    size: number
+    depth: number // 0-1, affects size and opacity
+    radiusVariation: number // Random variation in radius
+    angleOffset: number // Random angle offset
+    sizeVariation: number // Random size multiplier
+    speedVariation: number // Random speed multiplier
+    colorVariation: number // Random color variation (0-1)
+  }
+
+  interface DebrisParticle {
+    g: PIXI.Graphics
+    startRadius: number
+    currentRadius: number
+    angle: number
+    angularVelocity: number
+    radialVelocity: number // Pulled inward
+    size: number
+    rotation: number
+    rotationSpeed: number
+    shape: 'square' | 'triangle' | 'circle' | 'irregular'
+    color: number
+    life: number
+    maxLife: number
+    phase: number
+  }
+
+  const particles: SwirlParticle[] = []
+  const debrisParticles: DebrisParticle[] = []
+
+  // Create particles in spiral pattern with more randomness
+  for (let i = 0; i < particleCount; i++) {
+    const g = new PIXI.Graphics()
+    container.addChild(g)
+
+    // More varied distribution - not perfectly linear
+    const baseProgress = i / particleCount
+    const progress = baseProgress + (Math.random() - 0.5) * 0.15 // Add randomness
+    const depth = Math.max(0, Math.min(1, progress)) // Clamp to 0-1
+    
+    // Radius with variation
+    const baseRadius = depth * maxRadius
+    const radiusVariation = (Math.random() - 0.5) * maxRadius * 0.2
+    
+    // Angle with more rotations and randomness
+    const baseAngle = progress * Math.PI * 10 + (Math.random() - 0.5) * 0.5
+    const angleOffset = (Math.random() - 0.5) * 0.3
+    
+    // Size with more variation
+    const baseSize = (3 + (1 - depth) * 8) * s * config.intensity
+    const sizeVariation = 0.7 + Math.random() * 0.6 // 0.7 to 1.3 multiplier
+    
+    // Speed variation
+    const baseSpeed = 0.7 + (1 - depth) * 0.5
+    const speedVariation = 0.8 + Math.random() * 0.4 // 0.8 to 1.2 multiplier
+
+    particles.push({
+      g,
+      baseRadius,
+      baseAngle,
+      phase: Math.random() * Math.PI * 2,
+      speed: baseSpeed * speedVariation,
+      size: baseSize * sizeVariation,
+      depth,
+      radiusVariation,
+      angleOffset,
+      sizeVariation,
+      speedVariation,
+      colorVariation: Math.random(), // For color mixing
+    })
+  }
+
+  // Draw particle as a streak (elongated in direction of motion)
+  function drawSwirlParticle(p: SwirlParticle, angle: number, radius: number, t: number) {
+    p.g.clear()
+
+    // Add subtle radius wobble for more organic motion
+    const radiusWobble = Math.sin(t * p.speed * 1.5 + p.phase * 2) * p.radiusVariation * 0.3
+    const finalRadius = radius + radiusWobble
+    
+    const x = cx + Math.cos(angle) * finalRadius
+    const y = cy + Math.sin(angle) * finalRadius
+
+    // Particle opacity based on depth and motion with more variation
+    const baseAlpha = config.opacity * (0.5 + (1 - p.depth) * 0.5)
+    const motionAlpha = 0.6 + Math.sin(t * p.speed * 2.5 + p.phase) * 0.4
+    const flicker = 0.9 + Math.sin(t * p.speed * 4 + p.phase * 3) * 0.1
+    const alpha = baseAlpha * motionAlpha * flicker
+
+    // Color mixing for more variety
+    const colorMix = p.colorVariation < 0.3 ? color1 : (p.colorVariation < 0.7 ? color2 : lerpColor(color1, color2, 0.5))
+    
+    // Draw elongated streak in direction of rotation with variation
+    const baseStreakLength = p.size * (1.8 + Math.sin(t * p.speed * 3.5 + p.phase) * 0.7)
+    const streakLength = baseStreakLength * (0.9 + Math.sin(t * p.speed * 2 + p.phase * 1.5) * 0.2)
+    const streakAngle = angle + Math.sin(t * p.speed * 1.2 + p.phase) * 0.1 // Slight angle variation
+
+    // Main streak body with gradient-like effect
+    const streakWidth = p.size * (0.7 + Math.sin(t * p.speed * 4 + p.phase) * 0.3)
+    p.g.setStrokeStyle({
+      width: streakWidth,
+      color: colorMix,
+      alpha: alpha * 0.85,
+    })
+    p.g.moveTo(
+      x - Math.cos(streakAngle) * streakLength * 0.5,
+      y - Math.sin(streakAngle) * streakLength * 0.5
+    )
+    p.g.lineTo(
+      x + Math.cos(streakAngle) * streakLength * 0.5,
+      y + Math.sin(streakAngle) * streakLength * 0.5
+    )
+    p.g.stroke()
+
+    // Bright center point with size variation
+    const centerSize = p.size * (0.5 + Math.sin(t * p.speed * 5 + p.phase) * 0.2)
+    p.g.circle(x, y, centerSize)
+    p.g.fill({ color: color2, alpha: alpha * 0.95 })
+
+    // Secondary glow ring
+    p.g.circle(x, y, p.size * 0.9)
+    p.g.fill({ color: colorMix, alpha: alpha * 0.5 })
+
+    // Outer glow with pulsing
+    const glowSize = p.size * (1.1 + Math.sin(t * p.speed * 2.5 + p.phase) * 0.3)
+    p.g.circle(x, y, glowSize)
+    p.g.fill({ color: color1, alpha: alpha * 0.25     })
+  }
+
+  // Create debris particles
+  const debrisCount = Math.min(25, Math.round(15 * config.intensity))
+  const debrisColors = [
+    hexToNumber('#8B4513'), // Brown
+    hexToNumber('#654321'), // Dark brown
+    hexToNumber('#A0522D'), // Sienna
+    hexToNumber('#696969'), // Dim gray
+    hexToNumber('#556B2F'), // Dark olive
+    hexToNumber('#2F4F4F'), // Dark slate gray
+  ]
+
+  for (let i = 0; i < debrisCount; i++) {
+    const g = new PIXI.Graphics()
+    container.addChild(g)
+
+    // Start at random position outside the whirlpool
+    const startRadius = maxRadius * (1.1 + Math.random() * 0.4)
+    const startAngle = Math.random() * Math.PI * 2
+    const size = (3 + Math.random() * 8) * s
+    const shapeTypes: ('square' | 'triangle' | 'circle' | 'irregular')[] = ['square', 'triangle', 'circle', 'irregular']
+    const shape = shapeTypes[Math.floor(Math.random() * shapeTypes.length)]
+
+    debrisParticles.push({
+      g,
+      startRadius,
+      currentRadius: startRadius,
+      angle: startAngle,
+      angularVelocity: (0.3 + Math.random() * 0.5) * config.speed, // Rotation speed
+      radialVelocity: (0.02 + Math.random() * 0.03) * config.speed, // Pulled inward
+      size,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (0.5 + Math.random() * 1.5) * config.speed,
+      shape,
+      color: debrisColors[Math.floor(Math.random() * debrisColors.length)],
+      life: 0,
+      maxLife: 200 + Math.random() * 100,
+      phase: Math.random() * Math.PI * 2,
+    })
+  }
+
+  // Draw debris particle
+  function drawDebris(p: DebrisParticle, t: number) {
+    p.g.clear()
+
+    const x = cx + Math.cos(p.angle) * p.currentRadius
+    const y = cy + Math.sin(p.angle) * p.currentRadius
+
+    // Opacity based on life and distance from center
+    const lifeRatio = p.life / p.maxLife
+    const distanceFade = Math.max(0.3, 1 - (p.currentRadius / maxRadius) * 0.5)
+    const alpha = config.opacity * distanceFade * (1 - lifeRatio * 0.3)
+
+    p.g.x = x
+    p.g.y = y
+    p.g.rotation = p.rotation
+
+    // Draw different shapes
+    const halfSize = p.size * 0.5
+    switch (p.shape) {
+      case 'square':
+        p.g.rect(-halfSize, -halfSize, p.size, p.size)
+        p.g.fill({ color: p.color, alpha })
+        // Add some detail
+        p.g.rect(-halfSize * 0.6, -halfSize * 0.6, p.size * 0.6, p.size * 0.6)
+        p.g.fill({ color: p.color, alpha: alpha * 0.5 })
+        break
+      case 'triangle':
+        p.g.moveTo(0, -halfSize)
+        p.g.lineTo(-halfSize, halfSize)
+        p.g.lineTo(halfSize, halfSize)
+        p.g.closePath()
+        p.g.fill({ color: p.color, alpha })
+        break
+      case 'circle':
+        p.g.circle(0, 0, halfSize)
+        p.g.fill({ color: p.color, alpha })
+        p.g.circle(0, 0, halfSize * 0.6)
+        p.g.fill({ color: p.color, alpha: alpha * 0.6 })
+        break
+      case 'irregular':
+        // Irregular polygon
+        const sides = 4 + Math.floor(Math.random() * 3)
+        const points: number[] = []
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2 + p.phase
+          const r = halfSize * (0.7 + Math.random() * 0.3)
+          points.push(Math.cos(angle) * r, Math.sin(angle) * r)
+        }
+        p.g.poly(points, true)
+        p.g.fill({ color: p.color, alpha })
+        break
+    }
+
+    // Add subtle shadow/outline
+    p.g.setStrokeStyle({
+      width: 1,
+      color: 0x000000,
+      alpha: alpha * 0.3,
+    })
+    p.g.stroke()
+  }
+  
+  // Helper to lerp between colors
+  function lerpColor(c1: number, c2: number, t: number): number {
+    const r1 = (c1 >> 16) & 0xff
+    const g1 = (c1 >> 8) & 0xff
+    const b1 = c1 & 0xff
+    const r2 = (c2 >> 16) & 0xff
+    const g2 = (c2 >> 8) & 0xff
+    const b2 = c2 & 0xff
+    const r = Math.round(r1 + (r2 - r1) * t)
+    const g = Math.round(g1 + (g2 - g1) * t)
+    const b = Math.round(b1 + (b2 - b1) * t)
+    return (r << 16) | (g << 8) | b
+  }
+
+  // Draw spiral arms (main structure) with more variation
+  const spiralArms = 3 + Math.floor(Math.random() * 2) // 3-4 arms
+  const spiralGraphics = new PIXI.Graphics()
+  container.addChildAt(spiralGraphics, 0) // Behind particles
+  
+  // Pre-calculate arm variations
+  const armVariations: { angleOffset: number; speedMultiplier: number; wavePhase: number }[] = []
+  for (let arm = 0; arm < spiralArms; arm++) {
+    armVariations.push({
+      angleOffset: (Math.random() - 0.5) * 0.3,
+      speedMultiplier: 0.8 + Math.random() * 0.4,
+      wavePhase: Math.random() * Math.PI * 2,
+    })
+  }
+
+  function drawSpiralArms(t: number) {
+    spiralGraphics.clear()
+
+    for (let arm = 0; arm < spiralArms; arm++) {
+      const variation = armVariations[arm]
+      const armAngle = (arm / spiralArms) * Math.PI * 2 + variation.angleOffset
+      const rotation = t * config.speed * 0.4 * variation.speedMultiplier + armAngle
+
+      // Draw spiral path with more segments for smoother curves
+      const segments = 50
+      const points: { x: number; y: number; progress: number }[] = []
+
+      for (let i = 0; i <= segments; i++) {
+        const progress = i / segments
+        const radius = progress * maxRadius
+        
+        // More varied spiral tightness
+        const spiralTightness = 3.5 + Math.sin(progress * Math.PI * 2 + variation.wavePhase) * 0.5
+        const angle = rotation + progress * Math.PI * spiralTightness
+        
+        const x = cx + Math.cos(angle) * radius
+        const y = cy + Math.sin(angle) * radius
+
+        // More complex wave variation
+        const wave1 = Math.sin(progress * Math.PI * 8 + t * 2 + variation.wavePhase) * radius * 0.08
+        const wave2 = Math.sin(progress * Math.PI * 12 + t * 1.5 + variation.wavePhase * 1.3) * radius * 0.05
+        const wave = wave1 + wave2
+        const perpAngle = angle + Math.PI / 2
+        const finalX = x + Math.cos(perpAngle) * wave
+        const finalY = y + Math.sin(perpAngle) * wave
+
+        points.push({ x: finalX, y: finalY, progress })
+      }
+
+      // Draw spiral as thick line with varying thickness and opacity
+      spiralGraphics.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) {
+        const p1 = points[i - 1]
+        const p2 = points[i]
+        const avgProgress = (p1.progress + p2.progress) / 2
+        
+        // Thickness tapers more smoothly
+        const baseThickness = (2.5 + (1 - avgProgress) * 5) * s
+        const thickness = baseThickness * (1 + Math.sin(t * 2 + avgProgress * Math.PI * 4) * 0.15)
+        
+        // Opacity varies along the spiral
+        const opacity = config.opacity * (0.35 + (1 - avgProgress) * 0.25) * (0.9 + Math.sin(t * 1.5 + avgProgress * Math.PI * 6) * 0.1)
+        
+        spiralGraphics.setStrokeStyle({
+          width: thickness,
+          color: color1,
+          alpha: opacity,
+        })
+        spiralGraphics.lineTo(p2.x, p2.y)
+        spiralGraphics.stroke()
+        
+        // Add glow around spiral with variation
+        const glowThickness = thickness * (1.8 + Math.sin(t * 1.2 + avgProgress * Math.PI * 3) * 0.2)
+        spiralGraphics.setStrokeStyle({
+          width: glowThickness,
+          color: color2,
+          alpha: opacity * 0.4,
+        })
+        spiralGraphics.moveTo(p1.x, p1.y)
+        spiralGraphics.lineTo(p2.x, p2.y)
+        spiralGraphics.stroke()
+        
+        // Move back to current point for next segment
+        spiralGraphics.moveTo(p2.x, p2.y)
+      }
+    }
+  }
+
+  startAnimation((t) => {
+    // Draw spiral arms
+    drawSpiralArms(t)
+
+    // Update and draw particles with more organic motion
+    for (const p of particles) {
+      // Calculate position in spiral with more variation
+      const rotation = t * config.speed * p.speed
+      const angle = p.baseAngle + rotation + p.angleOffset + Math.sin(t * p.speed * 0.8 + p.phase) * 0.15
+      
+      // Radius with more dynamic variation
+      const radiusPulse = 1 + Math.sin(t * p.speed * 0.6 + p.phase * 1.5) * 0.12
+      const radiusDrift = Math.sin(t * p.speed * 0.3 + p.phase * 2) * 0.08
+      const radius = (p.baseRadius + p.radiusVariation) * radiusPulse * (1 + radiusDrift)
+
+      drawSwirlParticle(p, angle, radius, t)
+    }
+
+    // Update and draw debris particles
+    for (const debris of debrisParticles) {
+      debris.life++
+      
+      // Update rotation
+      debris.rotation += debris.rotationSpeed * 0.01
+      
+      // Update angle (spiral inward)
+      debris.angle += debris.angularVelocity * (1 + (debris.startRadius - debris.currentRadius) / maxRadius)
+      
+      // Pull inward (faster as it gets closer to center)
+      const pullStrength = 1 + (maxRadius - debris.currentRadius) / maxRadius * 2
+      debris.currentRadius -= debris.radialVelocity * pullStrength
+      
+      // Add some wobble
+      const wobble = Math.sin(t * 2 + debris.phase) * debris.size * 0.1
+      debris.angle += wobble * 0.01
+      
+      // Respawn if pulled too far in or life expired
+      if (debris.currentRadius < maxRadius * 0.1 || debris.life > debris.maxLife) {
+        debris.currentRadius = debris.startRadius * (1 + Math.random() * 0.3)
+        debris.angle = Math.random() * Math.PI * 2
+        debris.life = 0
+        debris.rotation = Math.random() * Math.PI * 2
+        debris.phase = Math.random() * Math.PI * 2
+        // Randomize some properties
+        debris.angularVelocity = (0.3 + Math.random() * 0.5) * config.speed
+        debris.radialVelocity = (0.02 + Math.random() * 0.03) * config.speed
+      }
+      
+      drawDebris(debris, t)
+    }
+  })
+}
+
+// =====================================================
+// TERRAIN EFFECTS - Tileable terrain textures
+// =====================================================
+
+// Grass tile - green rectangle with animated grass blades
+function createGrassEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
+  if (!app) return
+
+  const container = new PIXI.Container()
+  app.stage.addChild(container)
+
+  const s = config.scale * scale
+  const color1 = hexToNumber(config.color)
+  const color2 = hexToNumber(config.secondaryColor || config.color)
+  const opacity = config.opacity ?? 1
+
+  // Apply circle mask if enabled, otherwise use rectangular feathering for terrain
+  if (config.useCircleMask) {
+    applyCircleMask(container, config, width, height)
+  } else {
+    // Create feathered rectangular mask for terrain tiles
+    const mask = new PIXI.Graphics()
+    const featherSize = Math.min(width, height) * 0.15
+    const maskLayers = 25
+    
+    // Draw full rectangle first (fully visible)
+    mask.rect(0, 0, width, height)
+    mask.fill({ color: 0xffffff, alpha: 1 })
+    
+    // Feather edges by drawing rectangles with decreasing alpha
+    for (let layer = 0; layer < maskLayers; layer++) {
+      const progress = layer / maskLayers
+      const offset = progress * featherSize
+      const alpha = 1 - progress
+      
+      // Top edge
+      mask.rect(0, 0, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Bottom edge
+      mask.rect(0, height - offset, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Left edge
+      mask.rect(0, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Right edge
+      mask.rect(width - offset, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+    }
+    
+    container.mask = mask
+    container.addChild(mask)
+  }
+
+  // Base grass rectangle with texture variation
+  const base = new PIXI.Graphics()
+  // Main base first
+  base.rect(0, 0, width, height)
+  base.fill({ color: color1, alpha: opacity })
+  // Add subtle texture with small patches
+  for (let i = 0; i < 20; i++) {
+    const patchX = Math.random() * width
+    const patchY = Math.random() * height
+    const patchSize = (5 + Math.random() * 10) * s
+    const patchColor = Math.random() > 0.5 ? color1 : color2
+    base.circle(patchX, patchY, patchSize)
+    base.fill({ color: patchColor, alpha: opacity * 0.3 })
+  }
+  container.addChild(base)
+
+  // Grass blades layer
+  const grassBlades = new PIXI.Graphics()
+  container.addChild(grassBlades)
+
+  interface GrassBlade {
+    x: number
+    y: number
+    height: number
+    width: number
+    phase: number
+    swaySpeed: number
+    bladeType: 'tall' | 'medium' | 'short'
+    color: number
+  }
+
+  const bladeCount = Math.max(1, Math.round(30 * config.intensity * (width * height) / (100 * 100)))
+  const blades: GrassBlade[] = []
+
+  // Create more natural distribution - clusters
+  const clusterCount = Math.max(1, Math.floor(bladeCount / 4))
+  for (let i = 0; i < clusterCount; i++) {
+    const clusterX = Math.random() * width
+    const clusterY = Math.random() * height
+    const clusterSize = 3 + Math.random() * 5
+    
+    for (let j = 0; j < clusterSize && blades.length < bladeCount * 4; j++) {
+      const bladeType = Math.random() < 0.3 ? 'tall' : (Math.random() < 0.6 ? 'medium' : 'short')
+      const baseHeight = bladeType === 'tall' ? 15 : (bladeType === 'medium' ? 10 : 6)
+      
+      const bladeColor = Math.random() > 0.3 ? color2 : (Math.random() > 0.5 ? color1 : lerpColor(config.color, config.secondaryColor || config.color, Math.random()))
+      
+      blades.push({
+        x: clusterX + (Math.random() - 0.5) * 8 * s,
+        y: clusterY + (Math.random() - 0.5) * 4 * s,
+        height: (baseHeight + Math.random() * 5) * s,
+        width: (0.8 + Math.random() * 1.5) * s,
+        phase: Math.random() * Math.PI * 2,
+        swaySpeed: 0.2 + Math.random() * 0.5,
+        bladeType,
+        color: typeof bladeColor === 'number' ? bladeColor : hexToNumber(bladeColor),
+      })
+    }
+  }
+
+  function drawGrassBlades(t: number) {
+    grassBlades.clear()
+    
+    for (let i = 0; i < blades.length; i++) {
+      const blade = blades[i]
+      const windWave = Math.sin(t * blade.swaySpeed * config.speed + blade.phase)
+      const windStrength = 0.4 + Math.sin(t * 0.3 + blade.phase * 0.5) * 0.2
+      const sway = windWave * blade.width * windStrength
+      const lean = Math.cos(t * blade.swaySpeed * config.speed * 0.6 + blade.phase) * blade.width * 0.3
+      
+      // More realistic blade shape - tapered and curved
+      const tipX = blade.x + sway + lean
+      const tipY = blade.y - blade.height
+      const midX = blade.x + sway * 0.6
+      const midY = blade.y - blade.height * 0.5
+      
+      // Draw blade with gradient-like effect
+      grassBlades.moveTo(blade.x, blade.y)
+      grassBlades.quadraticCurveTo(midX, midY, tipX, tipY)
+      grassBlades.lineTo(blade.x + blade.width + sway + lean, tipY)
+      grassBlades.quadraticCurveTo(
+        blade.x + blade.width + sway * 0.6,
+        midY,
+        blade.x + blade.width,
+        blade.y
+      )
+      grassBlades.closePath()
+      
+      // Vary color and opacity for realism (deterministic based on blade index)
+      const bladeAlpha = opacity * (0.75 + (i % 4) * 0.0625)
+      grassBlades.fill({ color: blade.color, alpha: bladeAlpha })
+      
+      // Add highlight on some blades (deterministic based on blade index)
+      if (i % 5 === 0) {
+        const highlightColor = lerpColor(config.secondaryColor || config.color, '#ffffff', 0.3)
+        grassBlades.moveTo(blade.x + blade.width * 0.2, blade.y)
+        grassBlades.quadraticCurveTo(
+          blade.x + blade.width * 0.3 + sway * 0.3,
+          blade.y - blade.height * 0.3,
+          blade.x + blade.width * 0.4 + sway * 0.5,
+          blade.y - blade.height * 0.6
+        )
+        grassBlades.lineTo(blade.x + blade.width * 0.4 + sway * 0.5, blade.y - blade.height)
+        grassBlades.lineTo(blade.x + blade.width * 0.2 + sway * 0.5, blade.y - blade.height)
+        grassBlades.closePath()
+        grassBlades.fill({ color: highlightColor, alpha: bladeAlpha * 0.4 })
+      }
+    }
+  }
+
+  startAnimation((t) => {
+    drawGrassBlades(t)
+  })
+}
+
+// Water tile - blue translucent with animated waves
+function createWaterEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
+  if (!app) return
+
+  const container = new PIXI.Container()
+  app.stage.addChild(container)
+
+  const s = config.scale * scale
+  const color1 = hexToNumber(config.color)
+  const color2 = hexToNumber(config.secondaryColor || config.color)
+  const opacity = config.opacity ?? 0.7
+
+  // Apply circle mask if enabled, otherwise use rectangular feathering for terrain
+  if (config.useCircleMask) {
+    applyCircleMask(container, config, width, height)
+  } else {
+    // Create feathered rectangular mask for terrain tiles
+    const mask = new PIXI.Graphics()
+    const featherSize = Math.min(width, height) * 0.15
+    const maskLayers = 25
+    
+    // Draw full rectangle first (fully visible)
+    mask.rect(0, 0, width, height)
+    mask.fill({ color: 0xffffff, alpha: 1 })
+    
+    // Feather edges by drawing rectangles with decreasing alpha
+    for (let layer = 0; layer < maskLayers; layer++) {
+      const progress = layer / maskLayers
+      const offset = progress * featherSize
+      const alpha = 1 - progress
+      
+      // Top edge
+      mask.rect(0, 0, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Bottom edge
+      mask.rect(0, height - offset, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Left edge
+      mask.rect(0, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Right edge
+      mask.rect(width - offset, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+    }
+    
+    container.mask = mask
+    container.addChild(mask)
+  }
+
+  // Base water rectangle with depth variation
+  const base = new PIXI.Graphics()
+  // Main base first
+  base.rect(0, 0, width, height)
+  base.fill({ color: color1, alpha: opacity * 0.65 })
+  // Add depth patches for more realistic look
+  for (let i = 0; i < 15; i++) {
+    const patchX = Math.random() * width
+    const patchY = Math.random() * height
+    const patchSize = (10 + Math.random() * 20) * s
+    const depthColor = lerpColor(config.color, '#1a3a5a', 0.3)
+    base.circle(patchX, patchY, patchSize)
+    base.fill({ color: depthColor, alpha: opacity * 0.2 })
+  }
+  container.addChild(base)
+
+  // Wave layers - multiple for depth
+  const wavesBack = new PIXI.Graphics()
+  const wavesMid = new PIXI.Graphics()
+  const wavesFront = new PIXI.Graphics()
+  container.addChild(wavesBack)
+  container.addChild(wavesMid)
+  container.addChild(wavesFront)
+
+  const waveAmplitude = (2 + config.intensity * 6) * s
+  const waveFrequency = 0.015 * s
+  const waveCount = Math.ceil(height / (18 * s)) + 3
+
+  function drawWaves(t: number) {
+    wavesBack.clear()
+    wavesMid.clear()
+    wavesFront.clear()
+    
+    // Back waves (deeper, slower)
+    for (let waveIndex = 0; waveIndex < waveCount; waveIndex++) {
+      const waveY = (waveIndex * 18 * s) - (t * config.speed * 6 * s) % (18 * s)
+      const wavePhase = waveIndex * 0.4
+      
+      const points: { x: number; y: number }[] = []
+      for (let x = 0; x <= width; x += 3) {
+        const wave1 = Math.sin(x * waveFrequency * 0.8 + t * config.speed * 1.2 + wavePhase) * waveAmplitude * 0.6
+        const y = waveY + wave1
+        points.push({ x, y })
+      }
+      
+      wavesBack.moveTo(0, waveY + waveAmplitude)
+      for (const point of points) {
+        wavesBack.lineTo(point.x, point.y)
+      }
+      wavesBack.lineTo(width, waveY + waveAmplitude)
+      wavesBack.closePath()
+      wavesBack.fill({ color: color2, alpha: opacity * 0.15 })
+    }
+    
+    // Mid waves (main waves)
+    for (let waveIndex = 0; waveIndex < waveCount; waveIndex++) {
+      const waveY = (waveIndex * 18 * s) - (t * config.speed * 8 * s) % (18 * s)
+      const wavePhase = waveIndex * 0.5
+      
+      const points: { x: number; y: number }[] = []
+      for (let x = 0; x <= width; x += 2) {
+        const wave1 = Math.sin(x * waveFrequency + t * config.speed * 2 + wavePhase) * waveAmplitude
+        const wave2 = Math.sin(x * waveFrequency * 1.7 + t * config.speed * 1.6 + wavePhase * 1.3) * waveAmplitude * 0.4
+        const y = waveY + wave1 + wave2
+        points.push({ x, y })
+      }
+      
+      wavesMid.moveTo(0, waveY + waveAmplitude * 1.5)
+      for (const point of points) {
+        wavesMid.lineTo(point.x, point.y)
+      }
+      wavesMid.lineTo(width, waveY + waveAmplitude * 1.5)
+      wavesMid.closePath()
+      
+      const waveAlpha = opacity * (0.25 + Math.sin(t * config.speed * 1.5 + wavePhase) * 0.15)
+      wavesMid.fill({ color: color2, alpha: waveAlpha })
+    }
+    
+    // Front waves (foam/whitecaps)
+    for (let waveIndex = 0; waveIndex < waveCount; waveIndex++) {
+      const waveY = (waveIndex * 18 * s) - (t * config.speed * 10 * s) % (18 * s)
+      const wavePhase = waveIndex * 0.6
+      
+      const points: { x: number; y: number }[] = []
+      for (let x = 0; x <= width; x += 2) {
+        const wave1 = Math.sin(x * waveFrequency * 1.2 + t * config.speed * 2.5 + wavePhase) * waveAmplitude * 0.8
+        const y = waveY + wave1
+        points.push({ x, y })
+      }
+      
+      // Draw foam on wave crests
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i]
+        const p2 = points[i + 1]
+        if (p1.y < waveY - waveAmplitude * 0.3) {
+          wavesFront.circle(p1.x, p1.y, (1 + Math.random() * 2) * s)
+          wavesFront.fill({ color: 0xffffff, alpha: opacity * 0.3 })
+        }
+      }
+      
+      wavesFront.moveTo(0, waveY + waveAmplitude * 0.5)
+      for (const point of points) {
+        wavesFront.lineTo(point.x, point.y)
+      }
+      wavesFront.lineTo(width, waveY + waveAmplitude * 0.5)
+      wavesFront.closePath()
+      wavesFront.fill({ color: color2, alpha: opacity * 0.2 })
+    }
+  }
+
+  // Ripples layer
+  const ripples = new PIXI.Graphics()
+  container.addChild(ripples)
+
+  interface Ripple {
+    x: number
+    y: number
+    radius: number
+    life: number
+    maxLife: number
+  }
+
+  const rippleList: Ripple[] = []
+
+  function drawRipples(t: number) {
+    ripples.clear()
+    
+    // Spawn new ripples occasionally
+    if (Math.random() > 0.98) {
+      rippleList.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: 0,
+        life: 0,
+        maxLife: 60 + Math.random() * 40,
+      })
+    }
+    
+    for (let i = rippleList.length - 1; i >= 0; i--) {
+      const ripple = rippleList[i]
+      ripple.life++
+      ripple.radius += 0.5 * s
+      
+      if (ripple.life > ripple.maxLife) {
+        rippleList.splice(i, 1)
+        continue
+      }
+      
+      const lifeRatio = ripple.life / ripple.maxLife
+      const rippleAlpha = opacity * (1 - lifeRatio) * 0.2
+      
+      ripples.circle(ripple.x, ripple.y, ripple.radius)
+      ripples.stroke({ width: 1, color: color2, alpha: rippleAlpha })
+      ripples.circle(ripple.x, ripple.y, ripple.radius * 0.7)
+      ripples.stroke({ width: 1, color: color2, alpha: rippleAlpha * 0.5 })
+    }
+  }
+
+  startAnimation((t) => {
+    drawWaves(t)
+    drawRipples(t)
+  })
+}
+
+// Lava tile - red/orange with animated bubbles and glowing bits
+function createLavaEffect(config: EffectConfig, cx: number, cy: number, width: number, height: number, scale: number) {
+  if (!app) return
+
+  const container = new PIXI.Container()
+  app.stage.addChild(container)
+
+  const s = config.scale * scale
+  const color1 = hexToNumber(config.color)
+  const color2 = hexToNumber(config.secondaryColor || config.color)
+  const opacity = config.opacity ?? 0.9
+
+  // Apply circle mask if enabled, otherwise use rectangular feathering for terrain
+  if (config.useCircleMask) {
+    applyCircleMask(container, config, width, height)
+  } else {
+    // Create feathered rectangular mask for terrain tiles
+    const mask = new PIXI.Graphics()
+    const featherSize = Math.min(width, height) * 0.15
+    const maskLayers = 25
+    
+    // Draw full rectangle first (fully visible)
+    mask.rect(0, 0, width, height)
+    mask.fill({ color: 0xffffff, alpha: 1 })
+    
+    // Feather edges by drawing rectangles with decreasing alpha
+    for (let layer = 0; layer < maskLayers; layer++) {
+      const progress = layer / maskLayers
+      const offset = progress * featherSize
+      const alpha = 1 - progress
+      
+      // Top edge
+      mask.rect(0, 0, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Bottom edge
+      mask.rect(0, height - offset, width, offset)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Left edge
+      mask.rect(0, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+      // Right edge
+      mask.rect(width - offset, offset, offset, height - offset * 2)
+      mask.fill({ color: 0xffffff, alpha: alpha })
+    }
+    
+    container.mask = mask
+    container.addChild(mask)
+  }
+
+  // Base lava rectangle with texture variation
+  const base = new PIXI.Graphics()
+  // Main base first
+  base.rect(0, 0, width, height)
+  base.fill({ color: color1, alpha: opacity })
+  // Add hot spots and cooler areas for realism
+  for (let i = 0; i < 25; i++) {
+    const spotX = Math.random() * width
+    const spotY = Math.random() * height
+    const spotSize = (8 + Math.random() * 15) * s
+    const isHot = Math.random() > 0.5
+    const spotColor = isHot ? color2 : lerpColor(config.color, '#8b0000', 0.4)
+    base.circle(spotX, spotY, spotSize)
+    base.fill({ color: spotColor, alpha: opacity * (isHot ? 0.4 : 0.2) })
+  }
+  container.addChild(base)
+
+  // Lava bubbles and glowing bits
+  interface LavaBubble {
+    x: number
+    y: number
+    size: number
+    life: number
+    maxLife: number
+    phase: number
+    speed: number
+    bubbleType: 'small' | 'medium' | 'large'
+    riseSpeed: number
+  }
+
+  const bubbleCount = Math.round(20 * config.intensity)
+  const bubbles: LavaBubble[] = []
+
+  for (let i = 0; i < bubbleCount; i++) {
+    const bubbleType = Math.random() < 0.5 ? 'small' : (Math.random() < 0.8 ? 'medium' : 'large')
+    const baseSize = bubbleType === 'small' ? 2 : (bubbleType === 'medium' ? 5 : 9)
+    
+    bubbles.push({
+      x: Math.random() * width,
+      y: height + Math.random() * 20 * s, // Start below
+      size: (baseSize + Math.random() * 3) * s,
+      life: Math.random() * 50,
+      maxLife: 80 + Math.random() * 120,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.7,
+      bubbleType,
+      riseSpeed: (0.2 + Math.random() * 0.4) * s,
+    })
+  }
+
+  const bubbleGraphics = new PIXI.Graphics()
+  container.addChild(bubbleGraphics)
+
+  function drawBubbles(t: number) {
+    bubbleGraphics.clear()
+
+    for (const bubble of bubbles) {
+      bubble.life += bubble.speed * config.speed
+      bubble.y -= bubble.riseSpeed * config.speed
+      
+      // Horizontal drift
+      bubble.x += Math.sin(t * 0.5 + bubble.phase) * 0.2 * s
+      
+      if (bubble.life > bubble.maxLife || bubble.y < -bubble.size * 2) {
+        bubble.life = 0
+        bubble.x = Math.random() * width
+        bubble.y = height + Math.random() * 20 * s
+        const bubbleType = Math.random() < 0.5 ? 'small' : (Math.random() < 0.8 ? 'medium' : 'large')
+        const baseSize = bubbleType === 'small' ? 2 : (bubbleType === 'medium' ? 5 : 9)
+        bubble.size = (baseSize + Math.random() * 3) * s
+        bubble.maxLife = 80 + Math.random() * 120
+        bubble.bubbleType = bubbleType
+      }
+
+      const lifeRatio = bubble.life / bubble.maxLife
+      const pulse = 0.85 + Math.sin(t * 4 * config.speed + bubble.phase) * 0.15
+      const currentSize = bubble.size * pulse
+      const bubbleAlpha = opacity * (0.5 + (1 - lifeRatio) * 0.5)
+
+      // More realistic bubble with multiple layers
+      // Outer glow
+      bubbleGraphics.circle(bubble.x, bubble.y, currentSize * 2)
+      bubbleGraphics.fill({ color: color2, alpha: bubbleAlpha * 0.2 })
+      
+      // Mid glow
+      bubbleGraphics.circle(bubble.x, bubble.y, currentSize * 1.4)
+      bubbleGraphics.fill({ color: color2, alpha: bubbleAlpha * 0.4 })
+      
+      // Main bubble
+      bubbleGraphics.circle(bubble.x, bubble.y, currentSize)
+      bubbleGraphics.fill({ color: color2, alpha: bubbleAlpha * 0.8 })
+      
+      // Hot center
+      bubbleGraphics.circle(bubble.x, bubble.y, currentSize * 0.5)
+      bubbleGraphics.fill({ color: 0xffff88, alpha: bubbleAlpha })
+      
+      // Bright core
+      bubbleGraphics.circle(bubble.x, bubble.y, currentSize * 0.25)
+      bubbleGraphics.fill({ color: 0xffffff, alpha: bubbleAlpha * 0.9 })
+      
+      // Add small bubbles around large ones
+      if (bubble.bubbleType === 'large' && Math.random() > 0.7) {
+        const smallX = bubble.x + (Math.random() - 0.5) * currentSize * 1.5
+        const smallY = bubble.y + (Math.random() - 0.5) * currentSize * 1.5
+        const smallSize = currentSize * 0.3
+        bubbleGraphics.circle(smallX, smallY, smallSize)
+        bubbleGraphics.fill({ color: color2, alpha: bubbleAlpha * 0.6 })
+        bubbleGraphics.circle(smallX, smallY, smallSize * 0.5)
+        bubbleGraphics.fill({ color: 0xffff88, alpha: bubbleAlpha * 0.8 })
+      }
+    }
+  }
+
+  // Surface glow and flow effects
+  const surfaceGlow = new PIXI.Graphics()
+  container.addChild(surfaceGlow)
+
+  function drawSurfaceGlow(t: number) {
+    surfaceGlow.clear()
+    
+    // Multiple moving glow bands for flow effect
+    for (let i = 0; i < 3; i++) {
+      const glowY = ((t * config.speed * (3 + i) * s) + i * height / 3) % (height + 30 * s) - 15 * s
+      const glowHeight = (10 + i * 3) * s
+      
+      // Gradient-like glow
+      for (let j = 0; j < 5; j++) {
+        const bandY = glowY + j * glowHeight / 5
+        const bandAlpha = opacity * 0.25 * (1 - j / 5) * (0.6 + Math.sin(t * config.speed * 2 + i) * 0.4)
+        surfaceGlow.rect(0, bandY, width, glowHeight / 5)
+        surfaceGlow.fill({ color: color2, alpha: bandAlpha })
+      }
+    }
+    
+    // Hot spots that move
+    for (let i = 0; i < 5; i++) {
+      const spotX = (width / 5 * i + t * config.speed * 10 * s) % (width + 20 * s) - 10 * s
+      const spotY = Math.random() * height
+      const spotSize = (5 + Math.random() * 8) * s
+      const spotAlpha = opacity * 0.4 * (0.5 + Math.sin(t * config.speed * 3 + i) * 0.5)
+      
+      surfaceGlow.circle(spotX, spotY, spotSize)
+      surfaceGlow.fill({ color: color2, alpha: spotAlpha })
+      surfaceGlow.circle(spotX, spotY, spotSize * 0.6)
+      surfaceGlow.fill({ color: 0xffff88, alpha: spotAlpha * 1.2 })
+    }
+  }
+
+  startAnimation((t) => {
+    drawBubbles(t)
+    drawSurfaceGlow(t)
   })
 }
 

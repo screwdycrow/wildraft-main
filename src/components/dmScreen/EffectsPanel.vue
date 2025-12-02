@@ -115,7 +115,7 @@ function getPreviewStyle(preset: EffectPreset) {
   }
   
   // Light effects get circular glow
-  if (['lightRing', 'aura', 'magicCircle'].includes(effectType)) {
+  if (['lightRing', 'aura', 'magicCircle', 'teleportCircle', 'portal', 'shield', 'barrier', 'healingLight', 'divineRadiance', 'summoningCircle'].includes(effectType)) {
     return {
       background: `radial-gradient(circle, ${color}66 0%, ${secondaryColor}33 50%, transparent 70%)`,
       boxShadow: `inset 0 0 20px ${color}44`,
@@ -129,6 +129,41 @@ function getPreviewStyle(preset: EffectPreset) {
     }
   }
   
+  // Shadow tendrils - dark writhing effect
+  if (['shadowTendrils'].includes(effectType)) {
+    return {
+      background: `radial-gradient(ellipse 60% 80% at 50% 50%, ${color}44 0%, ${secondaryColor}22 50%, transparent 80%)`,
+    }
+  }
+  
+  // Whirlpool - swirling spiral effect
+  if (['whirlpool'].includes(effectType)) {
+    const secColor = preset.defaultConfig.secondaryColor || color
+    return {
+      background: `conic-gradient(from 0deg at 50% 50%, ${color}66 0deg, ${secColor}44 90deg, ${color}66 180deg, ${secColor}44 270deg, ${color}66 360deg)`,
+      borderRadius: '50%',
+    }
+  }
+  
+  // Terrain effects - solid tiles
+  if (['grass'].includes(effectType)) {
+    return {
+      background: `linear-gradient(135deg, ${color} 0%, ${secondaryColor} 100%)`,
+    }
+  }
+  
+  if (['water'].includes(effectType)) {
+    return {
+      background: `linear-gradient(180deg, ${color}88 0%, ${secondaryColor}66 100%)`,
+    }
+  }
+  
+  if (['lava'].includes(effectType)) {
+    return {
+      background: `radial-gradient(ellipse at 50% 50%, ${color} 0%, ${secondaryColor} 100%)`,
+    }
+  }
+  
   // Sparkles/fireflies
   return {
     background: `radial-gradient(circle, ${color}33 0%, transparent 60%)`,
@@ -138,6 +173,7 @@ function getPreviewStyle(preset: EffectPreset) {
 // Get glow style for preview
 function getGlowStyle(preset: EffectPreset) {
   const color = preset.defaultConfig.color
+  const secondaryColor = preset.defaultConfig.secondaryColor || color
   const effectType = preset.effectType
   
   // Fire effects - flickering glow
@@ -154,6 +190,23 @@ function getGlowStyle(preset: EffectPreset) {
     return {
       background: `radial-gradient(circle, transparent 30%, ${color}44 50%, transparent 70%)`,
       animation: 'pulse 2s ease-in-out infinite',
+      borderRadius: '50%',
+    }
+  }
+  
+  // Shadow tendrils - writhing motion
+  if (['shadowTendrils'].includes(effectType)) {
+    return {
+      background: `radial-gradient(ellipse 50% 70% at 50% 50%, ${color}55 0%, transparent 60%)`,
+      animation: 'pulse 1.5s ease-in-out infinite',
+    }
+  }
+  
+  // Whirlpool - rotating spiral
+  if (['whirlpool'].includes(effectType)) {
+    return {
+      background: `conic-gradient(from 0deg at 50% 50%, ${color}66 0deg, ${secondaryColor}44 120deg, ${color}66 240deg, ${secondaryColor}44 360deg)`,
+      animation: 'spin 3s linear infinite',
       borderRadius: '50%',
     }
   }

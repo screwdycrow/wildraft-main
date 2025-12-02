@@ -29,6 +29,12 @@
         My Files
       </v-list-item>
       <v-list-item
+        :to="{ name: 'Dashboard' }"
+        prepend-icon="mdi-view-dashboard"
+      >
+        All Libraries
+      </v-list-item>
+      <v-list-item
         :to="{ name: 'Settings' }"
         prepend-icon="mdi-cog"
       >

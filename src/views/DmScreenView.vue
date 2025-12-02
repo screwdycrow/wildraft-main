@@ -113,7 +113,7 @@ const lockBackgroundImages = computed(() => {
 })
 
 const showGrid = computed(() => {
-  return dmScreen.value?.settings?.grid?.showGrid !== false
+  return dmScreen.value?.settings?.showGrid !== false
 })
 
 const layers = computed(() => {
