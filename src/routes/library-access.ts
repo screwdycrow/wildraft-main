@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import { requireViewerAccess } from '../middleware/library-access';
 import { AccessRole } from '@prisma/client';
 import { canManageRole, canGrantRole, canChangeRole } from '../lib/library-permissions';
+import { invalidateLibraryAccess } from '../lib/cache';
 import {
   getLibraryAccessSchema,
   grantLibraryAccessSchema,
@@ -157,6 +158,9 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Invalidate cache for the new user's access
+        invalidateLibraryAccess(targetUser.id, libraryId);
+
         reply.code(201);
         return {
           message: 'Access granted successfully',
@@ -274,6 +278,9 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
           },
         });
 
+        // Invalidate cache for the updated user's access
+        invalidateLibraryAccess(existingAccess.userId, libraryId);
+
         return {
           message: 'Access updated successfully',
           access: {
@@ -363,6 +370,9 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
           where: { id: accessId },
         });
 
+        // Invalidate cache for the removed user's access
+        invalidateLibraryAccess(existingAccess.userId, libraryId);
+
         reply.code(204);
         return;
       } catch (error) {
@@ -431,6 +441,9 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
         await prisma.libraryAccess.delete({
           where: { id: userAccess.id },
         });
+
+        // Invalidate cache for the leaving user
+        invalidateLibraryAccess(request.user.userId, libraryId);
 
         return { message: 'Successfully left the library' };
       } catch (error) {

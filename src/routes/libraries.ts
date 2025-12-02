@@ -4,6 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import { requireViewerAccess, requireEditorAccess, requireOwnerAccess } from '../middleware/library-access';
 import { AccessRole, LibraryTemplate } from '@prisma/client';
 import { incrementLibraryVersion } from '../utils/library-version';
+import { invalidateAllLibraryAccess } from '../lib/cache';
 import {
   getLibrariesSchema,
   createLibrarySchema,
@@ -265,6 +266,9 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
         await prisma.library.delete({
           where: { id },
         });
+
+        // Invalidate cache for all users who had access to this library
+        invalidateAllLibraryAccess(id);
 
         reply.code(204);
         return;

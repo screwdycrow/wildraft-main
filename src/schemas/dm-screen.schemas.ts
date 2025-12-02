@@ -149,9 +149,9 @@ export const getDMScreensSchema = {
                 nullable: true,
                 description: 'Free-form JSON array of items'
               },
-              content: {
+              settings: {
                 nullable: true,
-                description: 'Free-form JSON array of content'
+                description: 'Free-form JSON object for settings'
               },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' },

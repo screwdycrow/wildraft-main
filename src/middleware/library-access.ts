@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { AccessRole } from '@prisma/client';
 import { hasPermission } from '../lib/library-permissions';
+import { libraryAccessCache, getAccessCacheKey, NO_ACCESS } from '../lib/cache';
 
 // Extend FastifyRequest to include library access info
 declare module 'fastify' {
@@ -16,6 +17,7 @@ declare module 'fastify' {
 /**
  * Middleware to check if user has access to a library
  * Attaches library access info to request
+ * Uses cache to avoid DB query on every request
  */
 export const checkLibraryAccess = (requiredRole: AccessRole) => {
   return async (request: FastifyRequest, reply: FastifyReply) => {
@@ -34,17 +36,30 @@ export const checkLibraryAccess = (requiredRole: AccessRole) => {
         return reply.send({ error: 'Invalid library ID' });
       }
 
-      // Check user's access to this library
-      const access = await prisma.libraryAccess.findUnique({
-        where: {
-          userId_libraryId: {
-            userId: request.user.userId,
-            libraryId: libraryId,
+      const userId = request.user.userId;
+      const cacheKey = getAccessCacheKey(userId, libraryId);
+      
+      // Check cache first
+      let cachedRole = libraryAccessCache.get(cacheKey);
+      
+      if (cachedRole === undefined) {
+        // Cache miss - query database
+        const access = await prisma.libraryAccess.findUnique({
+          where: {
+            userId_libraryId: {
+              userId,
+              libraryId,
+            },
           },
-        },
-      });
+          select: { role: true },
+        });
 
-      if (!access) {
+        // Cache the result (NO_ACCESS sentinel if no access)
+        cachedRole = access?.role ?? NO_ACCESS;
+        libraryAccessCache.set(cacheKey, cachedRole);
+      }
+
+      if (cachedRole === NO_ACCESS) {
         reply.code(403);
         return reply.send({ 
           error: 'Access denied', 
@@ -52,8 +67,10 @@ export const checkLibraryAccess = (requiredRole: AccessRole) => {
         });
       }
 
+      const role = cachedRole;
+
       // Check if user has required permission level
-      if (!hasPermission(access.role, requiredRole)) {
+      if (!hasPermission(role, requiredRole)) {
         reply.code(403);
         return reply.send({ 
           error: 'Insufficient permissions', 
@@ -63,8 +80,8 @@ export const checkLibraryAccess = (requiredRole: AccessRole) => {
 
       // Attach library access info to request
       request.libraryAccess = {
-        libraryId: libraryId,
-        role: access.role,
+        libraryId,
+        role,
       };
     } catch (error) {
       request.log.error({ error }, 'Library access check failed');
