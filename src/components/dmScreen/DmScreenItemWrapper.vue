@@ -173,7 +173,7 @@
         :library-id="libraryId"
         :selected="props.selected"
         :rotation="props.rotation"
-        @update:generated-image="handleTerrainImageGenerated"
+        @update:generatedSVG="handleTerrainSVGGenerated"
       />
 
       <!-- Fallback for unknown types -->
@@ -471,13 +471,13 @@ function handleBeamPathUpdate(path: string) {
   emit('update', updatedItem)
 }
 
-function handleTerrainImageGenerated(imageUrl: string) {
-  // Save the generated terrain image to the item data
+function handleTerrainSVGGenerated(svg: string) {
+  // Save the generated terrain SVG to the item data
   const updatedItem: DmScreenItem = {
     ...props.item,
     data: {
       ...props.item.data,
-      generatedTerrainImage: imageUrl,
+      generatedTerrainSVG: svg,
     },
   }
   emit('update', updatedItem)

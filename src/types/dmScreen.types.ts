@@ -440,7 +440,7 @@ export interface DmScreenItem {
     
     // For TerrainNode (procedurally generated terrain)
     terrainConfig?: TerrainConfig // Terrain generation configuration
-    generatedTerrainImage?: string | null // Cached generated terrain as data URL
+    generatedTerrainSVG?: string | null // Cached generated terrain as SVG string
     
     // Background image flag (legacy - now use layer instead)
     isBackground?: boolean
@@ -1175,6 +1175,15 @@ export type TerrainType =
   | 'dungeon'        // Structured dungeon rooms (BSP)
   | 'building'       // Top-down building interior with rooms
   | 'house'          // Top-down building exterior with roof
+  | 'castle'         // Castle with towers and battlements
+  | 'church'         // Church with steeple
+  | 'tower'          // Tower structure
+  | 'barn'           // Barn with gabled roof
+  | 'pagoda'         // Pagoda with tiered roofs
+  | 'dome'           // Building with dome
+  | 'windmill'       // Windmill with blades
+  | 'lighthouse'     // Lighthouse
+  | 'temple'         // Temple with columns
   | 'treeSingle'     // Single tree canopy
   | 'treeCluster'    // Cluster of trees
   | 'bush'           // Bush/shrub
@@ -1182,6 +1191,10 @@ export type TerrainType =
   | 'cliff'          // Cliff edge/wall
   | 'river'          // Winding river
   | 'path'           // Dirt/stone path
+  | 'dirtPath'       // Dirt path (organic)
+  | 'road'           // Road with center line
+  | 'fence'          // Fence (top-down)
+  | 'table'          // Table (top-down)
   | 'ruins'          // Ruined structure
   | 'campsite'       // Campsite with tents/fire pit markers
   // Ground terrains
@@ -1226,6 +1239,7 @@ export interface TerrainConfig {
   hasWindows?: boolean
   hasFurniture?: boolean          // Add furniture markers
   buildingStyle?: 'stone' | 'wood' | 'brick' | 'ruins'
+  roofType?: 'house' | 'castle' | 'church' | 'tower' | 'barn' | 'pagoda' | 'dome' | 'windmill' | 'lighthouse' | 'temple'
   
   // Tree/Vegetation specific
   foliageStyle?: 'round' | 'pointed' | 'irregular'
@@ -1588,6 +1602,113 @@ export function getDefaultTerrainConfig(terrainType: TerrainType = 'cave'): Terr
         hasOutline: true,
         outlineColor: '#2a1a0a',
       }
+    // Landmark buildings
+    case 'castle':
+      return {
+        ...base,
+        primaryColor: '#6a5a4a',
+        secondaryColor: '#4a3a2a',
+        accentColor: '#8a7a6a',
+        roofType: 'castle',
+      }
+    case 'church':
+      return {
+        ...base,
+        primaryColor: '#8a7a6a',
+        secondaryColor: '#6b4423',
+        accentColor: '#9a8a7a',
+        roofType: 'church',
+      }
+    case 'tower':
+      return {
+        ...base,
+        primaryColor: '#7a6a5a',
+        secondaryColor: '#5a4a3a',
+        accentColor: '#9a8a7a',
+        roofType: 'tower',
+      }
+    case 'barn':
+      return {
+        ...base,
+        primaryColor: '#8b6a4a',
+        secondaryColor: '#6b4423',
+        accentColor: '#ab8a6a',
+        roofType: 'barn',
+      }
+    case 'pagoda':
+      return {
+        ...base,
+        primaryColor: '#8a6a4a',
+        secondaryColor: '#6b4423',
+        accentColor: '#aa8a6a',
+        roofType: 'pagoda',
+      }
+    case 'dome':
+      return {
+        ...base,
+        primaryColor: '#9a8a7a',
+        secondaryColor: '#c4a484',
+        accentColor: '#d4b494',
+        roofType: 'dome',
+      }
+    case 'windmill':
+      return {
+        ...base,
+        primaryColor: '#8a7a6a',
+        secondaryColor: '#6b4423',
+        accentColor: '#4a3a2a',
+        roofType: 'windmill',
+      }
+    case 'lighthouse':
+      return {
+        ...base,
+        primaryColor: '#c4a484',
+        secondaryColor: '#8a6a4a',
+        accentColor: '#ffff88',
+        roofType: 'lighthouse',
+      }
+    case 'temple':
+      return {
+        ...base,
+        primaryColor: '#c4a484',
+        secondaryColor: '#8a6a4a',
+        accentColor: '#d4b494',
+        roofType: 'temple',
+      }
+    // Paths and roads
+    case 'road':
+      return {
+        ...base,
+        primaryColor: '#6a6a5a',
+        secondaryColor: '#4a4a3a',
+        accentColor: '#ffff00',
+        pathWidth: 40,
+        curviness: 0.5,
+      }
+    case 'dirtPath':
+      return {
+        ...base,
+        primaryColor: '#8a7a6a',
+        secondaryColor: '#6a5a4a',
+        accentColor: '#aa9a8a',
+        pathWidth: 25,
+        curviness: 0.7,
+      }
+    // Objects
+    case 'fence':
+      return {
+        ...base,
+        primaryColor: '#8a6a4a',
+        secondaryColor: '#6a4a3a',
+        accentColor: '#aa8a6a',
+      }
+    case 'table':
+      return {
+        ...base,
+        primaryColor: '#8a6a4a',
+        secondaryColor: '#6a4a3a',
+        accentColor: '#c4a484',
+      }
     default:
       return base
   }
@@ -1833,6 +1954,139 @@ export const TERRAIN_PRESETS: TerrainPreset[] = [
     category: 'ground',
     defaultConfig: getDefaultTerrainConfig('canyon'),
     previewColor: '#9a6a4a',
+  },
+  // Landmark Buildings
+  {
+    id: 'castle',
+    name: 'Castle',
+    terrainType: 'castle',
+    icon: 'mdi-castle',
+    description: 'Castle with towers and battlements',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('castle'), roofType: 'castle' },
+    previewColor: '#6a5a4a',
+  },
+  {
+    id: 'church',
+    name: 'Church',
+    terrainType: 'church',
+    icon: 'mdi-church',
+    description: 'Church with steeple',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('church'), roofType: 'church' },
+    previewColor: '#8a7a6a',
+  },
+  {
+    id: 'tower',
+    name: 'Tower',
+    terrainType: 'tower',
+    icon: 'mdi-tower-fire',
+    description: 'Tower structure',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('tower'), roofType: 'tower' },
+    previewColor: '#7a6a5a',
+  },
+  {
+    id: 'barn',
+    name: 'Barn',
+    terrainType: 'barn',
+    icon: 'mdi-barn',
+    description: 'Barn with gabled roof',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('barn'), roofType: 'barn' },
+    previewColor: '#8b6a4a',
+  },
+  {
+    id: 'pagoda',
+    name: 'Pagoda',
+    terrainType: 'pagoda',
+    icon: 'mdi-temple-buddhist',
+    description: 'Pagoda with tiered roofs',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('pagoda'), roofType: 'pagoda' },
+    previewColor: '#8a6a4a',
+  },
+  {
+    id: 'dome',
+    name: 'Dome',
+    terrainType: 'dome',
+    icon: 'mdi-dome-light',
+    description: 'Building with dome',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('dome'), roofType: 'dome' },
+    previewColor: '#9a8a7a',
+  },
+  {
+    id: 'windmill',
+    name: 'Windmill',
+    terrainType: 'windmill',
+    icon: 'mdi-wind-power',
+    description: 'Windmill with blades',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('windmill'), roofType: 'windmill' },
+    previewColor: '#8a7a6a',
+  },
+  {
+    id: 'lighthouse',
+    name: 'Lighthouse',
+    terrainType: 'lighthouse',
+    icon: 'mdi-lighthouse',
+    description: 'Lighthouse',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('lighthouse'), roofType: 'lighthouse' },
+    previewColor: '#c4a484',
+  },
+  {
+    id: 'temple',
+    name: 'Temple',
+    terrainType: 'temple',
+    icon: 'mdi-temple-hindu',
+    description: 'Temple with columns',
+    category: 'structures',
+    defaultConfig: { ...getDefaultTerrainConfig('temple'), roofType: 'temple' },
+    previewColor: '#c4a484',
+  },
+  // Paths and Roads
+  {
+    id: 'road',
+    name: 'Road',
+    terrainType: 'road',
+    icon: 'mdi-road',
+    description: 'Road with center line',
+    category: 'terrain',
+    defaultConfig: getDefaultTerrainConfig('road'),
+    previewColor: '#6a6a5a',
+  },
+  {
+    id: 'dirtPath',
+    name: 'Dirt Path',
+    terrainType: 'dirtPath',
+    icon: 'mdi-road-variant',
+    description: 'Organic dirt path',
+    category: 'terrain',
+    defaultConfig: getDefaultTerrainConfig('dirtPath'),
+    previewColor: '#8a7a6a',
+  },
+  // Objects
+  {
+    id: 'fence',
+    name: 'Fence',
+    terrainType: 'fence',
+    icon: 'mdi-fence',
+    description: 'Fence (top-down view)',
+    category: 'structures',
+    defaultConfig: getDefaultTerrainConfig('fence'),
+    previewColor: '#8a6a4a',
+  },
+  {
+    id: 'table',
+    name: 'Table',
+    terrainType: 'table',
+    icon: 'mdi-table-furniture',
+    description: 'Table (top-down view)',
+    category: 'structures',
+    defaultConfig: getDefaultTerrainConfig('table'),
+    previewColor: '#8a6a4a',
   },
 ]
 

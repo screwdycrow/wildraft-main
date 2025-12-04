@@ -16,7 +16,7 @@
         <div class="drawer-header">
           <h3 class="drawer-title">
             <v-icon icon="mdi-terrain" size="small" class="mr-2" />
-            Quick Map Elements
+            SVG Terrain Elements
           </h3>
           <v-btn
             icon="mdi-close"
@@ -84,7 +84,7 @@
         <!-- Tips -->
         <div class="drawer-tips">
           <v-icon icon="mdi-information-outline" size="x-small" class="mr-1" />
-          <span>Drag terrain onto map • Double-click to edit • Settings to regenerate</span>
+          <span>Drag terrain onto map • Click to add at center • Pure SVG generation</span>
         </div>
       </div>
     </transition>
@@ -613,4 +613,3 @@ function handleTerrainClick(preset: TerrainPreset) {
   background: rgba(255, 255, 255, 0.2);
 }
 </style>
-
