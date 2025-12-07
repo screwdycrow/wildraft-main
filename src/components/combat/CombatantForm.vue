@@ -108,7 +108,7 @@
 
           <!-- Actions Tab -->
           <v-window-item value="actions">
-            <action-list-editor v-model="formData.actions" />
+            <action-list-display v-model="formData.actions" editable />
           </v-window-item>
 
           <!-- Counters Tab -->
@@ -168,7 +168,7 @@
 import { ref, computed, watch, Teleport } from 'vue'
 import type { Combatant } from '@/types/combat.types'
 import AmountEditor from '@/components/common/AmountEditor.vue'
-import ActionListEditor from '@/components/items/dnd5e/common/ActionListEditor.vue'
+import ActionListDisplay from '@/components/items/dnd5e/common/ActionListDisplay.vue'
 import CustomCountersDisplay from '@/components/items/dnd5e/common/CustomCountersDisplay.vue'
 
 interface Props {

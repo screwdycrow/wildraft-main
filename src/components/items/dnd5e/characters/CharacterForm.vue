@@ -50,9 +50,9 @@
     </template>
 
     <template #content>
-      <v-window v-model="activeTab">
+      <v-window v-model="activeTab" class="form-window">
         <!-- Stats & Skills Tab -->
-        <v-window-item value="stats">
+        <v-window-item value="stats" class="form-window-item">
           <!-- Character Name -->
           <h3 class="text-h6 mb-4">Character Information</h3>
       <v-row>
@@ -90,10 +90,12 @@
         <v-col cols="12" md="2">
           <v-text-field
             v-model.number="formData.data.ac"
-            label="AC"
+            label="Base AC"
             type="number"
             variant="outlined"
             density="compact"
+            :hint="`Unarmored: ${unarmoredAC}`"
+            persistent-hint
           />
         </v-col>
         <v-col cols="12" md="2">
@@ -278,19 +280,26 @@
         </v-window-item>
 
         <!-- Traits Tab -->
-        <v-window-item value="traits">
+        <v-window-item value="traits" class="form-window-item">
           <h3 class="text-h6 mb-4">Traits & Features</h3>
-          <trait-list-editor v-model="formData.data.traits" />
+          <p class="text-caption text-grey-lighten-1 mb-4">
+            Add racial traits, class features, or special abilities.
+          </p>
+          <trait-list-display v-model="formData.data.traits" editable />
         </v-window-item>
 
         <!-- Actions Tab -->
-        <v-window-item value="actions">
+        <v-window-item value="actions" class="form-window-item">
           <h3 class="text-h6 mb-4">Actions</h3>
-          <action-list-editor v-model="formData.data.actions" />
+          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+            <strong>Tip:</strong> Weapon attacks should be added to <strong>Inventory</strong> items with actions (they'll appear here when equipped).
+            Only add special class/racial abilities here.
+          </v-alert>
+          <action-list-display v-model="formData.data.actions" editable />
         </v-window-item>
 
         <!-- Spells Tab -->
-        <v-window-item value="spells">
+        <v-window-item value="spells" class="form-window-item">
           <h3 class="text-h6 mb-4">Spells</h3>
           
           <!-- Spell Slots Configuration -->
@@ -301,14 +310,15 @@
           />
           
           <!-- Spell List -->
-          <spell-list-editor 
+          <spell-list-display 
             v-model="formData.data.spells" 
+            editable
             @add-to-actions="handleAddSpellToActions"
           />
         </v-window-item>
 
         <!-- Inventory Tab -->
-        <v-window-item value="inventory">
+        <v-window-item value="inventory" class="form-window-item">
           <h3 class="text-h6 mb-4">Inventory & Gold</h3>
           
           <!-- Gold -->
@@ -328,7 +338,7 @@
         </v-window-item>
 
         <!-- Description Tab -->
-        <v-window-item value="description">
+        <v-window-item value="description" class="form-window-item">
           <h3 class="text-h6 mb-2">Description & Notes</h3>
           <p class="text-caption text-grey-lighten-1 mb-4">
             Add appearance, personality, backstory, and other roleplay details.
@@ -381,9 +391,9 @@ import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 import DragDropUpload from '@/components/files/DragDropUpload.vue'
 import type { UserFile } from '@/api/files'
-import TraitListEditor from '../common/TraitListEditor.vue'
-import ActionListEditor from '../common/ActionListEditor.vue'
-import SpellListEditor from '../common/SpellListEditor.vue'
+import TraitListDisplay from '../common/TraitListDisplay.vue'
+import ActionListDisplay from '../common/ActionListDisplay.vue'
+import SpellListDisplay from '../common/SpellListDisplay.vue'
 import SpellSlotsDisplay from '../common/SpellSlotsDisplay.vue'
 import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import AbilityScoresEditor from '../common/AbilityScoresEditor.vue'
@@ -506,6 +516,13 @@ watch(() => props.initialTagIds, (newTagIds) => {
 const proficiencyBonus = computed(() => 
   calculateProficiencyBonus(formData.value.data.level || 1)
 )
+
+// Auto-calculated unarmored AC based on DEX
+const unarmoredAC = computed(() => {
+  const dex = formData.value.data.dex || 10
+  const dexMod = Math.floor((dex - 10) / 2)
+  return 10 + dexMod
+})
 
 function getSkillProficiency(skillName: string): 'none' | 'proficient' | 'expertise' {
   const skill = formData.value.data.skills?.find(s => s.name === skillName)
@@ -807,6 +824,37 @@ async function handleSubmit() {
 
 .sidebar-section {
   margin-bottom: 24px;
+}
+
+.form-window {
+  height: 100%;
+}
+
+.form-window :deep(.v-window__container) {
+  height: 100%;
+}
+
+.form-window-item {
+  overflow-y: auto;
+  max-height: calc(100vh - 280px);
+  padding-right: 8px;
+}
+
+.form-window-item::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-window-item::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.form-window-item::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.form-window-item::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
 

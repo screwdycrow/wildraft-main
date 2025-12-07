@@ -7,10 +7,13 @@
     <v-card-text>
       <v-row>
         <v-col v-for="ability in ABILITIES" :key="ability" cols="4" md="2">
-          <div class="ability-box">
+          <div class="ability-box" :class="{ 'has-bonus': hasEquipmentBonus(ability) }">
             <div class="ability-name text-overline">{{ ABILITY_LABELS[ability] }}</div>
             <div class="ability-score text-h4 font-weight-bold">
               {{ getAbilityScore(ability) }}
+              <v-tooltip v-if="hasEquipmentBonus(ability)" activator="parent" location="top">
+                Base: {{ getBaseAbilityScore(ability) }} + Items: {{ getEquipmentBonus(ability) > 0 ? '+' : '' }}{{ getEquipmentBonus(ability) }}
+              </v-tooltip>
             </div>
             <div class="ability-modifier text-h6">
               {{ formatModifier(abilityModifiers[ability]) }}
@@ -47,11 +50,15 @@ interface Props {
   data: CharacterData | StatBlockData
   proficiencyBonus?: number
   level?: number
+  effectiveScores?: Record<string, number>
+  equipmentSaveBonus?: Record<string, number>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   proficiencyBonus: undefined,
   level: undefined,
+  effectiveScores: undefined,
+  equipmentSaveBonus: undefined,
 })
 
 // Calculate proficiency bonus if not provided
@@ -61,10 +68,32 @@ const computedProficiencyBonus = computed(() => {
   return 0
 })
 
-// Get ability score
-function getAbilityScore(ability: string): number {
+// Get ability score (base value from data)
+function getBaseAbilityScore(ability: string): number {
   const score = (props.data as any)[ability]
   return score !== undefined && score !== null ? score : 10
+}
+
+// Get effective ability score (including equipment if provided)
+function getAbilityScore(ability: string): number {
+  if (props.effectiveScores && props.effectiveScores[ability] !== undefined) {
+    return props.effectiveScores[ability]
+  }
+  return getBaseAbilityScore(ability)
+}
+
+// Check if score has equipment modifier
+function hasEquipmentBonus(ability: string): boolean {
+  if (!props.effectiveScores) return false
+  const base = getBaseAbilityScore(ability)
+  const effective = props.effectiveScores[ability]
+  return effective !== undefined && effective !== base
+}
+
+// Get equipment bonus for an ability
+function getEquipmentBonus(ability: string): number {
+  if (!props.effectiveScores) return 0
+  return (props.effectiveScores[ability] || 0) - getBaseAbilityScore(ability)
 }
 
 // Calculate ability modifiers
@@ -94,7 +123,8 @@ const savingThrowBonuses = computed(() => {
   ABILITIES.forEach(ability => {
     const modifier = abilityModifiers.value[ability]
     const isProficient = isSavingThrowProficient(ability)
-    bonuses[ability] = modifier + (isProficient ? computedProficiencyBonus.value : 0)
+    const equipBonus = props.equipmentSaveBonus?.[ability] || 0
+    bonuses[ability] = modifier + (isProficient ? computedProficiencyBonus.value : 0) + equipBonus
   })
   return bonuses
 })
@@ -115,6 +145,15 @@ const savingThrowBonuses = computed(() => {
 
 .ability-box:hover {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.ability-box.has-bonus {
+  border: 1px solid rgba(var(--v-theme-success), 0.3);
+  background: rgba(var(--v-theme-success), 0.05);
+}
+
+.ability-box.has-bonus .ability-score {
+  color: rgb(var(--v-theme-success));
 }
 
 .ability-name {

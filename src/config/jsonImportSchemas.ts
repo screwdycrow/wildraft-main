@@ -18,7 +18,25 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
   // DND 5E Character
   CHARACTER_DND_5E: {
     title: 'D&D 5E Character',
-    description: 'Import a D&D 5E character with stats, skills, spells, and equipment',
+    description: `Import a D&D 5E character with stats, skills, spells, and equipment.
+
+IMPORTANT - ITEM ACTIONS vs CHARACTER ACTIONS:
+- Weapon attacks (Longsword, Bow, etc.) should be added as INVENTORY ITEMS with actions, NOT as character actions
+- Inventory items with actions will automatically appear in the Combat tab when equipped
+- Character actions[] should ONLY contain special abilities that are NOT from items (e.g., Breath Weapon, Wild Shape, Channel Divinity)
+- For weapons, use inventory items with useCharacterStats: true to auto-calculate toHit and damage
+
+AC CALCULATION:
+- Base AC without armor = 10 + DEX modifier
+- Light armor (leather): 11 + DEX modifier, Studded: 12 + DEX modifier
+- Medium armor (chain shirt): 13 + DEX (max 2), Scale: 14 + DEX (max 2), Breastplate: 14 + DEX (max 2), Half-plate: 15 + DEX (max 2)
+- Heavy armor: Ring: 14, Chain: 16, Splint: 17, Plate: 18 (no DEX bonus)
+- Shield adds +2 AC
+- Set ac field to BASE AC value (the armor's base), equipment modifiers will be added on top
+
+EQUIPMENT MODIFIERS:
+- Items in inventory can have modifiers (ac, str, dex, etc.) that apply when equipped
+- Example: +1 Shield would have modifiers: { ac: 1 } (the +1 bonus, not the full +2 shield bonus)`,
     schema: {
       name: 'string (required) - Character name',
       level: 'number (required, 1-20) - Character level',
@@ -30,7 +48,7 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       experience: 'number (optional) - Experience points',
       hp: 'number (optional) - Current hit points',
       maxHp: 'number (optional) - Maximum hit points',
-      ac: 'number (optional) - Armor class',
+      ac: 'number (required) - BASE Armor Class (from armor worn, NOT including magic item bonuses - those go in item modifiers)',
       speed: 'string (optional) - Movement speed (e.g., "30 ft")',
       initiative: 'number (optional) - Initiative modifier',
       resistances: 'string (optional) - Damage resistances',
@@ -62,15 +80,15 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       traits: 'array (optional) - Racial/class features',
       'traits[].name': 'string - Feature name',
       'traits[].description': 'string - Feature description',
-      // Actions (array)
-      actions: 'array (optional) - Combat actions with full mechanical details',
-      'actions[].name': 'string (required) - Action name (e.g., "Longsword", "Healing Word", "Multiattack")',
+      // Actions (array) - ONLY for special abilities NOT from items
+      actions: 'array (optional) - ONLY special class/racial abilities that are NOT weapon attacks. Weapon attacks should be inventory items with actions!',
+      'actions[].name': 'string (required) - Action name (e.g., "Breath Weapon", "Wild Shape", "Channel Divinity" - NOT weapon names)',
       'actions[].actionType': 'string (required) - Type: "action", "bonus", "reaction", or "legendary"',
       'actions[].description': 'string (required) - Detailed action description including mechanics, effects, and flavor text',
-      'actions[].toHit': 'string (optional) - Attack bonus for attack rolls. Format: "+5", "+3", "-1". Include ONLY if the action requires an attack roll. Calculate from ability modifier + proficiency if applicable.',
-      'actions[].roll': 'string (optional) - Damage or healing roll ONLY. Format: "1d6 fire", "2d8+3 slashing", "1d4+1 healing", "26d6 fire". Include damage type. Do NOT include to-hit bonuses or DCs here.',
-      'actions[].dc': 'string (optional) - Saving throw DC with ability. Format: "15 DEX", "18 CON", "12 WIS". Include ONLY if the action requires a saving throw. Calculate from 8 + ability modifier + proficiency.',
-      'actions[].range': 'string (optional) - Attack or effect range. Format: "5 ft", "30/120 ft", "60 ft", "60 ft cone", "15 ft radius"',
+      'actions[].toHit': 'string (optional) - Attack bonus. Format: "+5". Only for non-weapon special attacks.',
+      'actions[].roll': 'string (optional) - Damage or effect roll. Format: "2d6 fire", "8d6 lightning". Include damage type.',
+      'actions[].dc': 'string (optional) - Saving throw DC with ability. Format: "15 DEX", "18 CON". Calculate from 8 + ability modifier + proficiency.',
+      'actions[].range': 'string (optional) - Effect range. Format: "30 ft cone", "15 ft radius", "60 ft"',
       // Spells
       spellSlots: 'array (optional) - Spell slots by level',
       'spellSlots[].level': 'number (1-9) - Spell level',
@@ -98,80 +116,161 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       'spells[].concentration': 'boolean (optional) - Requires concentration (true if duration includes "Concentration")',
       'spells[].ritual': 'boolean (optional) - Can be cast as ritual (true if spell has ritual tag)',
       'spells[].description': 'string (required) - Detailed spell description including effects, mechanics, and flavor text',
-      // Equipment
+      // Equipment - WEAPONS AND ITEMS SHOULD HAVE ACTIONS HERE (not in character actions[])
       gold: 'number (optional) - Gold pieces',
-      inventory: 'array (optional) - Inventory items',
-      'inventory[].name': 'string - Item name',
+      inventory: 'array (required for combat characters) - Inventory items. IMPORTANT: All weapons should be here with actions!',
+      'inventory[].name': 'string - Item name (e.g., "Longsword", "+1 Longbow", "Shield", "Chain Mail")',
       'inventory[].description': 'string (optional) - Item description',
-      'inventory[].quantity': 'number (optional) - Quantity',
+      'inventory[].quantity': 'number (optional) - Quantity (default 1)',
       'inventory[].weight': 'number (optional) - Weight in lbs',
-      'inventory[].equipped': 'boolean (optional) - Is equipped',
+      'inventory[].equipped': 'boolean (required for weapons/armor) - Set to true for worn/wielded items',
+      'inventory[].toHit': 'string (optional) - Simple attack bonus for quick items',
+      'inventory[].dc': 'string (optional) - Simple save DC',
+      'inventory[].roll': 'string (optional) - Simple damage roll',
+      'inventory[].range': 'string (optional) - Attack range',
+      'inventory[].actions': 'array (required for weapons) - Actions this item grants when equipped. These appear in Combat tab!',
+      'inventory[].actions[].name': 'string - Action name (e.g., "Longsword Attack", "Longbow Shot")',
+      'inventory[].actions[].actionType': 'string - Usually "action" for attacks',
+      'inventory[].actions[].useCharacterStats': 'boolean (RECOMMENDED: true) - Auto-calculate toHit/damage from character stats. Set true for all weapons!',
+      'inventory[].actions[].abilityModifier': 'string (required if useCharacterStats) - "str" for melee, "dex" for ranged/finesse',
+      'inventory[].actions[].itemBonus': 'number (optional) - Magic bonus (1 for +1 weapon, 2 for +2, etc.)',
+      'inventory[].actions[].proficient': 'boolean (default true) - Character proficient with this weapon',
+      'inventory[].actions[].damageDice': 'string (required if useCharacterStats) - Weapon damage dice (e.g., "1d8", "2d6", "1d10")',
+      'inventory[].actions[].damageType': 'string (required if useCharacterStats) - Damage type (e.g., "slashing", "piercing", "bludgeoning")',
+      'inventory[].actions[].addAbilityToDamage': 'boolean (default true) - Add ability modifier to damage',
+      'inventory[].actions[].toHit': 'string (only if useCharacterStats is false) - Fixed attack bonus',
+      'inventory[].actions[].dc': 'string (optional) - Save DC for special effects',
+      'inventory[].actions[].roll': 'string (only if useCharacterStats is false) - Fixed damage roll',
+      'inventory[].actions[].range': 'string (required) - "5ft" for melee, "80/320ft" for longbow, etc.',
+      'inventory[].actions[].description': 'string - Brief description of the attack',
+      'inventory[].modifiers': 'object (optional) - Stat modifiers applied when equipped (same structure as magic item modifiers)',
+      'inventory[].modifiers.str': 'number (optional) - Strength modifier',
+      'inventory[].modifiers.dex': 'number (optional) - Dexterity modifier',
+      'inventory[].modifiers.con': 'number (optional) - Constitution modifier',
+      'inventory[].modifiers.int': 'number (optional) - Intelligence modifier',
+      'inventory[].modifiers.wis': 'number (optional) - Wisdom modifier',
+      'inventory[].modifiers.cha': 'number (optional) - Charisma modifier',
+      'inventory[].modifiers.ac': 'number (optional) - Armor Class bonus',
+      'inventory[].modifiers.maxHp': 'number (optional) - Maximum HP bonus',
+      'inventory[].modifiers.speed': 'number (optional) - Speed bonus in feet',
+      'inventory[].modifiers.initiative': 'number (optional) - Initiative bonus',
+      'inventory[].modifiers.savingThrowBonus': 'number (optional) - Bonus to all saving throws',
+      'inventory[].modifiers.resistances': 'string (optional) - Additional resistances (comma-separated)',
+      'inventory[].modifiers.immunities': 'string (optional) - Additional immunities (comma-separated)',
       // Notes
       quickNotes: 'string (optional) - Quick notes'
     },
     example: JSON.stringify({
-      name: "Elara Moonwhisper",
+      name: "Kira Shadowstrike",
       level: 5,
-      class: "Druid",
-      race: "Wood Elf",
-      subclass: "Circle of the Moon",
-      background: "Hermit",
-      alignment: "Neutral Good",
+      class: "Fighter",
+      race: "Human",
+      subclass: "Champion",
+      background: "Soldier",
+      alignment: "Lawful Good",
       experience: 6500,
-      hp: 38,
-      maxHp: 38,
-      ac: 14,
+      hp: 44,
+      maxHp: 44,
+      ac: 18,
       speed: "30 ft",
       initiative: 2,
-      resistances: "fire",
+      resistances: "",
       immunities: "",
-      str: 14,
-      dex: 16,
+      str: 18,
+      dex: 14,
       con: 16,
       int: 10,
-      wis: 18,
-      cha: 12,
-      strSavingThrow: false,
+      wis: 12,
+      cha: 10,
+      strSavingThrow: true,
       dexSavingThrow: false,
       conSavingThrow: true,
       intSavingThrow: false,
-      wisSavingThrow: true,
+      wisSavingThrow: false,
       chaSavingThrow: false,
       skills: [
-        { name: "Animal Handling", proficient: true },
-        { name: "Medicine", proficient: true },
-        { name: "Nature", proficient: true },
-        { name: "Perception", proficient: false },
-        { name: "Religion", proficient: false },
+        { name: "Athletics", proficient: true },
+        { name: "Intimidation", proficient: true },
+        { name: "Perception", proficient: true },
         { name: "Survival", proficient: true }
       ],
       traits: [
-        { name: "Fey Ancestry", description: "Advantage on saves vs. charm, immune to sleep" }
+        { name: "Fighting Style: Defense", description: "+1 AC while wearing armor (already included in base AC)" },
+        { name: "Second Wind", description: "Bonus action: Regain 1d10+5 HP. Recharges on short rest." },
+        { name: "Action Surge", description: "Take an additional action on your turn. Recharges on short rest." },
+        { name: "Improved Critical", description: "Critical hit on 19-20" }
       ],
       actions: [
-        { name: "Staff", actionType: "action", toHit: "+4", dc: "", roll: "1d6+2 bludgeoning", range: "5 ft", description: "Quarterstaff swing" }
+        { name: "Second Wind", actionType: "bonus", roll: "1d10+5 healing", description: "Regain hit points as a bonus action" }
       ],
-      spellSlots: [
-        { level: 1, max: 4, remaining: 4 },
-        { level: 2, max: 3, remaining: 3 },
-        { level: 3, max: 2, remaining: 2 }
-      ],
+      spellSlots: [],
       customCounters: [
-        { name: "Wild Shape", value: 2, min: 0, max: 2, icon: "mdi-paw", description: "Uses per short rest" },
-        { name: "Starry Form", value: 1, min: 0, max: 1, icon: "mdi-star-circle" }
+        { name: "Second Wind", value: 1, min: 0, max: 1, icon: "mdi-heart-pulse", description: "Short rest recharge" },
+        { name: "Action Surge", value: 1, min: 0, max: 1, icon: "mdi-lightning-bolt", description: "Short rest recharge" }
       ],
-      spells: [
-        { name: "Druidcraft", level: 0, school: "Transmutation", castingTime: "1 action", range: "30 ft", components: "V, S", duration: "Instantaneous", description: "Small nature trick" },
-        { name: "Entangle", level: 1, school: "Conjuration", castingTime: "1 action", range: "90 ft", components: "V, S", duration: "Concentration, 1 minute", concentration: true, dc: "14 STR", description: "Grasping vines" }
-      ],
-      gold: 125,
+      spells: [],
+      gold: 150,
       inventory: [
-        { name: "Quarterstaff", description: "Wooden staff", quantity: 1, weight: 4, equipped: true },
-        { name: "Leather Armor", description: "Basic leather armor", quantity: 1, weight: 10, equipped: true },
-        { name: "Explorer's Pack", description: "Standard adventuring gear", quantity: 1, weight: 59 },
-        { name: "Druidic Focus", description: "Sprig of mistletoe", quantity: 1, weight: 0 }
+        {
+          name: "+1 Longsword",
+          description: "A finely crafted magical blade",
+          quantity: 1,
+          weight: 3,
+          equipped: true,
+          actions: [{
+            name: "Longsword Attack",
+            actionType: "action",
+            useCharacterStats: true,
+            abilityModifier: "str",
+            itemBonus: 1,
+            proficient: true,
+            damageDice: "1d8",
+            damageType: "slashing",
+            addAbilityToDamage: true,
+            range: "5ft",
+            description: "Melee weapon attack with magical longsword"
+          }]
+        },
+        {
+          name: "Longbow",
+          description: "Standard longbow",
+          quantity: 1,
+          weight: 2,
+          equipped: true,
+          actions: [{
+            name: "Longbow Shot",
+            actionType: "action",
+            useCharacterStats: true,
+            abilityModifier: "dex",
+            itemBonus: 0,
+            proficient: true,
+            damageDice: "1d8",
+            damageType: "piercing",
+            addAbilityToDamage: true,
+            range: "150/600ft",
+            description: "Ranged weapon attack"
+          }]
+        },
+        {
+          name: "Chain Mail",
+          description: "Heavy armor, AC 16",
+          quantity: 1,
+          weight: 55,
+          equipped: true,
+          modifiers: {}
+        },
+        {
+          name: "+1 Shield",
+          description: "Magical shield",
+          quantity: 1,
+          weight: 6,
+          equipped: true,
+          modifiers: { ac: 1 }
+        },
+        { name: "Arrows", description: "Quiver of 20 arrows", quantity: 20, weight: 1 },
+        { name: "Explorer's Pack", description: "Standard adventuring gear", quantity: 1, weight: 59 }
       ],
-      quickNotes: "Circle of the Moon druid focused on wild shape combat"
+      quickNotes: "Champion fighter - AC 18 (chain mail 16 + Fighting Style +1 + magic shield +1). Crits on 19-20!"
     }, null, 2)
   },
 
@@ -335,17 +434,80 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
   // DND 5E Magic Item
   ITEM_DND_5E: {
     title: 'D&D 5E Magic Item',
-    description: 'Import a D&D 5E magic item with properties and effects',
+    description: `Import a D&D 5E magic item with properties, effects, and actions.
+
+ITEM ACTIONS:
+- Items can grant actions that appear in a character's Combat tab when equipped
+- Use useCharacterStats: true for weapons so toHit/damage scales with the wielder
+- Use useCharacterStats: false for items with fixed effects (wands, staves with charges)
+
+WEAPON ACTIONS (useCharacterStats: true):
+- abilityModifier: "str" for melee, "dex" for ranged/finesse
+- itemBonus: 1 for +1 weapons, 2 for +2, etc.
+- damageDice: the weapon's base dice ("1d8", "2d6")
+- damageType: "slashing", "piercing", "bludgeoning", "fire", etc.
+
+FIXED EFFECT ACTIONS (useCharacterStats: false):
+- Use toHit for fixed attack bonus (e.g., Wand of the War Mage)
+- Use roll for fixed damage/effect (e.g., "3d6 fire")
+- Use dc for save DCs (e.g., "DC 15 DEX")
+
+MODIFIERS:
+- Apply bonuses when item is equipped
+- ac: +1 for +1 armor, +2 for ring of protection, etc.
+- Use for stat bonuses, resistances, immunities`,
     schema: {
       name: 'string (required) - Item name',
       rarity: 'string (required) - Rarity: common, uncommon, rare, very rare, legendary, artifact',
-      itemType: 'string (required) - Item type (e.g., Weapon, Armor, Wondrous Item, Potion)',
+      itemType: 'string (required) - Item type: Weapon, Armor, Shield, Wondrous Item, Ring, Rod, Staff, Wand, Potion, Scroll',
       attunement: 'boolean (optional) - Requires attunement',
       value: 'string (optional) - Monetary value (e.g., "500 gp")',
       weight: 'number (optional) - Weight in pounds',
-      damage: 'string (optional) - Damage dice (e.g., "1d8")',
-      properties: 'array (optional) - Item properties (e.g., ["Finesse", "Light", "Thrown"])',
-      effect: 'string (optional) - Special effects or abilities'
+      damage: 'string (optional) - Base damage dice for quick reference (e.g., "1d8")',
+      properties: 'array (optional) - Weapon properties (e.g., ["Finesse", "Light", "Thrown", "Two-Handed", "Versatile"])',
+      effect: 'string (optional) - Special effect description',
+      // Combat Properties (for simple display)
+      toHit: 'string (optional) - Display attack bonus',
+      dc: 'string (optional) - Display save DC',
+      roll: 'string (optional) - Display damage roll',
+      range: 'string (optional) - Display range',
+      // Actions granted by the item - THE MAIN WAY TO ADD COMBAT ABILITIES
+      actions: 'array (required for weapons) - Actions this item grants. These appear in Combat when equipped!',
+      'actions[].name': 'string (required) - Action name (e.g., "Longsword Attack", "Fire Breath")',
+      'actions[].actionType': 'string (required) - "action", "bonus", "reaction", or "legendary"',
+      'actions[].useCharacterStats': 'boolean (IMPORTANT) - true = auto-calculate from wielder stats, false = fixed values',
+      'actions[].abilityModifier': 'string (if useCharacterStats) - "str", "dex", "con", "int", "wis", or "cha"',
+      'actions[].itemBonus': 'number (if useCharacterStats) - Magic bonus (+1, +2, +3)',
+      'actions[].proficient': 'boolean (default true) - Does proficiency bonus apply',
+      'actions[].damageDice': 'string (if useCharacterStats) - Base damage dice (e.g., "1d8")',
+      'actions[].damageType': 'string (if useCharacterStats) - Damage type (e.g., "slashing")',
+      'actions[].addAbilityToDamage': 'boolean (default true) - Add ability mod to damage',
+      'actions[].toHit': 'string (if NOT useCharacterStats) - Fixed attack bonus',
+      'actions[].dc': 'string (optional) - Save DC (e.g., "DC 15 DEX")',
+      'actions[].roll': 'string (if NOT useCharacterStats) - Fixed damage/effect roll',
+      'actions[].range': 'string (required) - Attack range',
+      'actions[].description': 'string (required) - Action description',
+      // Modifiers
+      modifiers: 'object (optional) - Stat modifiers applied when equipped',
+      'modifiers.str': 'number (optional) - Strength modifier',
+      'modifiers.dex': 'number (optional) - Dexterity modifier',
+      'modifiers.con': 'number (optional) - Constitution modifier',
+      'modifiers.int': 'number (optional) - Intelligence modifier',
+      'modifiers.wis': 'number (optional) - Wisdom modifier',
+      'modifiers.cha': 'number (optional) - Charisma modifier',
+      'modifiers.ac': 'number (optional) - Armor Class bonus',
+      'modifiers.maxHp': 'number (optional) - Maximum HP bonus',
+      'modifiers.speed': 'number (optional) - Speed bonus in feet',
+      'modifiers.initiative': 'number (optional) - Initiative bonus',
+      'modifiers.savingThrowBonus': 'number (optional) - Bonus to all saving throws',
+      'modifiers.strSavingThrow': 'number (optional) - Strength saving throw bonus',
+      'modifiers.dexSavingThrow': 'number (optional) - Dexterity saving throw bonus',
+      'modifiers.conSavingThrow': 'number (optional) - Constitution saving throw bonus',
+      'modifiers.intSavingThrow': 'number (optional) - Intelligence saving throw bonus',
+      'modifiers.wisSavingThrow': 'number (optional) - Wisdom saving throw bonus',
+      'modifiers.chaSavingThrow': 'number (optional) - Charisma saving throw bonus',
+      'modifiers.resistances': 'string (optional) - Additional resistances (comma-separated)',
+      'modifiers.immunities': 'string (optional) - Additional immunities (comma-separated)'
     },
     example: JSON.stringify({
       name: "Flame Tongue",
@@ -356,7 +518,37 @@ export const itemTypeJsonSchemas: Partial<Record<ItemType, JsonImportSchema>> = 
       weight: 3,
       damage: "1d8 slashing",
       properties: ["Finesse", "Light"],
-      effect: "While attuned to this sword, you gain +1 to attack and damage rolls. The sword sheds bright light in a 40-foot radius and dim light for another 40 feet. When you hit with it, the target takes an extra 2d6 fire damage."
+      toHit: "+7",
+      roll: "1d8+4 slashing plus 2d6 fire",
+      range: "5ft",
+      effect: "While attuned to this sword, you gain +1 to attack and damage rolls. The sword sheds bright light in a 40-foot radius and dim light for another 40 feet.",
+      actions: [
+        {
+          name: "Flame Tongue Attack",
+          actionType: "action",
+          useCharacterStats: true,
+          abilityModifier: "str",
+          itemBonus: 1,
+          proficient: true,
+          damageDice: "1d8",
+          damageType: "slashing plus 2d6 fire",
+          addAbilityToDamage: true,
+          range: "5ft",
+          description: "Make a melee attack with this flaming sword. On hit, deals slashing damage plus 2d6 fire damage."
+        },
+        {
+          name: "Flame Burst",
+          actionType: "bonus",
+          useCharacterStats: false,
+          dc: "DC 15 DEX",
+          roll: "3d6 fire",
+          range: "15ft cone",
+          description: "Once per day, release a burst of flame in a 15-foot cone. Creatures must make a DC 15 DEX save or take 3d6 fire damage."
+        }
+      ],
+      modifiers: {
+        resistances: "fire"
+      }
     }, null, 2)
   },
 

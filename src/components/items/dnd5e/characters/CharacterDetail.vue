@@ -1,321 +1,381 @@
 <template>
   <div class="character-detail" :style="backgroundImageStyle">
-    <!-- Header with Action Buttons -->
-    <page-top-bar
-      :title="item.name"
-      icon="mdi-account-circle"
-      icon-color="#3498DB"
-      :description="`Level ${characterData.level || 1}`"
-    >
-      <template #actions>
-        <div class="d-flex align-center gap-2">
-          <v-tooltip location="bottom">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" icon="mdi-information-outline" size="small" color="primary" />
-            </template>
-            <div class="character-info-tooltip">
-              <div v-if="characterData.race" class="tooltip-item">
-                <v-icon icon="mdi-account" size="small" class="mr-1" /> 
-                <strong>Race:</strong> {{ characterData.race }}
-              </div>
-              <div v-if="characterData.class" class="tooltip-item">
-                <v-icon icon="mdi-sword-cross" size="small" class="mr-1" /> 
-                <strong>Class:</strong> {{ characterData.class }}
-                <span v-if="characterData.subclass"> ({{ characterData.subclass }})</span>
-              </div>
-              <div v-if="characterData.background" class="tooltip-item">
-                <v-icon icon="mdi-book-open-variant" size="small" class="mr-1" /> 
-                <strong>Background:</strong> {{ characterData.background }}
-              </div>
-              <div v-if="characterData.experience" class="tooltip-item">
-                <v-icon icon="mdi-star" size="small" class="mr-1" /> 
-                <strong>XP:</strong> {{ characterData.experience?.toLocaleString() }}
-              </div>
-              <div v-if="characterData.alignment" class="tooltip-item">
-                <v-icon icon="mdi-compass" size="small" class="mr-1" /> 
-                <strong>Alignment:</strong> {{ characterData.alignment }}
-              </div>
-            </div>
-          </v-tooltip>
-
-          <v-menu location="bottom end">
-            <template #activator="{ props }">
-              <v-btn icon="mdi-dots-vertical" v-bind="props" size="small" variant="text" />
-            </template>
-            <v-list>
-              <v-list-item prepend-icon="mdi-printer" @click="showPrintDialog = true">
-                <v-list-item-title>Print / PDF</v-list-item-title>
-              </v-list-item>
-              <v-list-item prepend-icon="mdi-pencil" @click="$emit('edit')">
-                <v-list-item-title>Edit Character</v-list-item-title>
-              </v-list-item>
-              <v-list-item prepend-icon="mdi-delete" @click="$emit('delete')">
-                <v-list-item-title>Delete</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </div>
-      </template>
-    </page-top-bar>
-
-    <v-row>
-      <!-- Left Column: Stats & Skills -->
-      <v-col cols="12" md="8">
-        <!-- Core Stats -->
-        <div class="core-stats-container mb-4">
-          <v-card class="glass-card text-center stat-card clickable" elevation="0" @click="showHealthEditor = true">
-            <v-card-text class="stat-card-content">
-              <v-icon icon="mdi-heart" class="stat-icon" color="error" />
-              <div class="stat-value">
-                {{ characterData.hp || 0 }}<span class="stat-divider">/</span>{{ characterData.maxHp || 0 }}
-              </div>
-              <div class="stat-label">
-                <span class="label-desktop">Hit Points</span>
-                <span class="label-mobile">HP</span>
-              </div>
-              <v-icon icon="mdi-pencil" size="x-small" class="edit-hint" />
-            </v-card-text>
-          </v-card>
-          <v-card class="glass-card text-center stat-card" elevation="0">
-            <v-card-text class="stat-card-content">
-              <v-icon icon="mdi-shield" class="stat-icon" color="primary" />
-              <div class="stat-value">{{ characterData.ac || 10 }}</div>
-              <div class="stat-label">
-                <span class="label-desktop">Armor Class</span>
-                <span class="label-mobile">AC</span>
-              </div>
-            </v-card-text>
-          </v-card>
-          <v-card class="glass-card text-center stat-card" elevation="0">
-            <v-card-text class="stat-card-content">
-              <v-icon icon="mdi-run-fast" class="stat-icon" color="success" />
-              <div class="stat-value">{{ characterData.speed || '30' }}<span class="stat-unit">ft</span></div>
-              <div class="stat-label">
-                <span class="label-desktop">Speed</span>
-                <span class="label-mobile">SPD</span>
-              </div>
-            </v-card-text>
-          </v-card>
-          <v-card class="glass-card text-center stat-card" elevation="0">
-            <v-card-text class="stat-card-content">
-              <v-icon icon="mdi-dice-d20" class="stat-icon" color="warning" />
-              <div class="stat-value">+{{ proficiencyBonus }}</div>
-              <div class="stat-label">
-                <span class="label-desktop">Proficiency</span>
-                <span class="label-mobile">PROF</span>
-              </div>
-            </v-card-text>
-          </v-card>
-          <v-card class="glass-card text-center stat-card" elevation="0">
-            <v-card-text class="stat-card-content">
-              <v-icon icon="mdi-crosshairs" class="stat-icon" color="info" />
-              <div class="stat-value">
-                {{ initiativeDisplay }}
-              </div>
-              <div class="stat-label">
-                <span class="label-desktop">Initiative</span>
-                <span class="label-mobile">INIT</span>
-              </div>
-            </v-card-text>
-          </v-card>
-        </div>
-
-        <!-- Ability Scores & Saving Throws -->
-        <ability-scores-display
-          :data="characterData"
-          :level="characterData.level || 1"
-        />
-
-        <!-- Skills -->
-        <v-card class="glass-card mb-4 skills-card" elevation="0">
-          <v-card-title class="d-flex align-center card-title-mobile">
-            <v-icon icon="mdi-hammer-screwdriver" size="small" class="mr-2" />
-            <span class="title-text">Skills</span>
-          </v-card-title>
-          <v-card-text class="skills-content">
-            <v-row>
-              <v-col v-for="skillDef in DND5E_SKILLS" :key="skillDef.name" cols="6" sm="6" md="4" lg="3">
-                <div class="skill-item d-flex align-center justify-space-between">
-                  <div class="d-flex align-center skill-name-container">
-                    <v-icon
-                      v-if="getSkillProficiency(skillDef.name) === 'expertise'"
-                      icon="mdi-checkbox-multiple-marked-circle"
-                      color="purple"
-                      size="x-small"
-                      class="mr-1 skill-icon"
-                    />
-                    <v-icon
-                      v-else-if="getSkillProficiency(skillDef.name) === 'proficient'"
-                      icon="mdi-checkbox-marked-circle"
-                      color="primary"
-                      size="x-small"
-                      class="mr-1 skill-icon"
-                    />
-                    <v-icon
-                      v-else
-                      icon="mdi-checkbox-blank-circle-outline"
-                      color="grey"
-                      size="x-small"
-                      class="mr-1 skill-icon"
-                    />
-                    <span class="skill-name">{{ skillDef.name }}</span>
+    <div class="character-layout">
+      <!-- Main Content Column (Left) -->
+      <div class="main-content-wrapper">
+        <div class="main-content">
+          <!-- Header with Action Buttons -->
+          <v-card class="page-topbar character-header mb-4" elevation="0">
+            <div class="topbar-content">
+              <!-- Left: Image, Title, Description, Tags -->
+              <div class="topbar-left">
+                <div class="topbar-title-row">
+                  <!-- Circular Featured Image -->
+                  <div class="character-avatar">
+                    <v-avatar size="64" v-if="featuredImageUrl">
+                      <v-img :src="featuredImageUrl" cover />
+                    </v-avatar>
+                    <v-avatar size="64" v-else color="primary">
+                      <v-icon icon="mdi-account-circle" size="48" />
+                    </v-avatar>
                   </div>
-                  <span class="skill-bonus font-weight-bold">
-                    {{ formatModifier(skillBonuses[skillDef.name]) }}
-                  </span>
+                  
+                  <div class="character-title-info">
+                    <h1 class="topbar-title">
+                      {{ item.name }}
+                    </h1>
+                    <div class="character-description-row">
+                      <div class="character-description">
+                        Level {{ characterData.level || 1 }}
+                        <span v-if="characterData.race || characterData.class"> • </span>
+                        <span v-if="characterData.race">{{ characterData.race }}</span>
+                        <span v-if="characterData.race && characterData.class"> • </span>
+                        <span v-if="characterData.class">{{ characterData.class }}</span>
+                      </div>
+                      <!-- Tags in Header - Next to Description -->
+                      <div v-if="item.tags && item.tags.length > 0" class="header-tags">
+                        <v-chip
+                          v-for="tag in item.tags"
+                          :key="tag.id"
+                          :color="tag.color"
+                          size="small"
+                          class="mr-1"
+                        >
+                          <v-icon icon="mdi-tag" size="x-small" class="mr-1" />
+                          {{ tag.name }}
+                        </v-chip>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+              </div>
 
-        <!-- Resistances & Immunities -->
-        <v-row class="mb-4">
-          <v-col cols="12" md="6">
-            <v-card class="glass-card" elevation="0">
-              <v-card-title class="text-subtitle-2 d-flex align-center">
-                <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
-                Resistances
-              </v-card-title>
-              <v-card-text class="text-body-2">
-                <span v-if="resistancesDisplay">{{ resistancesDisplay }}</span>
-                <span v-else class="text-grey">None</span>
-              </v-card-text>
-            </v-card>
-          </v-col>
-          <v-col cols="12" md="6">
-            <v-card class="glass-card" elevation="0">
-              <v-card-title class="text-subtitle-2 d-flex align-center">
-                <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
-                Immunities
-              </v-card-title>
-              <v-card-text class="text-body-2">
-                <span v-if="immunitiesDisplay">{{ immunitiesDisplay }}</span>
-                <span v-else class="text-grey">None</span>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+              <!-- Right: Actions -->
+              <div class="topbar-actions">
+                <v-tooltip location="bottom">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" icon="mdi-information-outline" size="small" color="primary" />
+                  </template>
+                  <div class="character-info-tooltip">
+                    <div v-if="characterData.race" class="tooltip-item">
+                      <v-icon icon="mdi-account" size="small" class="mr-1" /> 
+                      <strong>Race:</strong> {{ characterData.race }}
+                    </div>
+                    <div v-if="characterData.class" class="tooltip-item">
+                      <v-icon icon="mdi-sword-cross" size="small" class="mr-1" /> 
+                      <strong>Class:</strong> {{ characterData.class }}
+                      <span v-if="characterData.subclass"> ({{ characterData.subclass }})</span>
+                    </div>
+                    <div v-if="characterData.background" class="tooltip-item">
+                      <v-icon icon="mdi-book-open-variant" size="small" class="mr-1" /> 
+                      <strong>Background:</strong> {{ characterData.background }}
+                    </div>
+                    <div v-if="characterData.experience" class="tooltip-item">
+                      <v-icon icon="mdi-star" size="small" class="mr-1" /> 
+                      <strong>XP:</strong> {{ characterData.experience?.toLocaleString() }}
+                    </div>
+                    <div v-if="characterData.alignment" class="tooltip-item">
+                      <v-icon icon="mdi-compass" size="small" class="mr-1" /> 
+                      <strong>Alignment:</strong> {{ characterData.alignment }}
+                    </div>
+                  </div>
+                </v-tooltip>
 
-        <!-- Quick Notes -->
-        <v-card class="glass-card mb-4" elevation="0">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <div>
-              <v-icon icon="mdi-note-text" class="mr-2" />
-              Quick Notes
+                <v-menu location="bottom end">
+                  <template #activator="{ props }">
+                    <v-btn icon="mdi-dots-vertical" v-bind="props" size="small" variant="text" />
+                  </template>
+                  <v-list>
+                    <v-list-item prepend-icon="mdi-printer" @click="showPrintDialog = true">
+                      <v-list-item-title>Print / PDF</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item prepend-icon="mdi-pencil" @click="$emit('edit')">
+                      <v-list-item-title>Edit Character</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item prepend-icon="mdi-delete" @click="$emit('delete')">
+                      <v-list-item-title>Delete</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+              </div>
             </div>
-            <v-btn
-              icon="mdi-pencil"
-              size="small"
-              variant="text"
-              @click="toggleEditNotes"
-            />
-          </v-card-title>
-          <v-card-text>
-            <div v-if="!editingNotes" class="quick-notes-display">
-              <div v-if="characterData.quickNotes" v-html="characterData.quickNotes" />
-              <div v-else class="text-grey text-caption">No notes yet. Click the pencil icon to add notes.</div>
-            </div>
-            <v-textarea
-              v-else
-              v-model="localQuickNotes"
-              variant="outlined"
-              rows="4"
-              placeholder="Add quick notes about your character..."
-              hide-details
-            />
-            <v-btn
-              v-if="editingNotes"
-              color="primary"
-              size="small"
-              class="mt-2"
-              @click="saveQuickNotes"
-            >
-              Save Notes
-            </v-btn>
-          </v-card-text>
-        </v-card>
-      </v-col>
+          </v-card>
 
-      <!-- Right Column: Tabbed Content -->
-      <v-col cols="12" md="4">
-        <v-tabs v-model="activeTab" class="transparent-tabs mb-3">
-          <v-tab value="combat">Combat</v-tab>
-          <v-tab value="spells">Spells</v-tab>
-          <v-tab value="inventory">Inventory</v-tab>
-        </v-tabs>
+          <v-tabs v-model="mainContentTab" class="main-content-tabs mb-4">
+            <v-tab value="main">Main</v-tab>
+            <v-tab value="notes">Notes</v-tab>
+            <v-tab value="files">Files</v-tab>
+          </v-tabs>
 
-        <v-window v-model="activeTab" class="transparent-window">
-          <!-- Combat Tab -->
-          <v-window-item value="combat" class="transparent-window-item">
-            <custom-counters-display
-              :counters="characterData.customCounters"
-              :editable="props.canEdit"
-              :hide-title="true"
-              @update:counters="updateCustomCounters"
-            />
-            <action-list-display :actions="characterData.actions" />
-            <trait-list-display :traits="characterData.traits" />
-          </v-window-item>
+          <v-window v-model="mainContentTab" class="main-content-window">
+            <!-- Main Tab -->
+            <v-window-item value="main">
+              <!-- Core Stats -->
+              <div class="core-stats-container mb-4">
+                <v-card class="glass-card text-center stat-card clickable" elevation="0" @click="showHealthEditor = true">
+                  <v-card-text class="stat-card-content">
+                    <v-icon icon="mdi-heart" class="stat-icon" color="error" />
+                    <div class="stat-value">
+                      {{ characterData.hp || 0 }}<span class="stat-divider">/</span>{{ effectiveMaxHp }}
+                    </div>
+                    <div class="stat-label">
+                      <span class="label-desktop">Hit Points</span>
+                      <span class="label-mobile">HP</span>
+                    </div>
+                    <v-tooltip v-if="equippedModifiers.maxHp" activator="parent" location="bottom">
+                      Base: {{ characterData.maxHp || 0 }} + Items: {{ equippedModifiers.maxHp }}
+                    </v-tooltip>
+                    <v-icon icon="mdi-pencil" size="x-small" class="edit-hint" />
+                  </v-card-text>
+                </v-card>
+                <v-card class="glass-card text-center stat-card" elevation="0">
+                  <v-card-text class="stat-card-content">
+                    <v-icon icon="mdi-shield" class="stat-icon" color="primary" />
+                    <div class="stat-value">{{ effectiveAC }}</div>
+                    <div class="stat-label">
+                      <span class="label-desktop">Armor Class</span>
+                      <span class="label-mobile">AC</span>
+                    </div>
+                    <v-tooltip v-if="equippedModifiers.ac" activator="parent" location="bottom">
+                      Base: {{ characterData.ac || 10 }} + Items: {{ equippedModifiers.ac }}
+                    </v-tooltip>
+                  </v-card-text>
+                </v-card>
+                <v-card class="glass-card text-center stat-card" elevation="0">
+                  <v-card-text class="stat-card-content">
+                    <v-icon icon="mdi-run-fast" class="stat-icon" color="success" />
+                    <div class="stat-value">{{ effectiveSpeed }}<span class="stat-unit">ft</span></div>
+                    <div class="stat-label">
+                      <span class="label-desktop">Speed</span>
+                      <span class="label-mobile">SPD</span>
+                    </div>
+                    <v-tooltip v-if="equippedModifiers.speed" activator="parent" location="bottom">
+                      Base: {{ characterData.speed || 30 }}ft + Items: {{ equippedModifiers.speed }}ft
+                    </v-tooltip>
+                  </v-card-text>
+                </v-card>
+                <v-card class="glass-card text-center stat-card" elevation="0">
+                  <v-card-text class="stat-card-content">
+                    <v-icon icon="mdi-dice-d20" class="stat-icon" color="warning" />
+                    <div class="stat-value">+{{ proficiencyBonus }}</div>
+                    <div class="stat-label">
+                      <span class="label-desktop">Proficiency</span>
+                      <span class="label-mobile">PROF</span>
+                    </div>
+                  </v-card-text>
+                </v-card>
+                <v-card class="glass-card text-center stat-card" elevation="0">
+                  <v-card-text class="stat-card-content">
+                    <v-icon icon="mdi-crosshairs" class="stat-icon" color="info" />
+                    <div class="stat-value">
+                      {{ initiativeDisplay }}
+                    </div>
+                    <div class="stat-label">
+                      <span class="label-desktop">Initiative</span>
+                      <span class="label-mobile">INIT</span>
+                    </div>
+                    <v-tooltip v-if="equippedModifiers.initiative" activator="parent" location="bottom">
+                      Items: +{{ equippedModifiers.initiative }}
+                    </v-tooltip>
+                  </v-card-text>
+                </v-card>
+              </div>
 
-          <!-- Spells Tab -->
-          <v-window-item value="spells" class="transparent-window-item">
-            <spell-slots-display
-              :spell-slots="characterData.spellSlots"
-              :spells="characterData.spells"
-              @update:slots="updateSpellSlots"
-            />
-            <spell-list-display :spells="characterData.spells" />
-          </v-window-item>
+              <!-- Ability Scores & Saving Throws -->
+              <ability-scores-display
+                :data="characterData"
+                :level="characterData.level || 1"
+                :effective-scores="effectiveAbilityScores"
+                :equipment-save-bonus="equipmentSaveBonuses"
+              />
 
-          <!-- Inventory Tab -->
-          <v-window-item value="inventory" class="transparent-window-item">
-            <!-- Gold -->
-            <v-card class="glass-card mb-4 clickable" elevation="0" @click="showGoldEditor = true">
-              <v-card-text class="d-flex align-center justify-space-between">
-                <div>
-                  <v-icon icon="mdi-gold" color="warning" class="mr-2" />
-                  <strong>Gold:</strong> {{ characterData.gold || 0 }} gp
-                </div>
-                <v-icon icon="mdi-pencil" size="small" />
-              </v-card-text>
-            </v-card>
+              <!-- Skills -->
+              <v-card class="glass-card mb-4 skills-card" elevation="0">
+                <v-card-title class="d-flex align-center card-title-mobile">
+                  <v-icon icon="mdi-hammer-screwdriver" size="small" class="mr-2" />
+                  <span class="title-text">Skills</span>
+                </v-card-title>
+                <v-card-text class="skills-content">
+                  <v-row>
+                    <v-col v-for="skillDef in DND5E_SKILLS" :key="skillDef.name" cols="6" sm="6" md="4" lg="3">
+                      <div class="skill-item d-flex align-center justify-space-between">
+                        <div class="d-flex align-center skill-name-container">
+                          <v-icon
+                            v-if="getSkillProficiency(skillDef.name) === 'expertise'"
+                            icon="mdi-checkbox-multiple-marked-circle"
+                            color="purple"
+                            size="x-small"
+                            class="mr-1 skill-icon"
+                          />
+                          <v-icon
+                            v-else-if="getSkillProficiency(skillDef.name) === 'proficient'"
+                            icon="mdi-checkbox-marked-circle"
+                            color="primary"
+                            size="x-small"
+                            class="mr-1 skill-icon"
+                          />
+                          <v-icon
+                            v-else
+                            icon="mdi-checkbox-blank-circle-outline"
+                            color="grey"
+                            size="x-small"
+                            class="mr-1 skill-icon"
+                          />
+                          <span class="skill-name">{{ skillDef.name }}</span>
+                          <span class="skill-ability">{{ ABILITY_LABELS[skillDef.ability] }}</span>
+                        </div>
+                        <span class="skill-bonus font-weight-bold">
+                          {{ formatModifier(skillBonuses[skillDef.name]) }}
+                        </span>
+                      </div>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
 
-            <!-- Inventory -->
-            <v-card class="glass-card" elevation="0">
-              <v-card-text>
-                <inventory-item-list
-                  :items="characterData.inventory || []"
-                  @update="updateInventory"
-                />
-              </v-card-text>
-            </v-card>
-          </v-window-item>
-        </v-window>
-      </v-col>
-    </v-row>
+              <!-- Resistances & Immunities -->
+              <v-row class="mb-4">
+                <v-col cols="12" md="6">
+                  <v-card class="glass-card" elevation="0">
+                    <v-card-title class="text-subtitle-2 d-flex align-center">
+                      <v-icon icon="mdi-shield-half-full" size="small" class="mr-2" />
+                      Resistances
+                    </v-card-title>
+                    <v-card-text class="text-body-2">
+                      <span v-if="resistancesDisplay">{{ resistancesDisplay }}</span>
+                      <span v-else class="text-grey">None</span>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-card class="glass-card" elevation="0">
+                    <v-card-title class="text-subtitle-2 d-flex align-center">
+                      <v-icon icon="mdi-shield-off" size="small" class="mr-2" />
+                      Immunities
+                    </v-card-title>
+                    <v-card-text class="text-body-2">
+                      <span v-if="immunitiesDisplay">{{ immunitiesDisplay }}</span>
+                      <span v-else class="text-grey">None</span>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-window-item>
 
-    <!-- Tags -->
-    <v-card v-if="item.tags && item.tags.length > 0" class="glass-card mb-4" elevation="0">
-      <v-card-title class="d-flex align-center">
-        <v-icon icon="mdi-tag-multiple" class="mr-2" />
-        Tags
-      </v-card-title>
-      <v-card-text>
-        <v-chip v-for="tag in item.tags" :key="tag.id" :color="tag.color" class="mr-2 mb-2">
-          <v-icon icon="mdi-tag" size="small" class="mr-1" />
-          {{ tag.name }}
-        </v-chip>
-      </v-card-text>
-    </v-card>
+            <!-- Notes Tab -->
+            <v-window-item value="notes">
+              <v-card class="glass-card" elevation="0">
+                <v-card-title class="d-flex align-center justify-space-between">
+                  <div>
+                    <v-icon icon="mdi-note-text" class="mr-2" />
+                    Quick Notes
+                  </div>
+                  <v-btn
+                    icon="mdi-pencil"
+                    size="small"
+                    variant="text"
+                    @click="toggleEditNotes"
+                  />
+                </v-card-title>
+                <v-card-text>
+                  <div v-if="!editingNotes" class="quick-notes-display">
+                    <div v-if="characterData.quickNotes" v-html="characterData.quickNotes" />
+                    <div v-else class="text-grey text-caption">No notes yet. Click the pencil icon to add notes.</div>
+                  </div>
+                  <v-textarea
+                    v-else
+                    v-model="localQuickNotes"
+                    variant="outlined"
+                    rows="10"
+                    placeholder="Add quick notes about your character..."
+                    hide-details
+                  />
+                  <v-btn
+                    v-if="editingNotes"
+                    color="primary"
+                    size="small"
+                    class="mt-2"
+                    @click="saveQuickNotes"
+                  >
+                    Save Notes
+                  </v-btn>
+                </v-card-text>
+              </v-card>
+            </v-window-item>
 
-    <!-- Attached Files -->
-    <attached-files-grid
-      :file-ids="fileIds"
-      :featured-image-id="item.featuredImage?.id"
-      :columns="4"
-      :read-only="true"
-    />
+            <!-- Files Tab -->
+            <v-window-item value="files">
+              <attached-files-grid
+                :file-ids="fileIds"
+                :featured-image-id="item.featuredImage?.id"
+                :columns="4"
+                :read-only="true"
+              />
+            </v-window-item>
+          </v-window>
+        </div>
+      </div>
+
+      <!-- Sidebar Column (Right) - Sticky -->
+      <div class="sidebar-wrapper">
+        <div class="sidebar-content">
+          <v-tabs v-model="activeTab" class="sidebar-tabs mb-3">
+            <v-tab value="combat">Combat</v-tab>
+            <v-tab value="spells">Spells</v-tab>
+            <v-tab value="inventory">Inventory</v-tab>
+          </v-tabs>
+
+          <v-window v-model="activeTab" class="sidebar-window">
+            <!-- Combat Tab -->
+            <v-window-item value="combat">
+              <custom-counters-display
+                :counters="characterData.customCounters"
+                :editable="props.canEdit"
+                :hide-title="true"
+                @update:counters="updateCustomCounters"
+              />
+              <action-list-display v-model="combinedActions" :editable="canEdit" @update:model-value="updateActions" />
+              <trait-list-display v-model="characterData.traits" :editable="canEdit" @update:model-value="updateTraits" />
+            </v-window-item>
+
+            <!-- Spells Tab -->
+            <v-window-item value="spells">
+              <spell-slots-display
+                :spell-slots="characterData.spellSlots"
+                :spells="characterData.spells"
+                @update:slots="updateSpellSlots"
+              />
+              <spell-list-display v-model="characterData.spells" :editable="canEdit" @update:model-value="updateSpells" />
+            </v-window-item>
+
+            <!-- Inventory Tab -->
+            <v-window-item value="inventory">
+              <!-- Gold -->
+              <v-card class="glass-card mb-4 clickable" elevation="0" @click="showGoldEditor = true">
+                <v-card-text class="d-flex align-center justify-space-between">
+                  <div>
+                    <v-icon icon="mdi-gold" color="warning" class="mr-2" />
+                    <strong>Gold:</strong> {{ characterData.gold || 0 }} gp
+                  </div>
+                  <v-icon icon="mdi-pencil" size="small" />
+                </v-card-text>
+              </v-card>
+
+              <!-- Inventory -->
+              <v-card class="glass-card" elevation="0">
+                <v-card-text>
+                  <inventory-item-list
+                    :items="characterData.inventory || []"
+                    :library-id="item.libraryId"
+                    @update="updateInventory"
+                  />
+                </v-card-text>
+              </v-card>
+            </v-window-item>
+          </v-window>
+        </div>
+      </div>
+    </div>
 
     <!-- Health Editor -->
     <amount-editor
@@ -328,6 +388,7 @@
       icon-color="error"
       :presets="[20, 10, 5, 1, -1, -5, -10, -20]"
       :show-max="true"
+      :auto-close-on-adjust="true"
       @update:amount="updateHealth"
     />
 
@@ -560,7 +621,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { LibraryItem, CustomCounter } from '@/types/item.types'
-import type { CharacterData } from '@/types/item.DND_5E.types'
+import type { CharacterData, ItemModifier, InventoryItem, ItemAction, Action } from '@/types/item.DND_5E.types'
 import { ABILITIES, ABILITY_LABELS, DND5E_SKILLS } from '@/constants/dnd5e'
 import {
   calculateModifier,
@@ -601,6 +662,7 @@ const itemsStore = useItemsStore()
 const toast = useToast()
 
 const activeTab = ref('combat')
+const mainContentTab = ref('main')
 const showHealthEditor = ref(false)
 const showGoldEditor = ref(false)
 const showPrintDialog = ref(false)
@@ -609,6 +671,102 @@ const localQuickNotes = ref('')
 const featuredImageUrl = ref<string>('')
 
 const characterData = computed(() => props.item.data as CharacterData)
+
+// Calculate total modifiers from all equipped items
+const equippedModifiers = computed((): ItemModifier => {
+  const inventory = characterData.value.inventory || []
+  const equippedItems = inventory.filter((item: InventoryItem) => item.equipped && item.modifiers)
+  
+  const totalModifiers: ItemModifier = {
+    str: 0,
+    dex: 0,
+    con: 0,
+    int: 0,
+    wis: 0,
+    cha: 0,
+    ac: 0,
+    maxHp: 0,
+    speed: 0,
+    initiative: 0,
+    savingThrowBonus: 0,
+    strSavingThrow: 0,
+    dexSavingThrow: 0,
+    conSavingThrow: 0,
+    intSavingThrow: 0,
+    wisSavingThrow: 0,
+    chaSavingThrow: 0,
+    skillBonus: 0,
+    resistances: '',
+    immunities: '',
+  }
+  
+  equippedItems.forEach((item: InventoryItem) => {
+    const mods = item.modifiers!
+    // Sum up numeric modifiers
+    if (mods.str) totalModifiers.str! += mods.str
+    if (mods.dex) totalModifiers.dex! += mods.dex
+    if (mods.con) totalModifiers.con! += mods.con
+    if (mods.int) totalModifiers.int! += mods.int
+    if (mods.wis) totalModifiers.wis! += mods.wis
+    if (mods.cha) totalModifiers.cha! += mods.cha
+    if (mods.ac) totalModifiers.ac! += mods.ac
+    if (mods.maxHp) totalModifiers.maxHp! += mods.maxHp
+    if (mods.speed) totalModifiers.speed! += mods.speed
+    if (mods.initiative) totalModifiers.initiative! += mods.initiative
+    if (mods.savingThrowBonus) totalModifiers.savingThrowBonus! += mods.savingThrowBonus
+    if (mods.strSavingThrow) totalModifiers.strSavingThrow! += mods.strSavingThrow
+    if (mods.dexSavingThrow) totalModifiers.dexSavingThrow! += mods.dexSavingThrow
+    if (mods.conSavingThrow) totalModifiers.conSavingThrow! += mods.conSavingThrow
+    if (mods.intSavingThrow) totalModifiers.intSavingThrow! += mods.intSavingThrow
+    if (mods.wisSavingThrow) totalModifiers.wisSavingThrow! += mods.wisSavingThrow
+    if (mods.chaSavingThrow) totalModifiers.chaSavingThrow! += mods.chaSavingThrow
+    if (mods.skillBonus) totalModifiers.skillBonus! += mods.skillBonus
+    
+    // Concatenate resistance/immunity strings
+    if (mods.resistances) {
+      const existing = totalModifiers.resistances || ''
+      totalModifiers.resistances = existing ? `${existing}, ${mods.resistances}` : mods.resistances
+    }
+    if (mods.immunities) {
+      const existing = totalModifiers.immunities || ''
+      totalModifiers.immunities = existing ? `${existing}, ${mods.immunities}` : mods.immunities
+    }
+  })
+  
+  return totalModifiers
+})
+
+// Effective ability scores (base + equipment modifiers)
+const effectiveAbilityScores = computed(() => ({
+  str: (characterData.value.str || 10) + (equippedModifiers.value.str || 0),
+  dex: (characterData.value.dex || 10) + (equippedModifiers.value.dex || 0),
+  con: (characterData.value.con || 10) + (equippedModifiers.value.con || 0),
+  int: (characterData.value.int || 10) + (equippedModifiers.value.int || 0),
+  wis: (characterData.value.wis || 10) + (equippedModifiers.value.wis || 0),
+  cha: (characterData.value.cha || 10) + (equippedModifiers.value.cha || 0),
+}))
+
+// Effective stats (base + equipment modifiers)
+const effectiveAC = computed(() => (characterData.value.ac || 10) + (equippedModifiers.value.ac || 0))
+const effectiveMaxHp = computed(() => (characterData.value.maxHp || 0) + (equippedModifiers.value.maxHp || 0))
+const effectiveSpeed = computed(() => {
+  const baseSpeed = parseInt(String(characterData.value.speed || '30'), 10) || 30
+  return baseSpeed + (equippedModifiers.value.speed || 0)
+})
+
+// Equipment saving throw bonuses (for passing to AbilityScoresDisplay)
+const equipmentSaveBonuses = computed(() => {
+  const mods = equippedModifiers.value
+  const allBonus = mods.savingThrowBonus || 0
+  return {
+    str: (mods.strSavingThrow || 0) + allBonus,
+    dex: (mods.dexSavingThrow || 0) + allBonus,
+    con: (mods.conSavingThrow || 0) + allBonus,
+    int: (mods.intSavingThrow || 0) + allBonus,
+    wis: (mods.wisSavingThrow || 0) + allBonus,
+    cha: (mods.chaSavingThrow || 0) + allBonus,
+  }
+})
 
 // Background image style
 const backgroundImageStyle = computed(() => {
@@ -650,57 +808,133 @@ const proficiencyBonus = computed(() =>
   calculateProficiencyBonus(characterData.value.level || 1)
 )
 
-const initiativeValue = computed(() => characterData.value.initiative)
-const initiativeDisplay = computed(() => {
-  const value = initiativeValue.value
-  if (value === undefined || value === null || value === '') return '—'
-  return value
+const initiativeValue = computed(() => {
+  const baseInit = characterData.value.initiative
+  const equipBonus = equippedModifiers.value.initiative || 0
+  // If base initiative is set, add equipment bonus
+  if (baseInit !== undefined && baseInit !== null && baseInit !== '') {
+    return Number(baseInit) + equipBonus
+  }
+  // If no base initiative, calculate from DEX modifier + equipment bonus
+  const dexMod = calculateModifier(effectiveAbilityScores.value.dex)
+  return dexMod + equipBonus
 })
 
-const resistancesDisplay = computed(() => (characterData.value.resistances || '').trim())
-const immunitiesDisplay = computed(() => (characterData.value.immunities || '').trim())
+const initiativeDisplay = computed(() => {
+  const value = initiativeValue.value
+  if (value === undefined || value === null) return '—'
+  return formatModifier(value)
+})
+
+const resistancesDisplay = computed(() => {
+  const base = (characterData.value.resistances || '').trim()
+  const equip = (equippedModifiers.value.resistances || '').trim()
+  if (base && equip) return `${base}, ${equip}`
+  return base || equip || ''
+})
+
+const immunitiesDisplay = computed(() => {
+  const base = (characterData.value.immunities || '').trim()
+  const equip = (equippedModifiers.value.immunities || '').trim()
+  if (base && equip) return `${base}, ${equip}`
+  return base || equip || ''
+})
 
 const showDefenseInfo = computed(() => {
-  const hasInitiative =
-    initiativeValue.value !== undefined &&
-    initiativeValue.value !== null &&
-    initiativeValue.value !== ''
+  const hasInitiative = initiativeValue.value !== undefined && initiativeValue.value !== null
   return hasInitiative || resistancesDisplay.value.length > 0 || immunitiesDisplay.value.length > 0
 })
 
 const abilityModifiers = computed(() => ({
-  str: calculateModifier(characterData.value.str || 10),
-  dex: calculateModifier(characterData.value.dex || 10),
-  con: calculateModifier(characterData.value.con || 10),
-  int: calculateModifier(characterData.value.int || 10),
-  wis: calculateModifier(characterData.value.wis || 10),
-  cha: calculateModifier(characterData.value.cha || 10),
+  str: calculateModifier(effectiveAbilityScores.value.str),
+  dex: calculateModifier(effectiveAbilityScores.value.dex),
+  con: calculateModifier(effectiveAbilityScores.value.con),
+  int: calculateModifier(effectiveAbilityScores.value.int),
+  wis: calculateModifier(effectiveAbilityScores.value.wis),
+  cha: calculateModifier(effectiveAbilityScores.value.cha),
 }))
 
 const savingThrowBonuses = computed(() => {
   const bonuses: Record<string, number> = {}
+  const mods = equippedModifiers.value
+  
   ABILITIES.forEach(ability => {
-    const score = characterData.value[ability] || 10
-    const modifier = calculateModifier(score)
+    const effectiveScore = effectiveAbilityScores.value[ability as keyof typeof effectiveAbilityScores.value]
+    const modifier = calculateModifier(effectiveScore)
     const isProficient = isSavingThrowProficient(ability)
-    bonuses[ability] = modifier + (isProficient ? proficiencyBonus.value : 0)
+    
+    // Get equipment saving throw bonus for this ability
+    const abilityKey = `${ability}SavingThrow` as keyof ItemModifier
+    const equipmentBonus = (mods[abilityKey] as number || 0) + (mods.savingThrowBonus || 0)
+    
+    bonuses[ability] = modifier + (isProficient ? proficiencyBonus.value : 0) + equipmentBonus
   })
   return bonuses
 })
 
 const skillBonuses = computed(() => {
   const bonuses: Record<string, number> = {}
+  const mods = equippedModifiers.value
+  
   DND5E_SKILLS.forEach(skillDef => {
     const skill = characterData.value.skills?.find(s => s.name === skillDef.name)
-    const abilityScore = characterData.value[skillDef.ability] || 10
-    bonuses[skillDef.name] = calculateSkillBonus(
-      abilityScore,
+    const effectiveScore = effectiveAbilityScores.value[skillDef.ability as keyof typeof effectiveAbilityScores.value]
+    const baseBonus = calculateSkillBonus(
+      effectiveScore,
       skill?.proficient || false,
       skill?.expertise || false,
       proficiencyBonus.value
     )
+    // Add equipment skill bonus
+    bonuses[skillDef.name] = baseBonus + (mods.skillBonus || 0)
   })
   return bonuses
+})
+
+// Combined actions: character actions + equipped item actions
+const combinedActions = computed(() => {
+  const characterActions = characterData.value.actions || []
+  const inventory = characterData.value.inventory || []
+  
+  // Get actions from equipped items
+  const itemActions: Action[] = []
+  inventory.forEach((item: InventoryItem) => {
+    if (item.equipped && item.actions && item.actions.length > 0) {
+      item.actions.forEach((action: ItemAction) => {
+        // Calculate actual values if using character stats
+        let calculatedToHit = action.toHit
+        let calculatedRoll = action.roll
+        
+        if (action.useCharacterStats && action.abilityModifier) {
+          const abilityMod = abilityModifiers.value[action.abilityModifier] || 0
+          const profBonus = action.proficient !== false ? proficiencyBonus.value : 0
+          const itemBonus = action.itemBonus || 0
+          
+          // Calculate to-hit: proficiency + ability modifier + item bonus
+          const totalToHit = profBonus + abilityMod + itemBonus
+          calculatedToHit = formatModifier(totalToHit)
+          
+          // Calculate damage roll if using character stats
+          if (action.damageDice) {
+            const damageAbilityMod = action.addAbilityToDamage !== false ? abilityMod : 0
+            const totalDamageBonus = damageAbilityMod + itemBonus
+            const bonusStr = totalDamageBonus !== 0 ? (totalDamageBonus > 0 ? `+${totalDamageBonus}` : `${totalDamageBonus}`) : ''
+            calculatedRoll = `${action.damageDice}${bonusStr}${action.damageType ? ` ${action.damageType}` : ''}`
+          }
+        }
+        
+        // Create the action with calculated values and source item name
+        itemActions.push({
+          ...action,
+          name: `${action.name} (${item.name})`,
+          toHit: calculatedToHit,
+          roll: calculatedRoll,
+        })
+      })
+    }
+  })
+  
+  return [...characterActions, ...itemActions]
 })
 
 function isSavingThrowProficient(ability: string): boolean {
@@ -821,6 +1055,53 @@ async function updateInventory() {
   } catch (error: any) {
     console.error('Failed to update inventory:', error)
     toast.error('Failed to save inventory')
+  }
+}
+
+async function updateActions(actions: any[]) {
+  // Filter out item actions (they have source item name in parentheses) - only save character actions
+  const characterActions = actions.filter(a => !a.name?.includes('('))
+  const updatedData = { ...characterData.value, actions: characterActions }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Actions updated!')
+  } catch (error: any) {
+    console.error('Failed to update actions:', error)
+    toast.error('Failed to save actions')
+  }
+}
+
+async function updateTraits(traits: any[]) {
+  const updatedData = { ...characterData.value, traits }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Traits updated!')
+  } catch (error: any) {
+    console.error('Failed to update traits:', error)
+    toast.error('Failed to save traits')
+  }
+}
+
+async function updateSpells(spells: any[]) {
+  const updatedData = { ...characterData.value, spells }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Spells updated!')
+  } catch (error: any) {
+    console.error('Failed to update spells:', error)
+    toast.error('Failed to save spells')
   }
 }
 
@@ -948,37 +1229,241 @@ function printCharacter() {
 .character-detail {
   width: 100%;
   position: relative;
-  min-height: 100vh;
+  min-height: auto;
 }
 
 .character-detail::before {
   content: '';
-  position: fixed;
-  top: 50px;
+  position: absolute;
+  top: 0;
   left: 0;
-  width: 50vw;
-  height: calc(50vw * 4 / 3);
-  max-height: calc(100vh - 50px);
+  width: 45vw;
+  height: 100%;
+  max-height: 800px;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: left center;
   background-repeat: no-repeat;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.3;
+  opacity: 0.28;
   mask-image: 
     linear-gradient(to right, black 0%, black 60%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
   mask-composite: intersect;
   -webkit-mask-image: 
     linear-gradient(to right, black 0%, black 60%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
   -webkit-mask-composite: source-in;
 }
 
 .character-detail > * {
   position: relative;
   z-index: 1;
+}
+
+/* Character Layout - Two Column */
+.character-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  position: relative;
+  padding-bottom: 24px;
+}
+
+/* Main Content Wrapper */
+.main-content-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  margin-right: 424px; /* 400px sidebar + 24px gap */
+}
+
+.main-content {
+  width: 100%;
+  max-width: 1200px;
+  position: relative;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.main-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.main-content-tabs {
+  background: transparent !important;
+}
+
+.main-content-tabs :deep(.v-tab) {
+  min-width: auto;
+  padding: 0 16px;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.main-content-window {
+  background: transparent !important;
+}
+
+.main-content-window :deep(.v-window__container) {
+  background: transparent !important;
+}
+
+/* Sidebar Wrapper - Fixed with max-height */
+.sidebar-wrapper {
+  width: 400px;
+  flex-shrink: 0;
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 85vh;
+  z-index: 10;
+}
+
+.sidebar-content {
+  background: rgba(30, 30, 35, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  max-height: 85vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+
+.sidebar-tabs {
+  background: transparent !important;
+}
+
+.sidebar-tabs :deep(.v-tab) {
+  min-width: auto;
+  padding: 0 12px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-window {
+  background: transparent !important;
+}
+
+.sidebar-window :deep(.v-window__container) {
+  background: transparent !important;
+}
+
+/* Character Header */
+.character-header {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.character-header .topbar-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px;
+  gap: 24px;
+}
+
+.character-header .topbar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-header .topbar-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.character-avatar {
+  flex-shrink: 0;
+}
+
+.character-avatar :deep(.v-avatar) {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.character-title-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-header .topbar-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-description-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.character-description {
+  font-size: 0.9rem;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.header-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.character-header .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 /* Character Info Tooltip */
@@ -1088,23 +1573,24 @@ function printCharacter() {
 
 /* Skills */
 .skills-content .v-row {
-  margin-left: -4px !important;
-  margin-right: -4px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 .skills-content .v-col {
-  padding-left: 4px !important;
-  padding-right: 4px !important;
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .skill-item {
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 4px 6px;
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.02);
   transition: background 0.2s;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .skill-item:hover {
@@ -1114,6 +1600,9 @@ function printCharacter() {
 .skill-name-container {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .skill-name {
@@ -1122,11 +1611,18 @@ function printCharacter() {
   text-overflow: ellipsis;
 }
 
+.skill-ability {
+  font-size: 0.65rem;
+  opacity: 0.5;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
 .skill-bonus {
   color: rgb(var(--v-theme-primary));
-  min-width: 32px;
+  min-width: 28px;
   text-align: right;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
 }
 
 .quick-notes-display {
@@ -1157,6 +1653,72 @@ function printCharacter() {
 
 /* ==================== MOBILE STYLES ==================== */
 @media (max-width: 959px) {
+  /* Character Layout - Mobile */
+  .character-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .main-content-wrapper {
+    margin-right: 0;
+  }
+
+  .sidebar-wrapper {
+    width: 100%;
+    position: relative;
+    right: auto;
+    top: auto;
+    transform: none;
+    max-height: none;
+    order: -1;
+  }
+
+  .sidebar-content {
+    padding: 12px;
+    max-height: 50vh;
+  }
+
+  .main-content {
+    max-width: 100%;
+    max-height: none;
+  }
+
+  /* Character Header - Mobile */
+  .character-header .topbar-content {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
+  }
+
+  .character-header .topbar-title-row {
+    width: 100%;
+  }
+
+  .character-avatar :deep(.v-avatar) {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  .character-header .topbar-title {
+    font-size: 1.5rem;
+  }
+
+  .character-description-row {
+    gap: 8px;
+  }
+
+  .character-description {
+    font-size: 0.85rem;
+  }
+
+  .header-tags {
+    gap: 4px;
+  }
+
+  .character-header .topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 
   /* Core Stats - 2x2 grid on mobile */
   .core-stats-container {
@@ -1219,26 +1781,42 @@ function printCharacter() {
 
   /* Skills - Reduce spacing and font size on mobile */
   .skills-card :deep(.v-card-text) {
-    padding: 12px !important;
+    padding: 10px !important;
+  }
+
+  .skills-content .v-col {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
   }
 
   .skill-item {
-    padding: 4px 6px;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    padding: 3px 5px;
+    border-radius: 0;
+    font-size: 0.7rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .skill-name-container {
+    gap: 4px;
   }
 
   .skill-icon {
-    font-size: 12px !important;
+    font-size: 11px !important;
   }
 
   .skill-name {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+  }
+
+  .skill-ability {
+    font-size: 0.6rem;
   }
 
   .skill-bonus {
-    min-width: 28px;
-    font-size: 0.75rem;
+    min-width: 24px;
+    font-size: 0.7rem;
   }
 
   /* Quick Notes - Compact */
@@ -1267,6 +1845,32 @@ function printCharacter() {
 
 /* Extra small mobile screens */
 @media (max-width: 599px) {
+  /* Character Header - Extra Small */
+  .character-header .topbar-content {
+    padding: 12px;
+  }
+
+  .character-avatar :deep(.v-avatar) {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .character-header .topbar-title {
+    font-size: 1.25rem;
+  }
+
+  .character-description-row {
+    gap: 6px;
+  }
+
+  .character-description {
+    font-size: 0.8rem;
+  }
+
+  .header-tags {
+    gap: 3px;
+  }
+
   /* Core stats still visible, just slightly smaller */
   .stat-value {
     font-size: 1.25rem;
@@ -1287,23 +1891,31 @@ function printCharacter() {
 
   /* Skills compact */
   .skill-item {
-    padding: 3px 4px;
+    padding: 2px 4px;
+  }
+
+  .skill-name-container {
+    gap: 3px;
   }
 
   .skill-name {
-    font-size: 0.6875rem;
+    font-size: 0.65rem;
+  }
+
+  .skill-ability {
+    font-size: 0.55rem;
   }
 
   .skill-bonus {
-    font-size: 0.6875rem;
-    min-width: 24px;
+    font-size: 0.65rem;
+    min-width: 22px;
   }
 }
 
 /* ==================== PDF EXPORT STYLES ==================== */
 .pdf-export-container {
   width: 100%;
-  max-width: 210mm;
+  max-width: 210mm; 
   margin: 0 auto;
   background: white !important;
   color: #000 !important;
@@ -1687,5 +2299,25 @@ function printCharacter() {
   height: 24px;
   margin-bottom: 10px;
   background: transparent !important;
+}
+</style>
+
+<!-- Non-scoped styles for modal/dialog context -->
+<style>
+/* When CharacterDetail is inside a modal/dialog - reduce sidebar height */
+.v-dialog .character-detail .sidebar-wrapper {
+  max-height: 75vh !important;
+}
+
+.v-dialog .character-detail .sidebar-content {
+  max-height: 75vh !important;
+}
+
+.v-overlay__content .character-detail .sidebar-wrapper {
+  max-height: 75vh !important;
+}
+
+.v-overlay__content .character-detail .sidebar-content {
+  max-height: 75vh !important;
 }
 </style>

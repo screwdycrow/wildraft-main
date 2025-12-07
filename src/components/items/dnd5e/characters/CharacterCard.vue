@@ -25,30 +25,55 @@
       <div class="stats-row mb-2">
         <div class="stat-item">
           <div class="stat-label" :style="{ color: textColor }">AC</div>
-          <div class="stat-value" :style="{ color: textColor }">{{ characterData.ac || '10' }}</div>
+          <v-tooltip v-if="equippedModifiers.ac" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <div class="stat-value modified-stat" :style="{ color: textColor }" v-bind="tooltipProps">
+                {{ effectiveAC }}
+              </div>
+            </template>
+            <span>Base: {{ characterData.ac || 10 }} + Items: {{ equippedModifiers.ac }}</span>
+          </v-tooltip>
+          <div v-else class="stat-value" :style="{ color: textColor }">
+            {{ effectiveAC }}
+          </div>
         </div>
         <div class="stat-item">
           <div class="stat-label" :style="{ color: textColor }">HP</div>
-          <div class="stat-value" :style="{ color: textColor }">
-            {{ characterData.hp || characterData.maxHp || '10' }}
-            <span v-if="characterData.maxHp && characterData.hp !== characterData.maxHp" class="stat-hp-max">
-              /{{ characterData.maxHp }}
+          <v-tooltip v-if="equippedModifiers.maxHp" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <div class="stat-value modified-stat" :style="{ color: textColor }" v-bind="tooltipProps">
+                {{ characterData.hp || effectiveMaxHp }}
+                <span v-if="effectiveMaxHp && characterData.hp !== effectiveMaxHp" class="stat-hp-max">
+                  /{{ effectiveMaxHp }}
+                </span>
+              </div>
+            </template>
+            <span>Base: {{ characterData.maxHp || 0 }} + Items: {{ equippedModifiers.maxHp }}</span>
+          </v-tooltip>
+          <div v-else class="stat-value" :style="{ color: textColor }">
+            {{ characterData.hp || effectiveMaxHp }}
+            <span v-if="effectiveMaxHp && characterData.hp !== effectiveMaxHp" class="stat-hp-max">
+              /{{ effectiveMaxHp }}
             </span>
           </div>
         </div>
         <div class="stat-item stat-item-speed">
           <div class="stat-label" :style="{ color: textColor }">SPEED</div>
-          <v-tooltip v-if="speedText && speedText.length > 8" location="top">
+          <v-tooltip v-if="equippedModifiers.speed || speedText.length > 8" location="top">
             <template #activator="{ props: tooltipProps }">
               <div 
                 class="stat-value stat-value-speed" 
+                :class="{ 'modified-stat': equippedModifiers.speed }"
                 :style="{ color: textColor }"
                 v-bind="tooltipProps"
               >
                 {{ speedText }}
               </div>
             </template>
-            <span>{{ characterData.speed || '30 ft.' }}</span>
+            <span v-if="equippedModifiers.speed">
+              Base: {{ characterData.speed || '30' }}ft + Items: {{ equippedModifiers.speed }}ft
+            </span>
+            <span v-else>{{ speedText }}</span>
           </v-tooltip>
           <div v-else class="stat-value stat-value-speed" :style="{ color: textColor }">
             {{ speedText }}
@@ -60,7 +85,17 @@
       <div class="abilities-container mb-3">
         <div v-for="ability in abilities" :key="ability.key" class="ability-item">
           <div class="ability-label" :style="{ color: textColor }">{{ ability.label }}</div>
-          <div class="ability-value" :style="{ color: textColor }">
+          <v-tooltip v-if="equippedModifiers[ability.key as keyof typeof equippedModifiers]" location="top">
+            <template #activator="{ props: tooltipProps }">
+              <div class="ability-value modified-stat" :style="{ color: textColor }" v-bind="tooltipProps">
+                {{ getAbilityScore(ability.key) }}
+              </div>
+            </template>
+            <span>
+              Base: {{ (characterData as any)[ability.key] || 10 }} + Items: {{ equippedModifiers[ability.key as keyof typeof equippedModifiers] }}
+            </span>
+          </v-tooltip>
+          <div v-else class="ability-value" :style="{ color: textColor }">
             {{ getAbilityScore(ability.key) }}
           </div>
           <div class="ability-modifier" :style="{ color: textColor }">
@@ -69,10 +104,10 @@
         </div>
       </div>
 
-      <!-- Actions (if any) -->
-      <div v-if="characterData.actions && characterData.actions.length > 0" class="features-list">
+      <!-- Actions (including equipped item actions) -->
+      <div v-if="combinedActions.length > 0" class="features-list">
         <action-chip
-          v-for="(action, index) in characterData.actions"
+          v-for="(action, index) in combinedActions"
           :key="index"
           :action="action"
           size="small"
@@ -99,7 +134,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { LibraryItem, CharacterData } from '@/types/item.types'
+import type { LibraryItem, CharacterData, ItemModifier, InventoryItem, Action } from '@/types/item.types'
+import type { ItemAction } from '@/types/item.DND_5E.types'
 import ActionChip from '../common/ActionChip.vue'
 import { getFileDownloadUrl } from '@/config/api'
 
@@ -122,6 +158,160 @@ defineEmits<{
 }>()
 
 const characterData = computed<CharacterData>(() => props.item.data as CharacterData)
+
+// Calculate equipped item modifiers
+const equippedModifiers = computed((): ItemModifier => {
+  const inventory = characterData.value.inventory || []
+  const equippedItems = inventory.filter((item: InventoryItem) => item.equipped && item.modifiers)
+  
+  const totalModifiers: ItemModifier = {
+    str: 0,
+    dex: 0,
+    con: 0,
+    int: 0,
+    wis: 0,
+    cha: 0,
+    ac: 0,
+    maxHp: 0,
+    speed: 0,
+    initiative: 0,
+    savingThrowBonus: 0,
+    strSavingThrow: 0,
+    dexSavingThrow: 0,
+    conSavingThrow: 0,
+    intSavingThrow: 0,
+    wisSavingThrow: 0,
+    chaSavingThrow: 0,
+    skillBonus: 0,
+    resistances: '',
+    immunities: '',
+  }
+  
+  equippedItems.forEach((item: InventoryItem) => {
+    const mods = item.modifiers!
+    // Sum up numeric modifiers
+    if (mods.str) totalModifiers.str! += mods.str
+    if (mods.dex) totalModifiers.dex! += mods.dex
+    if (mods.con) totalModifiers.con! += mods.con
+    if (mods.int) totalModifiers.int! += mods.int
+    if (mods.wis) totalModifiers.wis! += mods.wis
+    if (mods.cha) totalModifiers.cha! += mods.cha
+    if (mods.ac) totalModifiers.ac! += mods.ac
+    if (mods.maxHp) totalModifiers.maxHp! += mods.maxHp
+    if (mods.speed) totalModifiers.speed! += mods.speed
+    if (mods.initiative) totalModifiers.initiative! += mods.initiative
+    if (mods.savingThrowBonus) totalModifiers.savingThrowBonus! += mods.savingThrowBonus
+    if (mods.strSavingThrow) totalModifiers.strSavingThrow! += mods.strSavingThrow
+    if (mods.dexSavingThrow) totalModifiers.dexSavingThrow! += mods.dexSavingThrow
+    if (mods.conSavingThrow) totalModifiers.conSavingThrow! += mods.conSavingThrow
+    if (mods.intSavingThrow) totalModifiers.intSavingThrow! += mods.intSavingThrow
+    if (mods.wisSavingThrow) totalModifiers.wisSavingThrow! += mods.wisSavingThrow
+    if (mods.chaSavingThrow) totalModifiers.chaSavingThrow! += mods.chaSavingThrow
+    if (mods.skillBonus) totalModifiers.skillBonus! += mods.skillBonus
+    // Concatenate string modifiers
+    if (mods.resistances) {
+      totalModifiers.resistances = totalModifiers.resistances 
+        ? `${totalModifiers.resistances}, ${mods.resistances}` 
+        : mods.resistances
+    }
+    if (mods.immunities) {
+      totalModifiers.immunities = totalModifiers.immunities 
+        ? `${totalModifiers.immunities}, ${mods.immunities}` 
+        : mods.immunities
+    }
+  })
+  
+  return totalModifiers
+})
+
+// Helper functions
+function calculateModifier(score: number): number {
+  return Math.floor((score - 10) / 2)
+}
+
+function formatModifier(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`
+}
+
+// Effective ability scores (base + equipment)
+const effectiveAbilityScores = computed(() => ({
+  str: (characterData.value.str || 10) + (equippedModifiers.value.str || 0),
+  dex: (characterData.value.dex || 10) + (equippedModifiers.value.dex || 0),
+  con: (characterData.value.con || 10) + (equippedModifiers.value.con || 0),
+  int: (characterData.value.int || 10) + (equippedModifiers.value.int || 0),
+  wis: (characterData.value.wis || 10) + (equippedModifiers.value.wis || 0),
+  cha: (characterData.value.cha || 10) + (equippedModifiers.value.cha || 0),
+}))
+
+// Effective stats
+const effectiveAC = computed(() => (characterData.value.ac || 10) + (equippedModifiers.value.ac || 0))
+const effectiveMaxHp = computed(() => (characterData.value.maxHp || 0) + (equippedModifiers.value.maxHp || 0))
+const effectiveSpeed = computed(() => {
+  const baseSpeed = parseInt(String(characterData.value.speed || '30'), 10) || 30
+  return baseSpeed + (equippedModifiers.value.speed || 0)
+})
+
+// Proficiency bonus
+const proficiencyBonus = computed(() => {
+  const level = characterData.value.level || 1
+  return Math.floor((level - 1) / 4) + 2
+})
+
+// Ability modifiers (using effective scores)
+const abilityModifiers = computed(() => ({
+  str: calculateModifier(effectiveAbilityScores.value.str),
+  dex: calculateModifier(effectiveAbilityScores.value.dex),
+  con: calculateModifier(effectiveAbilityScores.value.con),
+  int: calculateModifier(effectiveAbilityScores.value.int),
+  wis: calculateModifier(effectiveAbilityScores.value.wis),
+  cha: calculateModifier(effectiveAbilityScores.value.cha),
+}))
+
+// Combined actions (character actions + equipped item actions)
+const combinedActions = computed(() => {
+  const characterActions = characterData.value.actions || []
+  const inventory = characterData.value.inventory || []
+  
+  // Get actions from equipped items
+  const itemActions: Action[] = []
+  inventory.forEach((item: InventoryItem) => {
+    if (item.equipped && item.actions && item.actions.length > 0) {
+      item.actions.forEach((action: ItemAction) => {
+        // Calculate actual values if using character stats
+        let calculatedToHit = action.toHit
+        let calculatedRoll = action.roll
+        
+        if (action.useCharacterStats && action.abilityModifier) {
+          const abilityMod = abilityModifiers.value[action.abilityModifier] || 0
+          const profBonus = action.proficient !== false ? proficiencyBonus.value : 0
+          const itemBonus = action.itemBonus || 0
+          
+          // Calculate to-hit: proficiency + ability modifier + item bonus
+          const totalToHit = profBonus + abilityMod + itemBonus
+          calculatedToHit = formatModifier(totalToHit)
+          
+          // Calculate damage roll if using character stats
+          if (action.damageDice) {
+            const damageAbilityMod = action.addAbilityToDamage !== false ? abilityMod : 0
+            const totalDamageBonus = damageAbilityMod + itemBonus
+            const bonusStr = totalDamageBonus !== 0 ? (totalDamageBonus > 0 ? `+${totalDamageBonus}` : `${totalDamageBonus}`) : ''
+            calculatedRoll = `${action.damageDice}${bonusStr}${action.damageType ? ` ${action.damageType}` : ''}`
+          }
+        }
+        
+        // Create the action with calculated values and source item name
+        itemActions.push({
+          ...action,
+          name: `${action.name} (${item.name})`,
+          toHit: calculatedToHit,
+          roll: calculatedRoll,
+        })
+      })
+    }
+  })
+  
+  return [...characterActions, ...itemActions]
+})
 
 const abilities = [
   { key: 'str', label: 'STR' },
@@ -146,19 +336,19 @@ const backgroundStyle = computed(() => {
 })
 
 function getAbilityScore(key: string): number {
-  return (characterData.value as any)[key] || 10
+  // Use effective ability scores (includes equipment modifiers)
+  return (effectiveAbilityScores.value as any)[key] || 10
 }
 
 function getAbilityModifier(key: string): string {
-  const score = getAbilityScore(key)
-  const modifier = Math.floor((score - 10) / 2)
+  // Use effective ability scores (includes equipment modifiers)
+  const modifier = (abilityModifiers.value as any)[key] || 0
   return modifier >= 0 ? `+${modifier}` : `${modifier}`
 }
 
 // Truncate speed text for display
 const speedText = computed(() => {
-  const speed = characterData.value.speed || '30 ft.'
-  return speed
+  return `${effectiveSpeed.value} ft.`
 })
 </script>
 
@@ -255,6 +445,20 @@ const speedText = computed(() => {
   font-size: 0.7em;
   opacity: 0.7;
   font-weight: 400;
+}
+
+.modified-stat {
+  position: relative;
+  text-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.modified-stat::after {
+  content: '⭐';
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  font-size: 0.6em;
+  opacity: 0.9;
 }
 
 .abilities-container {

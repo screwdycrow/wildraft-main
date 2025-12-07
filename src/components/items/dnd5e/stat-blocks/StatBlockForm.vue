@@ -217,20 +217,21 @@
         <!-- Traits Tab -->
         <v-window-item value="traits">
           <h3 class="text-h6 mb-4">Traits & Special Abilities</h3>
-          <trait-list-editor v-model="formData.data.traits" />
+          <trait-list-display v-model="formData.data.traits" editable />
         </v-window-item>
 
         <!-- Actions Tab -->
         <v-window-item value="actions">
           <h3 class="text-h6 mb-4">Actions</h3>
-          <action-list-editor v-model="formData.data.actions" />
+          <action-list-display v-model="formData.data.actions" editable />
         </v-window-item>
 
         <!-- Spells Tab -->
         <v-window-item value="spells">
           <h3 class="text-h6 mb-4">Spells & Spellcasting</h3>
-          <spell-list-editor 
+          <spell-list-display 
             v-model="formData.data.spells" 
+            editable
             @add-to-actions="handleAddSpellToActions"
           />
         </v-window-item>
@@ -289,9 +290,9 @@ import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 import DragDropUpload from '@/components/files/DragDropUpload.vue'
 import type { UserFile } from '@/api/files'
-import TraitListEditor from '../common/TraitListEditor.vue'
-import ActionListEditor from '../common/ActionListEditor.vue'
-import SpellListEditor from '../common/SpellListEditor.vue'
+import TraitListDisplay from '../common/TraitListDisplay.vue'
+import ActionListDisplay from '../common/ActionListDisplay.vue'
+import SpellListDisplay from '../common/SpellListDisplay.vue'
 import AbilityScoresEditor from '../common/AbilityScoresEditor.vue'
 import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import { DND5E_SIZES, DND5E_ALIGNMENTS } from '@/constants/dnd5e'

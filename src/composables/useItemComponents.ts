@@ -125,12 +125,15 @@ const itemTypeMetadata: Record<ItemType, ItemTypeInfo> = {
   },
 }
 
-// JSON Import schemas for each item type (kept for backward compatibility, prefer imported version)
-const itemTypeJsonSchemas: Partial<Record<ItemType, ImportedJsonImportSchema>> = {
-  // DND 5E Character
-  CHARACTER_DND_5E: {
-    title: 'D&D 5E Character',
-    description: 'Import a D&D 5E character with stats, skills, spells, and equipment',
+// JSON Import schemas - use imported schemas from config file
+// This local definition is removed - we now use importedJsonSchemas from @/config/jsonImportSchemas
+// 
+// The getJsonImportSchema function below will use the imported schemas
+const itemTypeJsonSchemas_DEPRECATED: Partial<Record<ItemType, ImportedJsonImportSchema>> = {
+  // DEPRECATED - DO NOT USE - schemas are now in @/config/jsonImportSchemas.ts
+  CHARACTER_DND_5E_DEPRECATED: {
+    title: 'DEPRECATED',
+    description: 'DEPRECATED',
     schema: {
       name: 'string (required) - Character name',
       level: 'number (required, 1-20) - Character level',
@@ -1103,10 +1106,10 @@ export function useItemComponents() {
 
   /**
    * Get JSON import schema for an item type
-   * Uses imported schemas from config file
+   * Uses imported schemas from config file ONLY
    */
   function getJsonImportSchema(itemType: ItemType): ImportedJsonImportSchema | null {
-    return importedJsonSchemas[itemType] || itemTypeJsonSchemas[itemType] || null
+    return importedJsonSchemas[itemType] || null
   }
 
   /**

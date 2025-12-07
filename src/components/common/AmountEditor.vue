@@ -147,6 +147,7 @@ interface Props {
   iconColor?: string
   presets?: number[]
   showMax?: boolean
+  autoCloseOnAdjust?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -157,6 +158,7 @@ const props = withDefaults(defineProps<Props>(), {
   presets: () => [10, 5, 1, -1, -5, -10],
   showMax: false,
   minAmount: 0,
+  autoCloseOnAdjust: false,
 })
 
 const emit = defineEmits<{
@@ -274,6 +276,11 @@ function adjustAmount(amount: number) {
     newAmount = Math.min(newAmount, props.maxAmount)
   }
   emit('update:amount', newAmount)
+  
+  // Auto-close if enabled
+  if (props.autoCloseOnAdjust) {
+    close()
+  }
 }
 
 function applyManual() {

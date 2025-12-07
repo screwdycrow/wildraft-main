@@ -29,13 +29,10 @@ export { default as NoteCard } from './universal/notes/NoteCard.vue'
 export { default as NoteForm } from './universal/notes/NoteForm.vue'
 
 // D&D 5E Components - Shared Form Components (Edit Mode)
-export { default as TraitListEditor } from './dnd5e/common/TraitListEditor.vue'
-export { default as ActionListEditor } from './dnd5e/common/ActionListEditor.vue'
-export { default as SpellListEditor } from './dnd5e/common/SpellListEditor.vue'
 export { default as AbilityScoresEditor } from './dnd5e/common/AbilityScoresEditor.vue'
 export { default as CombatStatsEditor } from './dnd5e/common/CombatStatsEditor.vue'
 
-// D&D 5E Components - Shared Display Components (Read-Only)
+// D&D 5E Components - Shared Display Components (with editable prop for editing)
 export { default as TraitListDisplay } from './dnd5e/common/TraitListDisplay.vue'
 export { default as ActionListDisplay } from './dnd5e/common/ActionListDisplay.vue'
 export { default as SpellListDisplay } from './dnd5e/common/SpellListDisplay.vue'

@@ -39,9 +39,9 @@
       </template>
     </page-top-bar>
 
-    <v-row>
+    <v-row class="detail-row">
       <!-- Left Column -->
-      <v-col cols="12" md="9">
+      <v-col cols="12" md="9" class="main-column">
         <!-- Core Stats -->
         <v-row class="mb-4 core-stats-row">
           <v-col cols="6" md="3">
@@ -92,13 +92,13 @@
 
 
         <!-- Actions -->
-        <action-list-display :actions="statBlockData.actions" />
+        <action-list-display v-model="statBlockData.actions" :editable="canEdit" @update:model-value="updateActions" />
 
         <!-- Spells -->
-        <spell-list-display :spells="statBlockData.spells" />
+        <spell-list-display v-model="statBlockData.spells" :editable="canEdit" @update:model-value="updateSpells" />
         
         <!-- Traits -->
-        <trait-list-display :traits="statBlockData.traits" />
+        <trait-list-display v-model="statBlockData.traits" :editable="canEdit" @update:model-value="updateTraits" />
             <!-- Description -->
             <v-card v-if="item.description" class="glass-card mb-4" elevation="0">
           <v-card-title class="d-flex align-center">
@@ -110,7 +110,7 @@
       </v-col>
 
       <!-- Right Column -->
-      <v-col cols="12" md="3">
+      <v-col cols="12" md="3" class="sidebar-column">
         <custom-counters-display
           :counters="statBlockData.customCounters"
           :editable="false"
@@ -186,6 +186,8 @@ import { computed, ref, watch } from 'vue'
 import type { LibraryItem, StatBlockData } from '@/types/item.types'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import { useFilesStore } from '@/stores/files'
+import { useItemsStore } from '@/stores/items'
+import { useToast } from 'vue-toastification'
 import TraitListDisplay from '../common/TraitListDisplay.vue'
 import ActionListDisplay from '../common/ActionListDisplay.vue'
 import SpellListDisplay from '../common/SpellListDisplay.vue'
@@ -204,6 +206,8 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const filesStore = useFilesStore()
+const itemsStore = useItemsStore()
+const toast = useToast()
 
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
 const featuredImageUrl = ref<string>('')
@@ -267,37 +271,82 @@ const fileIds = computed(() => {
   return []
 })
 
+async function updateActions(actions: any[]) {
+  const updatedData = { ...statBlockData.value, actions }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Actions updated!')
+  } catch (error: any) {
+    console.error('Failed to update actions:', error)
+    toast.error('Failed to save actions')
+  }
+}
+
+async function updateTraits(traits: any[]) {
+  const updatedData = { ...statBlockData.value, traits }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Traits updated!')
+  } catch (error: any) {
+    console.error('Failed to update traits:', error)
+    toast.error('Failed to save traits')
+  }
+}
+
+async function updateSpells(spells: any[]) {
+  const updatedData = { ...statBlockData.value, spells }
+  Object.assign(props.item.data, updatedData)
+
+  try {
+    await itemsStore.updateItem(props.item.libraryId, props.item.id, {
+      data: updatedData,
+    })
+    toast.success('Spells updated!')
+  } catch (error: any) {
+    console.error('Failed to update spells:', error)
+    toast.error('Failed to save spells')
+  }
+}
+
 </script>
 
 <style scoped>
 .stat-block-detail {
   width: 100%;
   position: relative;
-  min-height: 100vh;
+  min-height: auto;
 }
 
 .stat-block-detail::before {
   content: '';
-  position: fixed;
-  top: 50px;
+  position: absolute;
+  top: 0;
   left: 0;
-  width: 50vw;
-  height: calc(50vw * 4 / 3);
-  max-height: calc(100vh - 50px);
+  width: 45vw;
+  height: 100%;
+  max-height: 800px;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: left center;
   background-repeat: no-repeat;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.3;
+  opacity: 0.28;
   mask-image: 
     linear-gradient(to right, black 0%, black 60%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
   mask-composite: intersect;
   -webkit-mask-image: 
     linear-gradient(to right, black 0%, black 60%, transparent 100%),
-    linear-gradient(to bottom, transparent 0%, black 20%, black 60%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
   -webkit-mask-composite: source-in;
 }
 
@@ -368,6 +417,57 @@ const fileIds = computed(() => {
   font-weight: 600;
 }
 
+.detail-row {
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+}
+
+.main-column {
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding-right: 16px;
+}
+
+.main-column::-webkit-scrollbar {
+  width: 6px;
+}
+
+.main-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-column::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.main-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebar-column {
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.sidebar-column::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-column::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.sidebar-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 @media (max-width: 959px) {
   .stat-card-content {
     padding: 12px 8px !important;
@@ -375,6 +475,16 @@ const fileIds = computed(() => {
 
   .stat-value {
     font-size: 1.4rem;
+  }
+  
+  .detail-row {
+    max-height: none;
+  }
+  
+  .main-column,
+  .sidebar-column {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 </style>
