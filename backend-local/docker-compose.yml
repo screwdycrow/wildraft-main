@@ -1,0 +1,58 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: wildraft-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wildraft
+      POSTGRES_PASSWORD: wildraft_secret
+      POSTGRES_DB: wildraft
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wildraft -d wildraft"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wildraft-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://wildraft:wildraft_secret@postgres:5432/wildraft?schema=public
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: production
+      # S3/Storage settings - update these with your values
+      AWS_REGION: ${AWS_REGION:-default}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-wildraft}
+      AWS_ENDPOINT: ${AWS_ENDPOINT}
+    ports:
+      - "3000:3000"
+
+  # Frontend
+  frontend:
+    build:
+      context: ../wildraft-prisma-frontend
+      dockerfile: Dockerfile
+    container_name: wildraft-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:

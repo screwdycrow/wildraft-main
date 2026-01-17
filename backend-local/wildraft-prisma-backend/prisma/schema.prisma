@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+//this is a schema intented for managing dnd stat blocks and libraries campaigns, notes, characters, items, it is inteded to be as flexible as possible to fit the needs of the users, with a focus on modularity and scalability. and many aspects are
+//defined in a way that allows for easy extension and modification with use of json objects nested, and the use of enums to define the type of the object. the goal is to make it easy to add new features and to make it easy to extend the schema to fit the needs of the users. 
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  name          String?
+  password      String? // Optional: Only for email/password auth
+  picture       String?
+  googleId      String?         @unique
+  refreshToken  String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  libraryAccess LibraryAccess[]
+  UserFile      UserFile[]
+}
+
+model Library {
+  id              Int               @id @default(autoincrement())
+  name            String
+  description     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  template        LibraryTemplate   @default(DND_5E)
+  combatEncounter CombatEncounter[]
+  portalView      PortalView[]
+  access          LibraryAccess[]
+  libraryItems    LibraryItem[]
+  tags            Tag[]
+  tagFolders      TagFolder[]
+  DMScreen        DMScreen[]
+  version         LibraryVersion?
+  userFileCategories UserFileCategory[] @relation("LibraryUserFileCategories")
+}
+
+enum LibraryTemplate {
+  DND_5E //Dungeons & Dragons 5th Edition
+}
+
+model LibraryAccess {
+  id        Int        @id @default(autoincrement())
+  userId    Int
+  libraryId Int
+  role      AccessRole
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  library   Library    @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, libraryId])
+  @@index([userId])
+  @@index([libraryId])
+}
+
+enum AccessRole {
+  OWNER // Full control, can delete library, manage all access
+  EDITOR // Can edit library and content, manage viewer access
+  VIEWER // Read-only access
+}
+
+model LibraryItem {
+  id              Int             @id @default(autoincrement())
+  libraryId       Int
+  library         Library         @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  type            LibraryItemType
+  name            String
+  description     String?
+  color           String          @default("#6B7280")
+  featuredImageId Int?
+  featuredImage   UserFile?       @relation("FeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  data            Json
+  tags            Tag[]           @relation("LibraryItemTags")
+  userFiles       UserFile[]      @relation("LibraryItemFiles")
+
+  @@index([libraryId])
+  @@index([type])
+  @@index([featuredImageId])
+}
+
+model UserFile {
+  id              Int           @id @default(autoincrement())
+  userId          Int
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileUrl         String
+  fileName        String
+  fileType        String
+  fileSize        Int
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  libraryItems    LibraryItem[] @relation("LibraryItemFiles")
+  featuredInItems LibraryItem[] @relation("FeaturedImage")
+  featuredInTags  Tag[]         @relation("TagFeaturedImage")
+  categoryId      Int?
+  category        UserFileCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+enum LibraryItemType {
+  NOTE //a note is a text note, it is a json object that contains the note data, and a type of the note.
+
+  //DND 5E 
+  STAT_BLOCK_DND_5E //a stat block is a dnd stat block, it is a json object that contains the stat block data, and a type of the stat block.
+  ITEM_DND_5E //an item is a dnd item, it is a json object that contains the item data, and a type of the item.
+  CHARACTER_DND_5E //a character is a dnd character, it is a json object that contains the character data, and a type of the character.
+}
+
+model Tag {
+  id              Int           @id @default(autoincrement())
+  name            String
+  color           String        @default("#6B7280") // Default gray color
+  order           Int           @default(0)
+  folderId        Int?
+  folder          TagFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  featuredImageId Int?
+  featuredImage   UserFile?     @relation("TagFeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
+  libraryId       Int
+  library         Library       @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  libraryItems    LibraryItem[] @relation("LibraryItemTags")
+
+  @@unique([libraryId, name]) // Tags must be unique within a library
+  @@index([libraryId])
+  @@index([folderId])
+  @@index([featuredImageId])
+}
+
+model TagFolder {
+  id        Int      @id @default(autoincrement())
+  name      String
+  order     Int      @default(0)
+  libraryId Int
+  library   Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  tags      Tag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([libraryId, name]) // Tag folders must be unique within a library
+  @@index([libraryId])
+}
+
+model CombatEncounter {
+  id             Int          @id @default(autoincrement())
+  name           String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  libraryId      Int
+  counters       Json? //array of counters, each counter is a json object that contains the counter data, and a type of the counter. { 
+  description    String?
+  round          Int          @default(1)
+  portalViews    PortalView[]
+  initativeCount Int          @default(0)
+  combatants     Json? //array of combatants, each combatant is a json object that contains the combatant data, and a type of the combatant.  
+  library        Library      @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+
+  @@index([libraryId])
+}
+
+model UserFileCategory {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  library   Library  @relation("LibraryUserFileCategories", fields: [libraryId], references: [id], onDelete: Cascade)
+  userFiles UserFile[]
+}
+
+model DMScreen {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  libraryId Int
+  items     Json? //array of items, each item is a json object that contains the item data, and a type of the item. items can be images, stat blocks, notes, tokens, custom widgets, etc.
+  library   Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  settings  Json? //json object that contains the settings for the dm screen.
+  @@index([libraryId])
+}
+
+
+model PortalView {
+  id                  String           @id @default(uuid())
+  name                String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  libraryId           Int
+  showEncounter       Boolean          @default(false)
+  showHealth          Boolean          @default(false)
+  showAC              Boolean          @default(false)
+  showActions         Boolean          @default(false)
+  autoResetImageState Boolean          @default(false)
+  combatEncounter     CombatEncounter? @relation(fields: [combatEncounterId], references: [id], onDelete: Cascade)
+  combatEncounterId   Int?
+  library             Library          @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  currentItem         Int?
+  items               Json? //array of items, each item is a json object that contains the item data, and a type of the item.
+
+  @@index([libraryId])
+}
+
+model LibraryVersion {
+  id           Int      @id @default(autoincrement())
+  libraryId    Int      @unique
+  library      Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  version      Int      @default(1) // Increments on library metadata changes
+  tagsVersion  Int      @default(1) // Increments on tag changes
+  itemsVersion Int      @default(1) // Increments on item changes
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([libraryId])
+}
