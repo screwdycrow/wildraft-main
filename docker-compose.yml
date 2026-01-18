@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: wildraft
-      POSTGRES_PASSWORD: wildraft_secret
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wildraft_secret}
       POSTGRES_DB: wildraft
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -21,7 +21,7 @@ services:
   # Backend API
   backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: wildraft-backend
     restart: unless-stopped
@@ -29,23 +29,25 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://wildraft:wildraft_secret@postgres:5432/wildraft?schema=public
-      PORT: 3000
-      HOST: 0.0.0.0
-      NODE_ENV: production
-      # S3/Storage settings - update these with your values
-      AWS_REGION: ${AWS_REGION:-default}
+      # Use local postgres OR Prisma Accelerate (comment one out)
+      DATABASE_URL: postgresql://wildraft:${POSTGRES_PASSWORD:-wildraft_secret}@postgres:5432/wildraft?schema=public
+      # DATABASE_URL: ${DATABASE_URL}  # Uncomment for Prisma Accelerate
+      PORT: ${PORT:-3000}
+      HOST: ${HOST:-0.0.0.0}
+      NODE_ENV: ${NODE_ENV:-production}
+      # S3/Storage settings
+      AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-wildraft}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       AWS_ENDPOINT: ${AWS_ENDPOINT}
     ports:
       - "3000:3000"
 
-  # Frontend
+  # Frontend (Vue + Nginx)
   frontend:
     build:
-      context: ../wildraft-prisma-frontend
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: wildraft-frontend
     restart: unless-stopped
