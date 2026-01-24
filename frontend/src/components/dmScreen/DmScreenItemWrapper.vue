@@ -284,6 +284,19 @@ const loadUserFile = async () => {
   }
 }
 
+// Force refetch library item from API (bypassing cache) - used after editing
+const forceRefetchLibraryItem = async () => {
+  if (props.item.type === 'LibraryItemId' && props.item.data.id) {
+    try {
+      // Always fetch from API, don't use cached version
+      const response = await itemsApi.getById(props.libraryId, props.item.data.id)
+      libraryItem.value = response.item
+    } catch (error) {
+      console.error('[DmScreenItemWrapper] Failed to refetch library item:', error)
+    }
+  }
+}
+
 // Get item title for display
 const itemTitle = computed(() => {
   switch (props.item.type) {
@@ -503,6 +516,22 @@ watch(() => [props.item.type, props.item.data.id], ([newType, newId], [oldType, 
     }
   }
 }, { immediate: false })
+
+// Watch for when the item editor closes - refetch the library item if it was being edited
+watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
+  // Only care when editor closes (was open, now closed)
+  if (wasOpen && !isOpen) {
+    // Check if this is a library item and if the edited item matches our displayed item
+    if (props.item.type === 'LibraryItemId' && props.item.data.id && libraryItem.value) {
+      const editedItem = dialogsStore.itemEditorData?.item
+      if (editedItem && editedItem.id === props.item.data.id) {
+        // Force refetch this library item from the API to get updated data
+        console.log('[DmScreenItemWrapper] Refetching library item after edit:', props.item.data.id)
+        forceRefetchLibraryItem()
+      }
+    }
+  }
+})
 
 // Vue Flow handles all positioning and dragging
 </script>

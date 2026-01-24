@@ -115,7 +115,7 @@
           <tip-tap-editor
             v-model="formData.data.content"
             placeholder="Start writing your note..."
-            min-height="500px"
+            min-height="calc(100vh - 300px)"
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
@@ -143,7 +143,7 @@
           <tip-tap-editor
             v-model="chapter.content"
             placeholder="Start writing this chapter..."
-            min-height="500px"
+            min-height="calc(100vh - 300px)"
             :library-id="libraryId"
             :library-item-id="item?.id || null"
             :user-file-ids="formData.userFileIds"
