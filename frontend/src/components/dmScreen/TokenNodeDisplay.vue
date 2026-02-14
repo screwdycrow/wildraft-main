@@ -1,27 +1,18 @@
 <template>
-  <div 
-    class="token-node-display"
-    @click="handleClick"
-    @dblclick="handleDoubleClick"
-  >
-    <!-- Image Display with configurable border -->
-    <div 
-      class="token-image-container"
-      :style="containerStyle"
-    >
-      <img 
-        v-if="imageUrl" 
-        :src="imageUrl" 
-        :alt="label"
-        class="token-image"
-      />
-      <div v-else class="token-icon-fallback" :style="{ backgroundColor: fallbackColor }">
-        <v-icon :icon="fallbackIcon" class="token-fallback-icon" color="white" />
+  <div class="token-node-display" @click="handleClick" @dblclick="handleDoubleClick">
+    <!-- Circle area -->
+    <div class="token-circle-area">
+      <!-- Image Display with configurable border -->
+      <div class="token-image-container" :style="containerStyle">
+        <img v-if="imageUrl" :src="imageUrl" :alt="label" class="token-image" />
+        <div v-else class="token-icon-fallback" :style="{ backgroundColor: fallbackColor }">
+          <v-icon :icon="fallbackIcon" class="token-fallback-icon" color="white" />
+        </div>
       </div>
     </div>
-    
-    <!-- Label (shown below token, configurable) -->
-    <div class="token-label" v-if="showLabel && label" :class="{ 'always-visible': showLabel }">
+
+    <!-- Label (shown below token circle) -->
+    <div class="token-label" v-if="showLabel && label">
       {{ truncatedLabel }}
     </div>
   </div>
@@ -35,6 +26,7 @@ import type { UserFile } from '@/api/files'
 import { useFilesStore } from '@/stores/files'
 import { useItemsStore } from '@/stores/items'
 import { useDialogsStore } from '@/stores/dialogs'
+import { useRouter } from 'vue-router'
 import { itemsApi } from '@/api/items'
 import * as filesApi from '@/api/files'
 
@@ -48,6 +40,7 @@ const props = defineProps<Props>()
 const filesStore = useFilesStore()
 const itemsStore = useItemsStore()
 const dialogsStore = useDialogsStore()
+const router = useRouter()
 
 // Loaded data
 const libraryItem = ref<LibraryItem | null>(null)
@@ -97,12 +90,12 @@ const borderWidth = computed(() => {
 // Container style with border
 const containerStyle = computed(() => {
   const styles: Record<string, string> = {}
-  
+
   if (borderWidth.value > 0) {
     styles.border = `${borderWidth.value}px solid ${borderColor.value}`
     styles.boxSizing = 'border-box'
   }
-  
+
   return styles
 })
 
@@ -148,7 +141,7 @@ const fallbackColor = computed(() => {
 // Load data based on original type
 async function loadData() {
   const originalData = props.item.data.originalData || props.item.data
-  
+
   if (originalType.value === 'LibraryItemId' && originalData.id) {
     try {
       // Try cache first
@@ -159,7 +152,7 @@ async function loadData() {
         const response = await itemsApi.getById(props.libraryId, originalData.id)
         libraryItem.value = response.item
       }
-      
+
       // Load featured image
       if (libraryItem.value?.featuredImage) {
         imageUrl.value = await filesStore.getDownloadUrl(libraryItem.value.featuredImage.id)
@@ -170,7 +163,7 @@ async function loadData() {
   } else if (originalType.value === 'UserFileId' && originalData.id) {
     try {
       userFile.value = await filesApi.getFile(originalData.id)
-      
+
       // If it's an image, use it directly
       if (userFile.value.fileType?.startsWith('image/') && userFile.value.downloadUrl) {
         imageUrl.value = userFile.value.downloadUrl
@@ -179,7 +172,7 @@ async function loadData() {
       console.error('[TokenNodeDisplay] Failed to load user file:', error)
     }
   }
-  
+
   // Check for cached token image URL
   if (!imageUrl.value && props.item.data.tokenImageUrl) {
     imageUrl.value = props.item.data.tokenImageUrl
@@ -191,6 +184,17 @@ function handleClick() {
 }
 
 function handleDoubleClick() {
+  // If original type is DmScreenNode, navigate to the DM screen page
+  if (originalType.value === 'DmScreenNode' && props.item.data.originalData?.dmScreenId) {
+    router.push({
+      name: 'DmScreen',
+      params: {
+        id: props.libraryId,
+        dmScreenId: props.item.data.originalData.dmScreenId,
+      },
+    })
+    return
+  }
   // Double click opens the viewer
   if (libraryItem.value) {
     dialogsStore.openItemViewer(libraryItem.value, props.libraryId)
@@ -216,9 +220,20 @@ watch(() => props.item.data.id, () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   cursor: pointer;
   position: relative;
+  overflow: visible;
+}
+
+.token-circle-area {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: visible;
 }
 
 .token-image-container {
@@ -226,7 +241,7 @@ watch(() => props.item.data.id, () => {
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.4),
     0 0 0 3px rgba(255, 255, 255, 0.2),
     inset 0 2px 4px rgba(255, 255, 255, 0.1);
@@ -234,7 +249,7 @@ watch(() => props.item.data.id, () => {
 }
 
 .token-node-display:hover .token-image-container {
-  box-shadow: 
+  box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.5),
     0 0 0 3px rgba(99, 102, 241, 0.6),
     inset 0 2px 4px rgba(255, 255, 255, 0.1);
@@ -263,21 +278,24 @@ watch(() => props.item.data.id, () => {
 
 .token-label {
   position: absolute;
-  bottom: -24px;
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
+  margin-top: 4px;
   font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   text-align: center;
   white-space: nowrap;
-  padding: 2px 8px;
+  padding: 2px 6px;
   background: rgba(30, 30, 40, 0.9);
   border-radius: 4px;
   backdrop-filter: blur(4px);
   pointer-events: none;
-  opacity: 1;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 10;
 }
 </style>
-

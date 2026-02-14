@@ -1,11 +1,7 @@
 <template>
   <div class="layer-panel">
     <!-- Toggle Button -->
-    <button
-      class="layer-toggle-button"
-      :class="{ 'layer-toggle-button--active': isOpen }"
-      @click="isOpen = !isOpen"
-    >
+    <button class="layer-toggle-button" :class="{ 'layer-toggle-button--active': isOpen }" @click="isOpen = !isOpen">
       <v-icon :icon="isOpen ? 'mdi-close' : 'mdi-layers'" size="small" />
       <span class="toggle-label">Layers</span>
       <span class="layer-count-badge">{{ localLayers.length }}</span>
@@ -20,147 +16,86 @@
             Layers
           </h3>
           <div class="header-actions">
-            <v-btn
-              icon
-              size="x-small"
-              variant="text"
-              color="white"
-              @click="handleAddLayer"
-            >
+            <v-btn icon size="x-small" variant="text" color="white" @click="handleAddLayer">
               <v-icon size="small">mdi-plus</v-icon>
               <v-tooltip activator="parent" location="top">Add Layer</v-tooltip>
             </v-btn>
-            <v-btn
-              icon="mdi-close"
-              size="x-small"
-              variant="text"
-              @click="isOpen = false"
-            />
+            <v-btn icon="mdi-close" size="x-small" variant="text" @click="isOpen = false" />
           </div>
         </div>
 
         <!-- Grid Toggle (pseudo-layer) -->
         <div class="grid-toggle-row">
-          <div 
-            class="layer-item layer-item--special"
-            :class="{ 'layer-item--hidden': !showGrid }"
-          >
+          <div class="layer-item layer-item--special" :class="{ 'layer-item--hidden': !showGrid }">
             <div class="layer-icon">
               <v-icon size="small" color="primary">mdi-grid</v-icon>
             </div>
-            
-            <v-btn
-              icon
-              size="x-small"
-              variant="text"
-              :color="showGrid ? 'primary' : 'grey'"
-              @click.stop="emit('toggle-grid')"
-            >
+
+            <v-btn icon size="x-small" variant="text" :color="showGrid ? 'primary' : 'grey'"
+              @click.stop="emit('toggle-grid')">
               <v-icon size="small">{{ showGrid ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
             </v-btn>
-            
+
             <span class="layer-name">
               <span class="layer-name-text">Grid (VTT)</span>
             </span>
-            
+
             <div class="layer-badge">
               <span class="badge-text">5 ft/sq</span>
             </div>
           </div>
         </div>
-        
+
         <v-divider class="my-2" />
-        
+
         <!-- Layer List -->
         <div class="layer-list">
-          <draggable
-            v-model="localLayers"
-            item-key="id"
-            handle=".layer-drag-handle"
-            @end="handleReorder"
-            :animation="200"
-          >
+          <draggable v-model="localLayers" item-key="id" handle=".layer-drag-handle" @end="handleReorder"
+            :animation="200">
             <template #item="{ element: layer }">
-              <div 
-                class="layer-item"
-                :class="{ 
-                  'layer-item--hidden': !layer.visible,
-                  'layer-item--locked': layer.locked,
-                  'layer-item--selected': selectedLayerId === layer.id
-                }"
-                @click="selectLayer(layer.id)"
-              >
+              <div class="layer-item" :class="{
+                'layer-item--hidden': !layer.visible,
+                'layer-item--locked': layer.locked,
+                'layer-item--selected': selectedLayerId === layer.id
+              }" @click="selectLayer(layer.id)">
                 <div class="layer-drag-handle">
                   <v-icon size="x-small" color="grey">mdi-drag</v-icon>
                 </div>
-                
+
                 <!-- Portal indicator dot -->
-                <div 
-                  class="layer-portal-indicator"
+                <div class="layer-portal-indicator"
                   :class="{ 'layer-portal-indicator--active': layer.showOnPortal !== false }"
-                  :title="layer.showOnPortal !== false ? 'Showing on portal' : 'Hidden from portal'"
-                />
-                
-                <v-btn
-                  icon
-                  size="x-small"
-                  variant="text"
-                  :color="layer.visible ? 'white' : 'grey'"
-                  @click.stop="toggleVisibility(layer)"
-                >
+                  :title="layer.showOnPortal !== false ? 'Showing on portal' : 'Hidden from portal'" />
+
+                <v-btn icon size="x-small" variant="text" :color="layer.visible ? 'white' : 'grey'"
+                  @click.stop="toggleVisibility(layer)">
                   <v-icon size="small">{{ layer.visible ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
                 </v-btn>
-                
+
                 <span class="layer-name">
-                  <input
-                    v-if="editingLayerId === layer.id"
-                    v-model="editingName"
-                    class="layer-name-input"
-                    @blur="finishEditing"
-                    @keydown.enter="finishEditing"
-                    @keydown.escape="cancelEditing"
-                    ref="nameInputRef"
-                  />
-                  <span 
-                    v-else 
-                    @dblclick="startEditing(layer)"
-                    class="layer-name-text"
-                  >
+                  <input v-if="editingLayerId === layer.id" v-model="editingName" class="layer-name-input"
+                    @blur="finishEditing" @keydown.enter="finishEditing" @keydown.escape="cancelEditing"
+                    ref="nameInputRef" />
+                  <span v-else @dblclick="startEditing(layer)" class="layer-name-text">
                     {{ layer.name }}
                   </span>
                 </span>
-                
+
                 <div class="layer-actions">
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    :color="layer.locked ? 'warning' : 'grey'"
-                    @click.stop="toggleLock(layer)"
-                  >
+                  <v-btn icon size="x-small" variant="text" :color="layer.locked ? 'warning' : 'grey'"
+                    @click.stop="toggleLock(layer)">
                     <v-icon size="small">{{ layer.locked ? 'mdi-lock' : 'mdi-lock-open-variant' }}</v-icon>
                   </v-btn>
-                  
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    :color="layer.showOnPortal !== false ? 'primary' : 'grey'"
-                    @click.stop="toggleShowOnPortal(layer)"
-                  >
-                    <v-icon size="small">{{ layer.showOnPortal !== false ? 'mdi-projector-screen' : 'mdi-projector-screen-off' }}</v-icon>
+
+                  <v-btn icon size="x-small" variant="text" :color="layer.showOnPortal !== false ? 'primary' : 'grey'"
+                    @click.stop="toggleShowOnPortal(layer)">
+                    <v-icon size="small">{{ layer.showOnPortal !== false ? 'mdi-projector-screen' :
+                      'mdi-projector-screen-off' }}</v-icon>
                   </v-btn>
-                  
+
                   <v-menu>
                     <template #activator="{ props: menuProps }">
-                      <v-btn
-                        icon
-                        size="x-small"
-                        variant="text"
-                        color="grey"
-                        v-bind="menuProps"
-                        @click.stop
-                      >
+                      <v-btn icon size="x-small" variant="text" color="grey" v-bind="menuProps" @click.stop>
                         <v-icon size="small">mdi-dots-vertical</v-icon>
                       </v-btn>
                     </template>
@@ -171,11 +106,8 @@
                         </template>
                         <v-list-item-title>Opacity</v-list-item-title>
                       </v-list-item>
-                      <v-list-item 
-                        v-if="!isDefaultLayer(layer.id)"
-                        @click="handleDeleteLayer(layer)"
-                        class="text-error"
-                      >
+                      <v-list-item v-if="!isDefaultLayer(layer.id)" @click="handleDeleteLayer(layer)"
+                        class="text-error">
                         <template #prepend>
                           <v-icon size="small" color="error">mdi-delete</v-icon>
                         </template>
@@ -196,20 +128,13 @@
         </div>
       </div>
     </transition>
-    
+
     <!-- Dialogs -->
     <v-dialog v-model="showOpacityDialog" max-width="300">
       <v-card class="glass-card">
         <v-card-title>Layer Opacity</v-card-title>
         <v-card-text>
-          <v-slider
-            v-model="opacityValue"
-            min="0"
-            max="1"
-            step="0.1"
-            thumb-label
-            hide-details
-          />
+          <v-slider v-model="opacityValue" min="0" max="1" step="0.1" thumb-label hide-details />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -218,17 +143,12 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    
+
     <v-dialog v-model="showAddDialog" max-width="300">
       <v-card class="glass-card">
         <v-card-title>Add Layer</v-card-title>
         <v-card-text>
-          <v-text-field
-            v-model="newLayerName"
-            label="Layer Name"
-            autofocus
-            @keydown.enter="confirmAddLayer"
-          />
+          <v-text-field v-model="newLayerName" label="Layer Name" autofocus @keydown.enter="confirmAddLayer" />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -237,12 +157,12 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-    
+
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card class="glass-card">
         <v-card-title>Delete Layer</v-card-title>
         <v-card-text>
-          Are you sure you want to delete "{{ layerToDelete?.name }}"? 
+          Are you sure you want to delete "{{ layerToDelete?.name }}"?
           All items in this layer will be permanently deleted.
         </v-card-text>
         <v-card-actions>
@@ -293,8 +213,11 @@ const isOpen = ref(false)
 // Local state for draggable
 const localLayers = ref<DmScreenLayer[]>([])
 
+// Computed layers from store to ensure reactivity
+const storeLayers = computed(() => dmScreensStore.getLayers(props.dmScreenId))
+
 watch(
-  () => dmScreensStore.getLayers(props.dmScreenId),
+  storeLayers,
   (layers) => {
     localLayers.value = [...layers].sort((a, b) => b.order - a.order)
   },
@@ -419,7 +342,7 @@ function handleReorder() {
     .slice()
     .reverse()
     .map(l => l.id)
-  
+
   dmScreensStore.reorderLayers(props.dmScreenId, props.libraryId, newOrder)
 }
 </script>
@@ -486,7 +409,7 @@ function handleReorder() {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5),
-              0 -2px 8px rgba(0, 0, 0, 0.3);
+    0 -2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;

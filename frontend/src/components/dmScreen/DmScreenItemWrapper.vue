@@ -1,23 +1,17 @@
 <template>
-  <div 
-    class="dm-screen-item-wrapper"
-    :class="{ 
-      'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode',
-      'is-background': item.data.isBackground,
-      'is-token': item.type === 'TokenNode',
-      'is-effect': item.type === 'EffectNode',
-      'is-shape': item.type === 'ShapeNode',
-      'is-terrain': item.type === 'TerrainNode',
-      'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
-    }"
-    :style="wrapperStyle"
-  >
+  <div class="dm-screen-item-wrapper" :class="{
+    'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode',
+    'is-background': item.data.isBackground,
+    'is-token': item.type === 'TokenNode',
+    'is-effect': item.type === 'EffectNode',
+    'is-shape': item.type === 'ShapeNode',
+    'is-terrain': item.type === 'TerrainNode',
+    'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
+  }" :style="wrapperStyle">
     <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
-    <div 
-      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && !item.data.isBackground" 
-      class="selection-handle"
-      data-drag-handle
-    >
+    <div
+      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' && !item.data.isBackground"
+      class="selection-handle" data-drag-handle>
       <div class="handle-grab">
         <v-icon size="x-small" color="rgba(255, 255, 255, 0.7)">mdi-drag</v-icon>
         <span class="handle-title">{{ itemTitle }}</span>
@@ -25,156 +19,79 @@
     </div>
 
     <!-- TokenNode Display (compact circular token) -->
-    <token-node-display
-      v-if="item.type === 'TokenNode'"
-      :item="item"
-      :library-id="libraryId"
-    />
+    <token-node-display v-if="item.type === 'TokenNode'" :item="item" :library-id="libraryId" />
 
     <!-- Full View (all other types) -->
-    <div v-else class="item-content" :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' }" :style="shouldApplyContentScaling ? contentStyle : {}">
+    <div v-else class="item-content"
+      :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' }"
+      :style="shouldApplyContentScaling ? contentStyle : {}">
       <!-- LibraryItemId -->
-      <div 
-        v-if="item.type === 'LibraryItemId' && libraryItem" 
-        class="item-content-wrapper library-item-content"
-        @click.prevent.stop="handleView(libraryItem)"
-      >
-        <item-card-wrapper
-          :item="libraryItem"
-          :hide-delete="true"
-          :disable-click="true"
-          @featured-image-url="handleFeaturedImageUrl"
-          @edit="handleEdit"
-          @view="handleView"
-        />
+      <div v-if="item.type === 'LibraryItemId' && libraryItem" class="item-content-wrapper library-item-content"
+        @click.prevent.stop="handleView(libraryItem)">
+        <item-card-wrapper :item="libraryItem" :hide-delete="true" :disable-click="true"
+          @featured-image-url="handleFeaturedImageUrl" @edit="handleEdit" @view="handleView" />
       </div>
 
       <!-- UserFileId (Background images show as full image) -->
-      <div 
-        v-else-if="item.type === 'UserFileId' && userFile && item.data.isBackground" 
-        class="background-image-container"
-        :style="{ opacity: props.backgroundOpacity ?? 1 }"
-      >
-        <img
-          v-if="userFile.fileType.startsWith('image/') && userFile.downloadUrl"
-          :key="`bg-img-${userFile.id}-${item.data.objectFit || 'fill'}`"
-          :src="userFile.downloadUrl"
-          class="background-image"
-          :class="{ 'object-fit-cover': item.data.objectFit === 'cover' }"
-          alt="Background"
-        />
-        <media-card
-          v-else
-          :key="`bg-card-${userFile.id}`"
-          :file="userFile"
-          @click="handleFileClick"
-        />
+      <div v-else-if="item.type === 'UserFileId' && userFile && item.data.isBackground"
+        class="background-image-container" :style="{ opacity: props.backgroundOpacity ?? 1 }">
+        <img v-if="userFile.fileType.startsWith('image/') && userFile.downloadUrl"
+          :key="`bg-img-${userFile.id}-${item.data.objectFit || 'fill'}`" :src="userFile.downloadUrl"
+          class="background-image" :class="{ 'object-fit-cover': item.data.objectFit === 'cover' }" alt="Background" />
+        <media-card v-else :key="`bg-card-${userFile.id}`" :file="userFile" @click="handleFileClick" />
         <!-- Portal Actions for Background Images -->
         <div v-if="hasActivePortal" class="background-portal-actions">
           <v-tooltip text="Send to Portal" location="top">
             <template #activator="{ props: tooltipProps }">
-              <v-btn
-                v-bind="tooltipProps"
-                icon="mdi-television"
-                size="x-small"
-                color="primary"
-                :loading="isSendingToPortal"
-                @click.stop="handleSendToPortal"
-              />
+              <v-btn v-bind="tooltipProps" icon="mdi-television" size="x-small" color="primary"
+                :loading="isSendingToPortal" @click.stop="handleSendToPortal" />
             </template>
           </v-tooltip>
           <v-tooltip text="Show On Top" location="top">
             <template #activator="{ props: tooltipProps }">
-              <v-btn
-                v-bind="tooltipProps"
-                icon="mdi-television-play"
-                size="x-small"
-                color="primary"
-                :disabled="isSendingToPortal"
-                @click.stop="handleShowOnTop"
-              />
+              <v-btn v-bind="tooltipProps" icon="mdi-television-play" size="x-small" color="primary"
+                :disabled="isSendingToPortal" @click.stop="handleShowOnTop" />
             </template>
           </v-tooltip>
         </div>
       </div>
       <!-- UserFileId (Regular files) -->
-      <div 
-        v-else-if="item.type === 'UserFileId' && userFile" 
-        class="item-content-wrapper"
-        @click.prevent.stop="handleFileClick(userFile)"
-      >
-        <media-card
-          :file="userFile"
-        />
+      <div v-else-if="item.type === 'UserFileId' && userFile" class="item-content-wrapper"
+        @click.prevent.stop="handleFileClick(userFile)">
+        <media-card :file="userFile" />
       </div>
 
       <!-- CombatantItemToken -->
-      <token-component
-        v-else-if="item.type === 'CombatantItemToken'"
-        :item="item"
-        :library-id="libraryId"
-        @update="handleItemUpdate"
-      />
+      <token-component v-else-if="item.type === 'CombatantItemToken'" :item="item" :library-id="libraryId"
+        @update="handleItemUpdate" />
 
       <!-- QuickNote -->
-      <quick-note-component
-        v-else-if="item.type === 'quickNote'"
-        :item="item"
-        @update="handleItemUpdate"
-      />
+      <quick-note-component v-else-if="item.type === 'quickNote'" :item="item" @update="handleItemUpdate" />
 
       <!-- WebLink -->
-      <web-link-component
-        v-else-if="item.type === 'webLink'"
-        :item="item"
-        @update="handleItemUpdate"
-      />
+      <web-link-component v-else-if="item.type === 'webLink'" :item="item" @update="handleItemUpdate" />
 
       <!-- ImageUrl -->
-      <image-url-component
-        v-else-if="item.type === 'ImageUrl'"
-        :item="item"
-        @update="handleItemUpdate"
-      />
+      <image-url-component v-else-if="item.type === 'ImageUrl'" :item="item" @update="handleItemUpdate" />
 
       <!-- TextNode -->
-      <text-node
-        v-else-if="item.type === 'TextNode'"
-        :item="item"
-        @update:text="handleTextUpdate"
-      />
+      <text-node v-else-if="item.type === 'TextNode'" :item="item" @update:text="handleTextUpdate" />
 
       <!-- ShapeNode -->
-      <shape-node
-        v-else-if="item.type === 'ShapeNode'"
-        :item="item"
-        :selected="props.selected"
-        :rotation="props.rotation"
-        :width="props.item.nodeOptions?.width"
-        :height="props.item.nodeOptions?.height"
-        @update:data="handleShapeDataUpdate"
-        @open-settings="handleShapeOpenSettings"
-      />
+      <shape-node v-else-if="item.type === 'ShapeNode'" :item="item" :selected="props.selected"
+        :rotation="props.rotation" :width="props.item.nodeOptions?.width" :height="props.item.nodeOptions?.height"
+        @update:data="handleShapeDataUpdate" @open-settings="handleShapeOpenSettings" />
 
       <!-- EffectNode (particle/lighting effects) -->
-      <effect-node-display
-        v-else-if="item.type === 'EffectNode'"
-        :item="item"
-        :library-id="libraryId"
-        :selected="props.selected"
-        :rotation="props.rotation"
-        @update:path="handleBeamPathUpdate"
-      />
+      <effect-node-display v-else-if="item.type === 'EffectNode'" :item="item" :library-id="libraryId"
+        :selected="props.selected" :rotation="props.rotation" @update:path="handleBeamPathUpdate" />
 
       <!-- TerrainNode (procedurally generated terrain elements) -->
-      <terrain-node-display
-        v-else-if="item.type === 'TerrainNode'"
-        :item="item"
-        :library-id="libraryId"
-        :selected="props.selected"
-        :rotation="props.rotation"
-        @update:generatedSVG="handleTerrainSVGGenerated"
-      />
+      <terrain-node-display v-else-if="item.type === 'TerrainNode'" :item="item" :library-id="libraryId"
+        :selected="props.selected" :rotation="props.rotation" @update:generatedSVG="handleTerrainSVGGenerated" />
+
+      <!-- DmScreenNode (embedded DM Screen reference) -->
+      <dm-screen-node-display v-else-if="item.type === 'DmScreenNode'" :item="item" :library-id="libraryId" />
 
       <!-- Fallback for unknown types -->
       <div v-else class="unknown-item-type">
@@ -201,6 +118,7 @@ import TextNode from './TextNode.vue'
 import ShapeNode from './ShapeNode.vue'
 import EffectNodeDisplay from './EffectNodeDisplay.vue'
 import TerrainNodeDisplay from './TerrainNodeDisplay.vue'
+import DmScreenNodeDisplay from './DmScreenNodeDisplay.vue'
 import { useItemsStore } from '@/stores/items'
 import { useFilesStore } from '@/stores/files'
 import { useDmScreensStore } from '@/stores/dmScreens'
@@ -249,7 +167,7 @@ const loadLibraryItem = async () => {
     if (libraryItem.value && libraryItem.value.id === props.item.data.id) {
       return
     }
-    
+
     try {
       // Try to get from store first
       const cachedItem = itemsStore.getItemById(props.item.data.id)
@@ -257,7 +175,7 @@ const loadLibraryItem = async () => {
         libraryItem.value = cachedItem
         return
       }
-      
+
       // If not in store, fetch from API
       const response = await itemsApi.getById(props.libraryId, props.item.data.id)
       libraryItem.value = response.item
@@ -274,7 +192,7 @@ const loadUserFile = async () => {
     if (userFile.value && userFile.value.id === props.item.data.id) {
       return
     }
-    
+
     try {
       const file = await filesApi.getFile(props.item.data.id)
       userFile.value = file
@@ -318,6 +236,8 @@ const itemTitle = computed(() => {
       return props.item.data.effectConfig?.effectType || 'Effect'
     case 'TerrainNode':
       return props.item.data.terrainConfig?.terrainType || 'Terrain'
+    case 'DmScreenNode':
+      return props.item.data.label || 'DM Screen'
     default:
       return 'Item'
   }
@@ -358,7 +278,7 @@ const contentStyle = computed(() => {
   if (props.item.type === 'ShapeNode' || props.item.type === 'EffectNode' || props.item.type === 'TerrainNode') {
     return {}
   }
-  
+
   if (isScaled.value) {
     const scale = nodeWidth.value / 300
     return {
@@ -425,7 +345,7 @@ function handleShowOnTop() {
     command: 'show-on-top',
     userFile: userFile.value,
   })
-  
+
   toast.success(`Showing "${userFile.value.fileName}" on portal`)
 }
 
@@ -470,7 +390,7 @@ function handleShapeOpenSettings() {
 
 function handleBeamPathUpdate(path: string) {
   if (!props.item.data.effectConfig) return
-  
+
   const updatedItem: DmScreenItem = {
     ...props.item,
     data: {
@@ -501,7 +421,7 @@ onMounted(async () => {
     loadLibraryItem(),
     loadUserFile()
   ])
-  
+
   console.log('[DmScreenItemWrapper] Mounted item:', props.item.id, props.item.type)
 })
 
@@ -601,7 +521,7 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
   align-items: center;
   justify-content: space-between;
   padding: 0 6px;
-  z-index:1000;
+  z-index: 1000;
   cursor: move;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.7;
@@ -656,7 +576,6 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
 .dm-screen-item-wrapper.is-token {
   border: none;
   background: transparent;
-  border-radius: 50%;
   overflow: visible;
 }
 
@@ -671,7 +590,8 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
   background: transparent;
   border-radius: 0;
   overflow: visible;
-  pointer-events: none; /* Allow clicks to pass through effect */
+  pointer-events: none;
+  /* Allow clicks to pass through effect */
   /* Critical: don't isolate stacking context so blend modes affect content below */
   isolation: auto;
   mix-blend-mode: normal;
@@ -715,7 +635,8 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
   width: 100%;
   height: 100%;
   flex: 1;
-  min-height: 0; /* Important for flex children */
+  min-height: 0;
+  /* Important for flex children */
   position: relative;
   overflow: hidden;
   display: flex;
@@ -723,7 +644,8 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
 }
 
 .item-content.has-handle {
-  padding-top: 24px; /* Space for toolbar */
+  padding-top: 24px;
+  /* Space for toolbar */
   height: 100%;
 }
 
@@ -798,11 +720,13 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: fill; /* Default: stretches to fit container */
+  object-fit: fill;
+  /* Default: stretches to fit container */
 }
 
 .background-image.object-fit-cover {
-  object-fit: cover; /* Crops to fill while maintaining aspect ratio */
+  object-fit: cover;
+  /* Crops to fill while maintaining aspect ratio */
 }
 
 .background-portal-actions {
@@ -830,4 +754,3 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
   text-align: center;
 }
 </style>
-
