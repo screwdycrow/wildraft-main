@@ -1,20 +1,22 @@
 // DM Screen Types
 
-export type DmScreenItemType = 
-  | 'LibraryItemId' 
-  | 'UserFileId' 
-  | 'quickNote' 
-  | 'webLink' 
-  | 'CombatantItemToken' 
+export type DmScreenItemType =
+  | 'LibraryItemId'
+  | 'UserFileId'
+  | 'quickNote'
+  | 'webLink'
+  | 'CombatantItemToken'
   | 'ImageUrl'
   | 'TextNode'
   | 'ShapeNode'
   | 'TokenNode' // Compact circular token view of LibraryItem or UserFile
   | 'EffectNode' // WebGL particle/lighting effects (fire, snow, fog, etc.)
   | 'TerrainNode' // Procedurally generated terrain elements (caves, buildings, trees, etc.)
+  | 'DmScreenNode' // Embedded DM Screen reference
+
 
 // Effect types for EffectNode
-export type EffectType = 
+export type EffectType =
   | 'fire'
   | 'torch'
   | 'campfire'
@@ -83,7 +85,7 @@ export interface EffectConfig {
 // SVG SHAPE TYPES for ShapeNode
 // =====================================================
 
-export type SVGShapeType = 
+export type SVGShapeType =
   | 'rectangle'
   | 'roundedRect'
   | 'circle'
@@ -158,24 +160,24 @@ export interface SVGShapeData {
   shapeType: SVGShapeType
   customPath?: string        // SVG path d attribute for custom shapes
   pathPoints?: SVGPathPoint[] // Editable points for path editor
-  
+
   // Appearance
   fill: SVGFillConfig
   stroke: SVGStrokeConfig
   shadow?: SVGShadowConfig
-  
+
   // Shape-specific options
   cornerRadius?: number      // For roundedRect
   points?: number            // For star (number of points)
   innerRadius?: number       // For star (inner radius percentage)
   arrowHeadSize?: number     // For arrow shapes
-  
+
   // Text label
   label?: string
   labelColor?: string
   labelFontSize?: number
   labelFontWeight?: 'normal' | 'bold'
-  
+
   // Transform
   rotation?: number          // Rotation in degrees (separate from node rotation)
   flipX?: boolean
@@ -230,28 +232,28 @@ export function getDefaultSVGShapeData(shapeType: SVGShapeType = 'rectangle'): S
 // SVG path generators for each shape type
 export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?: any) => string> = {
   rectangle: (w, h) => `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`,
-  
+
   roundedRect: (w, h, opts) => {
     const r = Math.min(opts?.cornerRadius || 8, w / 2, h / 2)
     return `M ${r} 0 L ${w - r} 0 Q ${w} 0 ${w} ${r} L ${w} ${h - r} Q ${w} ${h} ${w - r} ${h} L ${r} ${h} Q 0 ${h} 0 ${h - r} L 0 ${r} Q 0 0 ${r} 0 Z`
   },
-  
+
   circle: (w, h) => {
     const rx = w / 2
     const ry = h / 2
     return `M ${rx} 0 A ${rx} ${ry} 0 1 1 ${rx} ${h} A ${rx} ${ry} 0 1 1 ${rx} 0 Z`
   },
-  
+
   ellipse: (w, h) => {
     const rx = w / 2
     const ry = h / 2
     return `M ${rx} 0 A ${rx} ${ry} 0 1 1 ${rx} ${h} A ${rx} ${ry} 0 1 1 ${rx} 0 Z`
   },
-  
+
   triangle: (w, h) => `M ${w / 2} 0 L ${w} ${h} L 0 ${h} Z`,
-  
+
   diamond: (w, h) => `M ${w / 2} 0 L ${w} ${h / 2} L ${w / 2} ${h} L 0 ${h / 2} Z`,
-  
+
   pentagon: (w, h) => {
     const cx = w / 2, cy = h / 2
     const r = Math.min(w, h) / 2
@@ -262,7 +264,7 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     }
     return `M ${points.join(' L ')} Z`
   },
-  
+
   hexagon: (w, h) => {
     const cx = w / 2, cy = h / 2
     const r = Math.min(w, h) / 2
@@ -273,7 +275,7 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     }
     return `M ${points.join(' L ')} Z`
   },
-  
+
   star: (w, h, opts) => {
     const cx = w / 2, cy = h / 2
     const outerR = Math.min(w, h) / 2
@@ -287,7 +289,7 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     }
     return `M ${points.join(' L ')} Z`
   },
-  
+
   arrow: (w, h, opts) => {
     const headSize = (opts?.arrowHeadSize || 30) / 100
     const headW = w * headSize
@@ -295,7 +297,7 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     const bodyY = (h - bodyH) / 2
     return `M 0 ${bodyY} L ${w - headW} ${bodyY} L ${w - headW} 0 L ${w} ${h / 2} L ${w - headW} ${h} L ${w - headW} ${bodyY + bodyH} L 0 ${bodyY + bodyH} Z`
   },
-  
+
   arrowDouble: (w, h, opts) => {
     const headSize = (opts?.arrowHeadSize || 25) / 100
     const headW = w * headSize
@@ -303,7 +305,7 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     const bodyY = (h - bodyH) / 2
     return `M 0 ${h / 2} L ${headW} 0 L ${headW} ${bodyY} L ${w - headW} ${bodyY} L ${w - headW} 0 L ${w} ${h / 2} L ${w - headW} ${h} L ${w - headW} ${bodyY + bodyH} L ${headW} ${bodyY + bodyH} L ${headW} ${h} Z`
   },
-  
+
   cross: (w, h) => {
     const armW = w * 0.33
     const armH = h * 0.33
@@ -313,25 +315,25 @@ export const SVG_SHAPE_PATHS: Record<SVGShapeType, (w: number, h: number, opts?:
     const y2 = y1 + armH
     return `M ${x1} 0 L ${x2} 0 L ${x2} ${y1} L ${w} ${y1} L ${w} ${y2} L ${x2} ${y2} L ${x2} ${h} L ${x1} ${h} L ${x1} ${y2} L 0 ${y2} L 0 ${y1} L ${x1} ${y1} Z`
   },
-  
+
   heart: (w, h) => {
     const cx = w / 2
     return `M ${cx} ${h * 0.25} C ${cx} ${h * 0.1} ${w * 0.25} 0 ${w * 0.15} 0 C 0 0 0 ${h * 0.35} 0 ${h * 0.35} C 0 ${h * 0.55} ${cx * 0.5} ${h * 0.75} ${cx} ${h} C ${cx * 1.5} ${h * 0.75} ${w} ${h * 0.55} ${w} ${h * 0.35} C ${w} ${h * 0.35} ${w} 0 ${w * 0.85} 0 C ${w * 0.75} 0 ${cx} ${h * 0.1} ${cx} ${h * 0.25} Z`
   },
-  
+
   cloud: (w, h) => {
     return `M ${w * 0.25} ${h * 0.6} C ${w * 0.1} ${h * 0.6} 0 ${h * 0.45} 0 ${h * 0.35} C 0 ${h * 0.2} ${w * 0.15} ${h * 0.1} ${w * 0.3} ${h * 0.15} C ${w * 0.35} 0 ${w * 0.55} 0 ${w * 0.6} ${h * 0.1} C ${w * 0.75} 0 ${w * 0.95} ${h * 0.1} ${w} ${h * 0.3} C ${w} ${h * 0.5} ${w * 0.85} ${h * 0.6} ${w * 0.75} ${h * 0.6} Z`
   },
-  
+
   speech: (w, h) => {
     const tailH = h * 0.2
     const bodyH = h - tailH
     const r = Math.min(w * 0.15, bodyH * 0.3)
     return `M ${r} 0 L ${w - r} 0 Q ${w} 0 ${w} ${r} L ${w} ${bodyH - r} Q ${w} ${bodyH} ${w - r} ${bodyH} L ${w * 0.35} ${bodyH} L ${w * 0.15} ${h} L ${w * 0.25} ${bodyH} L ${r} ${bodyH} Q 0 ${bodyH} 0 ${bodyH - r} L 0 ${r} Q 0 0 ${r} 0 Z`
   },
-  
+
   line: (w, h) => `M 0 ${h / 2} L ${w} ${h / 2}`,
-  
+
   custom: () => '', // Custom path is stored in customPath
 }
 
@@ -352,7 +354,7 @@ export const SVG_SHAPE_PRESETS: SVGShapePreset[] = [
   { id: 'heart', name: 'Heart', icon: 'mdi-heart-outline', shapeType: 'heart', defaultData: {} },
   { id: 'cloud', name: 'Cloud', icon: 'mdi-cloud-outline', shapeType: 'cloud', defaultData: {} },
   { id: 'speech', name: 'Speech Bubble', icon: 'mdi-message-outline', shapeType: 'speech', defaultData: {} },
-  { id: 'line', name: 'Line', icon: 'mdi-minus', shapeType: 'line', defaultData: { stroke: { enabled: true, width: 4 } } },
+  { id: 'line', name: 'Line', icon: 'mdi-minus', shapeType: 'line', defaultData: { stroke: { enabled: true, width: 4, color: '#000000', opacity: 1 } } },
 ]
 
 // Vue Flow node position and options
@@ -372,7 +374,7 @@ export interface VueFlowNodeOptions {
   [key: string]: any // Allow additional Vue Flow properties
 }
 
-  // Layer definition for organizing items
+// Layer definition for organizing items
 export interface DmScreenLayer {
   id: string // Unique layer ID
   name: string // Display name
@@ -387,6 +389,8 @@ export interface DmScreenLayer {
 export const DEFAULT_LAYERS = {
   BACKGROUND: 'background',
   SCREEN: 'screen',
+  EFFECTS: 'effects',
+  NOTES: 'notes',
 } as const
 
 // DM Screen Item
@@ -407,14 +411,14 @@ export interface DmScreenItem {
     combatantId?: string
     // For ImageUrl: image URL
     imageUrl?: string
-    
+
     // For TextNode
     text?: string
     fontSize?: number
     fontWeight?: string
     textColor?: string
     textAlign?: string
-    
+
     // For ShapeNode (SVG-based)
     shape?: SVGShapeType
     shapeData?: SVGShapeData
@@ -424,7 +428,7 @@ export interface DmScreenItem {
     borderColor?: string
     borderWidth?: number
     label?: string
-    
+
     // For TokenNode (compact circular token)
     originalType?: DmScreenItemType // The original type before converting to token
     originalData?: Record<string, any> // Original data to restore when converting back
@@ -434,18 +438,21 @@ export interface DmScreenItem {
     tokenBorderColor?: string // Border color (default: transparent)
     tokenBorderWidth?: number // Border width in pixels (default: 0)
     tokenSize?: number // Token size in pixels (default: 100)
-    
+
     // For EffectNode (particle/lighting effects)
     effectConfig?: EffectConfig // Full effect configuration
-    
+
     // For TerrainNode (procedurally generated terrain)
     terrainConfig?: TerrainConfig // Terrain generation configuration
     generatedTerrainSVG?: string | null // Cached generated terrain as SVG string
-    
+
+    // For DmScreenNode (embedded DM Screen reference)
+    dmScreenId?: string // Reference to the DM Screen to embed
+
     // Background image flag (legacy - now use layer instead)
     isBackground?: boolean
     featuredImageUrl?: string
-    
+
     // Allow any additional data
     [key: string]: any
   }
@@ -465,11 +472,11 @@ export interface GridOptions {
   gridLineWidth?: number // Width of grid lines
   gridOpacity?: number // Opacity of grid lines (0-1)
   snapToGrid?: boolean // Whether items snap to grid (center to center)
-  
+
   // Grid alignment offset (for matching map image grids)
   offsetX?: number // X offset in pixels
   offsetY?: number // Y offset in pixels
-  
+
   // VTT-specific settings (D&D 5e standard: 1 square = 5 feet)
   feetPerSquare?: number // Distance in feet per grid square (default: 5)
   showCoordinates?: boolean // Show grid coordinates (A1, B2, etc.)
@@ -477,13 +484,13 @@ export interface GridOptions {
   showMajorGridLines?: boolean // Show thicker lines every N squares
   majorGridInterval?: number // Interval for major grid lines (default: 5)
   majorGridColor?: string // Color for major grid lines
-  
+
   // Measurement settings
   diagonalRule?: 'standard' | 'alternating' | 'euclidean'
   // standard = every diagonal = 5ft (simple)
   // alternating = 5-10-5-10 pattern (PHB variant)
   // euclidean = actual diagonal distance (sqrt(2) * 5 ≈ 7ft)
-  
+
   // Portal sync settings
   showMeasurementsOnPortal?: boolean // Send measurement lines/trails/pings to portal
 }
@@ -586,6 +593,24 @@ export function getDefaultLayers(): DmScreenLayer[] {
       locked: false,
       showOnPortal: true,
     },
+    {
+      id: DEFAULT_LAYERS.EFFECTS,
+      name: 'Effects',
+      order: 2,
+      visible: true,
+      opacity: 1,
+      locked: false,
+      showOnPortal: true,
+    },
+    {
+      id: DEFAULT_LAYERS.NOTES,
+      name: 'Notes',
+      order: 3,
+      visible: true,
+      opacity: 1,
+      locked: false,
+      showOnPortal: false,
+    },
   ]
 }
 
@@ -596,7 +621,7 @@ export function getDefaultGridOptions(): GridOptions {
     gridSize: 50, // 50px per square is good for VTT
     gridColor: '#ffffff', // Pure white, opacity controlled separately
     gridLineWidth: 1,
-    gridOpacity: 0.6, // Higher default opacity for better visibility
+    gridOpacity: 0.2, // Higher default opacity for better visibility
     snapToGrid: true,
     offsetX: 0, // Grid alignment offset
     offsetY: 0,
@@ -625,20 +650,20 @@ export function calculateDistanceFeet(
   const startRow = Math.floor(startY / gridSize)
   const endCol = Math.floor(endX / gridSize)
   const endRow = Math.floor(endY / gridSize)
-  
+
   const deltaX = Math.abs(endCol - startCol)
   const deltaY = Math.abs(endRow - startRow)
-  
+
   let squares: number
   let feet: number
-  
+
   switch (diagonalRule) {
     case 'euclidean':
       // True distance: sqrt(dx² + dy²)
       squares = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
       feet = Math.round(squares * feetPerSquare)
       break
-      
+
     case 'alternating':
       // D&D 5e PHB variant: diagonal costs alternate between 5ft and 10ft
       // Each diagonal movement costs 1 square, but every other diagonal costs 2
@@ -649,7 +674,7 @@ export function calculateDistanceFeet(
       squares = straights + diagonals
       feet = (straights + Math.floor(diagonals * 1.5)) * feetPerSquare
       break
-      
+
     case 'standard':
     default:
       // Simple: each square = 5ft, including diagonals
@@ -658,10 +683,10 @@ export function calculateDistanceFeet(
       feet = squares * feetPerSquare
       break
   }
-  
+
   // Generate path description
   const path = `${deltaX} squares horizontal, ${deltaY} squares vertical`
-  
+
   return { squares: Math.round(squares * 10) / 10, feet, path }
 }
 
@@ -1170,7 +1195,7 @@ export const EFFECT_PRESETS: EffectPreset[] = [
 // =====================================================
 
 // Terrain types for TerrainNode
-export type TerrainType = 
+export type TerrainType =
   | 'cave'           // Organic cave system (cellular automata)
   | 'dungeon'        // Structured dungeon rooms (BSP)
   | 'building'       // Top-down building interior with rooms
@@ -1215,24 +1240,24 @@ export interface TerrainConfig {
   seed: number                    // Random seed for reproducibility
   complexity: number              // 0-1: Simple to complex
   scale: number                   // Size multiplier
-  
+
   // Colors (all terrains)
   primaryColor: string            // Main color
   secondaryColor: string          // Accent/variation color
   accentColor?: string            // Third color for highlights
   shadowColor?: string            // Shadow/depth color
-  
+
   // Quality settings
   resolution?: 'low' | 'medium' | 'high' | 'ultra'  // Rendering resolution (512/768/1024/1536)
   detailLevel?: number            // 0-1: Amount of detail/texture
-  
+
   // Cave/Dungeon specific
   fillDensity?: number            // 0-1: How filled the space is (caves)
   smoothIterations?: number       // Number of smoothing passes
   connectRegions?: boolean        // Whether to connect disconnected areas
   wallThickness?: number          // Thickness of walls (1-5)
   corridorWidth?: number          // Width of corridors (1-4)
-  
+
   // Building specific
   roomCount?: number              // Number of rooms (2-10)
   doorStyle?: 'open' | 'closed' | 'arch'
@@ -1240,7 +1265,7 @@ export interface TerrainConfig {
   hasFurniture?: boolean          // Add furniture markers
   buildingStyle?: 'stone' | 'wood' | 'brick' | 'ruins'
   roofType?: 'house' | 'castle' | 'church' | 'tower' | 'barn' | 'pagoda' | 'dome' | 'windmill' | 'lighthouse' | 'temple'
-  
+
   // Tree/Vegetation specific
   foliageStyle?: 'round' | 'pointed' | 'irregular'
   foliageDensity?: number         // 0-1: How full the canopy is
@@ -1249,20 +1274,20 @@ export interface TerrainConfig {
   hasHighlights?: boolean         // Light patches on foliage
   hasShadows?: boolean            // Shadow beneath
   flowerColor?: string            // For bushes with flowers
-  
+
   // Terrain specific
   texturePattern?: 'noise' | 'crosshatch' | 'stipple' | 'solid'
   borderStyle?: 'rough' | 'smooth' | 'none'
   hasOutline?: boolean
   outlineColor?: string
   outlineWidth?: number
-  
+
   // Path/River specific
   pathWidth?: number
   curviness?: number              // 0-1: How curvy
   hasStones?: boolean             // Stepping stones for rivers
   hasBorder?: boolean             // Edge/border decoration
-  
+
   // Lake/Water specific
   lakeStyle?: 'simple' | 'natural' | 'complex'  // Shape complexity
   waterDepthZones?: number        // 1-5: Number of depth gradient zones
@@ -1275,18 +1300,18 @@ export interface TerrainConfig {
   waveIntensity?: number          // 0-1: Wave pattern strength
   hasShoreSand?: boolean          // Sandy beach ring around water
   waterTransparency?: number      // 0-1: How transparent/clear the water looks
-  
+
   // Grassland specific
   grassDensity?: number           // 0-1: Grass blade density
   hasFlowers?: boolean            // Wildflowers in grass
   flowerDensity?: number          // 0-1: Flower density
   grassBladeSize?: number         // 0-1: Size of grass blades (0.5 = small, 1 = large)
   hasPathPatches?: boolean        // Worn dirt patches in grass
-  
+
   // Animation (optional)
   animated?: boolean
   animationSpeed?: number
-  
+
   // Output
   generatedSvgPath?: string       // The generated SVG path data
   generatedCanvasData?: string    // Base64 canvas image for complex textures
@@ -1315,7 +1340,7 @@ export function getDefaultTerrainConfig(terrainType: TerrainType = 'cave'): Terr
     secondaryColor: '#2a2a2a',
     shadowColor: '#1a1a1a',
   }
-  
+
   switch (terrainType) {
     case 'cave':
       return {
@@ -1747,7 +1772,7 @@ export const TERRAIN_PRESETS: TerrainPreset[] = [
     defaultConfig: getDefaultTerrainConfig('ruins'),
     previewColor: '#7a7a7a',
   },
-  
+
   // Nature Category
   {
     id: 'treeSingle',
@@ -1789,7 +1814,7 @@ export const TERRAIN_PRESETS: TerrainPreset[] = [
     defaultConfig: getDefaultTerrainConfig('rocks'),
     previewColor: '#6a6a6a',
   },
-  
+
   // Structures Category
   {
     id: 'building',
@@ -1821,7 +1846,7 @@ export const TERRAIN_PRESETS: TerrainPreset[] = [
     defaultConfig: getDefaultTerrainConfig('campsite'),
     previewColor: '#8a7560',
   },
-  
+
   // Terrain Category
   {
     id: 'cliff',
@@ -1853,7 +1878,7 @@ export const TERRAIN_PRESETS: TerrainPreset[] = [
     defaultConfig: getDefaultTerrainConfig('path'),
     previewColor: '#8a7560',
   },
-  
+
   // Ground Terrain Category
   {
     id: 'mountains',

@@ -1,11 +1,8 @@
 <template>
   <div class="effects-panel">
     <!-- Toggle Button -->
-    <button
-      class="effects-toggle-button"
-      :class="{ 'effects-toggle-button--active': isOpen }"
-      @click="isOpen = !isOpen"
-    >
+    <button class="effects-toggle-button" :class="{ 'effects-toggle-button--active': isOpen }"
+      @click="isOpen = !isOpen">
       <v-icon :icon="isOpen ? 'mdi-close' : 'mdi-creation'" size="small" />
       <span class="toggle-label">Effects</span>
     </button>
@@ -18,27 +15,13 @@
             <v-icon icon="mdi-creation" size="small" class="mr-2" />
             Effects
           </h3>
-          <v-btn
-            icon="mdi-close"
-            size="x-small"
-            variant="text"
-            @click="isOpen = false"
-          />
+          <v-btn icon="mdi-close" size="x-small" variant="text" @click="isOpen = false" />
         </div>
 
         <!-- Layer Selector -->
         <div class="drawer-layer-selector">
-          <v-select
-            v-model="selectedLayer"
-            :items="availableLayers"
-            item-title="name"
-            item-value="id"
-            label="Drop to layer"
-            density="compact"
-            variant="outlined"
-            hide-details
-            class="layer-select"
-          >
+          <v-select v-model="selectedLayer" :items="availableLayers" item-title="name" item-value="id"
+            label="Drop to layer" density="compact" variant="outlined" hide-details class="layer-select">
             <template #prepend-inner>
               <v-icon size="small" color="grey">mdi-layers</v-icon>
             </template>
@@ -47,14 +30,8 @@
 
         <!-- Effects Grid -->
         <div class="effects-grid">
-          <div
-            v-for="preset in effectPresets"
-            :key="preset.id"
-            class="effect-card"
-            draggable="true"
-            @dragstart="handleDragStart($event, preset)"
-            @click="handleEffectClick(preset)"
-          >
+          <div v-for="preset in effectPresets" :key="preset.id" class="effect-card" draggable="true"
+            @dragstart="handleDragStart($event, preset)" @click="handleEffectClick(preset)">
             <div class="effect-preview" :style="getPreviewStyle(preset)">
               <div class="effect-icon">
                 <v-icon :icon="preset.icon" :color="preset.defaultConfig.color" size="20" />
@@ -90,7 +67,7 @@ const emit = defineEmits<{
 const dmScreensStore = useDmScreensStore()
 
 const isOpen = ref(false)
-const selectedLayer = ref(DEFAULT_LAYERS.SCREEN)
+const selectedLayer = ref(DEFAULT_LAYERS.EFFECTS)
 
 const effectPresets = EFFECT_PRESETS
 
@@ -106,14 +83,14 @@ function getPreviewStyle(preset: EffectPreset) {
   const color = preset.defaultConfig.color
   const secondaryColor = preset.defaultConfig.secondaryColor || color
   const effectType = preset.effectType
-  
+
   // Fire effects get warm gradient
   if (['fire', 'torch', 'campfire', 'embers'].includes(effectType)) {
     return {
       background: `radial-gradient(ellipse 80% 100% at 50% 80%, ${color}88 0%, ${secondaryColor}44 40%, transparent 70%)`,
     }
   }
-  
+
   // Light effects get circular glow
   if (['lightRing', 'aura', 'magicCircle', 'teleportCircle', 'portal', 'shield', 'barrier', 'healingLight', 'divineRadiance', 'summoningCircle'].includes(effectType)) {
     return {
@@ -121,21 +98,21 @@ function getPreviewStyle(preset: EffectPreset) {
       boxShadow: `inset 0 0 20px ${color}44`,
     }
   }
-  
+
   // Weather effects
   if (['snow', 'rain', 'fog', 'smoke', 'dust'].includes(effectType)) {
     return {
       background: `linear-gradient(180deg, transparent 0%, ${color}22 100%)`,
     }
   }
-  
+
   // Shadow tendrils - dark writhing effect
   if (['shadowTendrils'].includes(effectType)) {
     return {
       background: `radial-gradient(ellipse 60% 80% at 50% 50%, ${color}44 0%, ${secondaryColor}22 50%, transparent 80%)`,
     }
   }
-  
+
   // Whirlpool - swirling spiral effect
   if (['whirlpool'].includes(effectType)) {
     const secColor = preset.defaultConfig.secondaryColor || color
@@ -144,26 +121,26 @@ function getPreviewStyle(preset: EffectPreset) {
       borderRadius: '50%',
     }
   }
-  
+
   // Terrain effects - solid tiles
   if (['grass'].includes(effectType)) {
     return {
       background: `linear-gradient(135deg, ${color} 0%, ${secondaryColor} 100%)`,
     }
   }
-  
+
   if (['water'].includes(effectType)) {
     return {
       background: `linear-gradient(180deg, ${color}88 0%, ${secondaryColor}66 100%)`,
     }
   }
-  
+
   if (['lava'].includes(effectType)) {
     return {
       background: `radial-gradient(ellipse at 50% 50%, ${color} 0%, ${secondaryColor} 100%)`,
     }
   }
-  
+
   // Sparkles/fireflies
   return {
     background: `radial-gradient(circle, ${color}33 0%, transparent 60%)`,
@@ -175,7 +152,7 @@ function getGlowStyle(preset: EffectPreset) {
   const color = preset.defaultConfig.color
   const secondaryColor = preset.defaultConfig.secondaryColor || color
   const effectType = preset.effectType
-  
+
   // Fire effects - flickering glow
   if (['fire', 'torch', 'campfire', 'embers'].includes(effectType)) {
     return {
@@ -184,7 +161,7 @@ function getGlowStyle(preset: EffectPreset) {
       filter: `blur(8px)`,
     }
   }
-  
+
   // Light rings - pulsing
   if (['lightRing', 'aura', 'magicCircle'].includes(effectType)) {
     return {
@@ -193,7 +170,7 @@ function getGlowStyle(preset: EffectPreset) {
       borderRadius: '50%',
     }
   }
-  
+
   // Shadow tendrils - writhing motion
   if (['shadowTendrils'].includes(effectType)) {
     return {
@@ -201,7 +178,7 @@ function getGlowStyle(preset: EffectPreset) {
       animation: 'pulse 1.5s ease-in-out infinite',
     }
   }
-  
+
   // Whirlpool - rotating spiral
   if (['whirlpool'].includes(effectType)) {
     return {
@@ -210,7 +187,7 @@ function getGlowStyle(preset: EffectPreset) {
       borderRadius: '50%',
     }
   }
-  
+
   return {
     background: `radial-gradient(circle, ${color}44 0%, transparent 60%)`,
     animation: 'pulse 2s ease-in-out infinite',
@@ -220,7 +197,7 @@ function getGlowStyle(preset: EffectPreset) {
 // Handle drag start
 function handleDragStart(event: DragEvent, preset: EffectPreset) {
   if (!event.dataTransfer) return
-  
+
   event.dataTransfer.effectAllowed = 'copy'
   event.dataTransfer.setData('application/json', JSON.stringify({
     type: 'effect-node',
@@ -288,7 +265,7 @@ function handleEffectClick(preset: EffectPreset) {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5),
-              0 -2px 8px rgba(0, 0, 0, 0.3);
+    0 -2px 8px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -466,10 +443,13 @@ function handleEffectClick(preset: EffectPreset) {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(0.9);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.1);
@@ -481,10 +461,10 @@ function handleEffectClick(preset: EffectPreset) {
     opacity: 0.6;
     transform: scale(0.95);
   }
+
   100% {
     opacity: 1;
     transform: scale(1.05);
   }
 }
 </style>
-

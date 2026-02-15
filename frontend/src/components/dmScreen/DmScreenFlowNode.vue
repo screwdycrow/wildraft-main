@@ -3,165 +3,85 @@
     <!-- Custom Rotation-Aware Resize Handles (hidden in portal mode) -->
     <template v-if="showControls">
       <!-- Corner handles -->
-      <div 
-        class="resize-handle corner top-left" 
-        @mousedown.stop="startResize($event, 'top-left')"
-      />
-      <div 
-        class="resize-handle corner top-right" 
-        @mousedown.stop="startResize($event, 'top-right')"
-      />
-      <div 
-        class="resize-handle corner bottom-left" 
-        @mousedown.stop="startResize($event, 'bottom-left')"
-      />
-      <div 
-        class="resize-handle corner bottom-right" 
-        @mousedown.stop="startResize($event, 'bottom-right')"
-      />
+      <div class="resize-handle corner top-left" @mousedown.stop="startResize($event, 'top-left')" />
+      <div class="resize-handle corner top-right" @mousedown.stop="startResize($event, 'top-right')" />
+      <div class="resize-handle corner bottom-left" @mousedown.stop="startResize($event, 'bottom-left')" />
+      <div class="resize-handle corner bottom-right" @mousedown.stop="startResize($event, 'bottom-right')" />
       <!-- Edge handles -->
-      <div 
-        class="resize-handle edge top" 
-        @mousedown.stop="startResize($event, 'top')"
-      />
-      <div 
-        class="resize-handle edge bottom" 
-        @mousedown.stop="startResize($event, 'bottom')"
-      />
-      <div 
-        class="resize-handle edge left" 
-        @mousedown.stop="startResize($event, 'left')"
-      />
-      <div 
-        class="resize-handle edge right" 
-        @mousedown.stop="startResize($event, 'right')"
-      />
+      <div class="resize-handle edge top" @mousedown.stop="startResize($event, 'top')" />
+      <div class="resize-handle edge bottom" @mousedown.stop="startResize($event, 'bottom')" />
+      <div class="resize-handle edge left" @mousedown.stop="startResize($event, 'left')" />
+      <div class="resize-handle edge right" @mousedown.stop="startResize($event, 'right')" />
       <!-- Selection border -->
       <div class="selection-border" />
     </template>
-    
+
     <!-- Rotation Handle and Action Toolbar (hidden in portal mode) -->
     <div v-if="showControls" class="top-controls">
       <!-- Rotation Handle -->
-      <div
-        class="rotation-handle"
-        @mousedown.stop="handleRotationStart"
-      >
+      <div class="rotation-handle" @mousedown.stop="handleRotationStart">
         <v-icon size="small" color="#6366f1">mdi-rotate-3d-variant</v-icon>
       </div>
-      
+
       <!-- Action Toolbar -->
       <div class="node-action-toolbar">
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="resetRotation"
-        >
+        <v-btn icon size="x-small" variant="text" color="white" @click.stop="resetRotation">
           <v-icon size="small">mdi-rotate-left-variant</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Reset Rotation
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Object Fit Toggle (only for background images) -->
-        <v-btn
-          v-if="isBackgroundImage"
-          icon
-          size="x-small"
-          variant="text"
-          :color="currentObjectFit === 'cover' ? 'warning' : 'white'"
-          @click.stop="toggleObjectFit"
-        >
+        <v-btn v-if="isBackgroundImage" icon size="x-small" variant="text"
+          :color="currentObjectFit === 'cover' ? 'warning' : 'white'" @click.stop="toggleObjectFit">
           <v-icon size="small">{{ currentObjectFit === 'cover' ? 'mdi-crop' : 'mdi-arrow-expand-all' }}</v-icon>
           <v-tooltip activator="parent" location="bottom">
             {{ currentObjectFit === 'cover' ? 'Cover (cropped)' : 'Fill (stretched)' }} - Click to toggle
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Convert to Token (for items that can become tokens) -->
-        <v-btn
-          v-if="canConvertToToken"
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="convertToToken"
-        >
+        <v-btn v-if="canConvertToToken" icon size="x-small" variant="text" color="white" @click.stop="convertToToken">
           <v-icon size="small">mdi-circle-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Convert to Token
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Restore from Token -->
-        <v-btn
-          v-if="isTokenNode"
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="restoreFromToken"
-        >
+        <v-btn v-if="isTokenNode" icon size="x-small" variant="text" color="white" @click.stop="restoreFromToken">
           <v-icon size="small">mdi-card-outline</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Restore to Card
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Token Settings -->
-        <v-btn
-          v-if="isTokenNode"
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="openSettings"
-        >
+        <v-btn v-if="isTokenNode" icon size="x-small" variant="text" color="white" @click.stop="openSettings">
           <v-icon size="small">mdi-cog</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Token Settings
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Effect Settings -->
-        <v-btn
-          v-if="isEffectNode"
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="openSettings"
-        >
+        <v-btn v-if="isEffectNode" icon size="x-small" variant="text" color="white" @click.stop="openSettings">
           <v-icon size="small">mdi-tune-variant</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Effect Settings
           </v-tooltip>
         </v-btn>
-        
+
         <!-- Shape Settings -->
-        <v-btn
-          v-if="isShapeNode"
-          icon
-          size="x-small"
-          variant="text"
-          color="white"
-          @click.stop="openSettings"
-        >
+        <v-btn v-if="isShapeNode" icon size="x-small" variant="text" color="white" @click.stop="openSettings">
           <v-icon size="small">mdi-shape</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Shape Settings
           </v-tooltip>
         </v-btn>
-        
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          color="error"
-          @click.stop="handleDelete"
-        >
+
+        <v-btn icon size="x-small" variant="text" color="error" @click.stop="handleDelete">
           <v-icon size="small">mdi-close</v-icon>
           <v-tooltip activator="parent" location="bottom">
             Delete
@@ -169,80 +89,46 @@
         </v-btn>
       </div>
     </div>
-    
-    <div 
-      class="dm-screen-flow-node" 
-      :class="{ 
-        'selected': isSelected,
-        'is-dragging': props.dragging,
-        'rotating': isRotating,
-        'resizing': isResizing,
-        'is-token': isTokenNode,
-        'is-effect': isEffectNode,
-        'is-shape': isShapeNode,
-        'is-terrain': isTerrainNode
-      }"
-      @dblclick.stop="handleDoubleClick"
-    >
-      <dm-screen-item-wrapper
-        :key="data.item.id"
-        :item="data.item"
-        :library-id="data.libraryId"
-        :dm-screen-id="data.dmScreenId"
-        :snap-to-grid="data.snapToGrid"
-        :grid-size="data.gridSize"
-        :background-opacity="data.backgroundOpacity"
-        :selected="isSelected"
-        :rotation="rotation"
-        @update="handleItemUpdate"
-        @delete="handleDelete"
-        @open-settings="handleDoubleClick"
-      />
+
+    <div class="dm-screen-flow-node" :class="{
+      'selected': isSelected,
+      'is-dragging': props.dragging,
+      'rotating': isRotating,
+      'resizing': isResizing,
+      'is-token': isTokenNode,
+      'is-effect': isEffectNode,
+      'is-shape': isShapeNode,
+      'is-terrain': isTerrainNode
+    }" @dblclick.stop="handleDoubleClick">
+      <dm-screen-item-wrapper :key="data.item.id" :item="data.item" :library-id="data.libraryId"
+        :dm-screen-id="data.dmScreenId" :snap-to-grid="data.snapToGrid" :grid-size="data.gridSize"
+        :background-opacity="data.backgroundOpacity" :selected="isSelected" :rotation="rotation"
+        @update="handleItemUpdate" @delete="handleDelete" @open-settings="handleDoubleClick" />
     </div>
-    
+
     <!-- Settings Dialogs -->
     <!-- Effect Node Settings -->
     <v-dialog v-model="showEffectSettings" max-width="450" scrollable persistent>
-      <EffectNodeSettings
-        v-if="showEffectSettings"
-        ref="effectSettingsRef"
-        :config="currentEffectConfig"
-        @save="saveEffectSettings"
-      />
+      <EffectNodeSettings v-if="showEffectSettings" ref="effectSettingsRef" :config="currentEffectConfig"
+        @save="saveEffectSettings" />
     </v-dialog>
-    
+
     <!-- Token Node Settings -->
     <v-dialog v-model="showTokenSettings" max-width="350" scrollable persistent>
-      <TokenNodeSettings
-        v-if="showTokenSettings"
-        ref="tokenSettingsRef"
-        :show-label="tokenShowLabel"
-        :border-width="tokenBorderWidth"
-        :border-color="tokenBorderColor"
-        @save="saveTokenSettings"
-      />
+      <TokenNodeSettings v-if="showTokenSettings" ref="tokenSettingsRef" :show-label="tokenShowLabel"
+        :border-width="tokenBorderWidth" :border-color="tokenBorderColor" @save="saveTokenSettings" />
     </v-dialog>
-    
+
     <!-- Shape Node Settings -->
     <v-dialog v-model="showShapeSettings" max-width="500" scrollable persistent>
-      <ShapeNodeSettings
-        v-if="showShapeSettings"
-        ref="shapeSettingsRef"
-        :shape-data="currentShapeData"
-        @save="saveShapeSettings"
-      />
+      <ShapeNodeSettings v-if="showShapeSettings" ref="shapeSettingsRef" :shape-data="currentShapeData"
+        @save="saveShapeSettings" />
     </v-dialog>
-    
+
     <!-- Terrain Node Settings -->
     <v-dialog v-model="showTerrainSettings" max-width="500" scrollable persistent>
-      <TerrainNodeSettings
-        v-if="showTerrainSettings"
-        ref="terrainSettingsRef"
-        :config="currentTerrainConfig"
-        @save="saveTerrainSettings"
-        @cancel="showTerrainSettings = false"
-        @regenerate="handleTerrainRegenerate"
-      />
+      <TerrainNodeSettings v-if="showTerrainSettings" ref="terrainSettingsRef" :config="currentTerrainConfig"
+        @save="saveTerrainSettings" @cancel="showTerrainSettings = false" @regenerate="handleTerrainRegenerate" />
     </v-dialog>
   </div>
 </template>
@@ -253,6 +139,7 @@ import { useVueFlow } from '@vue-flow/core'
 import type { DmScreenItem, SVGShapeData, TerrainConfig, EffectConfig } from '@/types/dmScreen.types'
 import DmScreenItemWrapper from './DmScreenItemWrapper.vue'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { useItemsStore } from '@/stores/items'
 import EffectNodeSettings from './EffectNodeSettings.vue'
 import TokenNodeSettings from './TokenNodeSettings.vue'
 import ShapeNodeSettings from './ShapeNodeSettings.vue'
@@ -288,6 +175,7 @@ const props = defineProps<Props>()
 // =====================================================
 
 const dmScreensStore = useDmScreensStore()
+const itemsStore = useItemsStore()
 const { findNode, setNodes } = useVueFlow()
 
 // =====================================================
@@ -410,12 +298,12 @@ const rotation = computed(() => {
 
 const containerStyle = computed(() => {
   const style: Record<string, string> = {}
-  
+
   if (rotation.value) {
     style.transform = `rotate(${rotation.value}deg)`
     style.transformOrigin = 'center center'
   }
-  
+
   // Apply blend mode for effect nodes at the container level
   // This allows the effect to blend with content below on the canvas
   if (isEffectNode.value) {
@@ -424,7 +312,7 @@ const containerStyle = computed(() => {
       style.mixBlendMode = blendMode
     }
   }
-  
+
   return style
 })
 
@@ -531,10 +419,10 @@ const currentTerrainConfig = computed<TerrainConfig>(() => {
 // Items that can be converted to tokens (LibraryItemId and UserFileId, not backgrounds)
 const canConvertToToken = computed(() => {
   const item = props.data.item
-  const convertibleTypes = ['LibraryItemId', 'UserFileId']
-  return convertibleTypes.includes(item.type) && 
-         !item.data.isBackground &&
-         item.type !== 'TokenNode'
+  const convertibleTypes = ['LibraryItemId', 'UserFileId', 'DmScreenNode']
+  return convertibleTypes.includes(item.type) &&
+    !item.data.isBackground &&
+    item.type !== 'TokenNode'
 })
 
 // =====================================================
@@ -569,7 +457,7 @@ function handleDelete() {
 function toggleObjectFit() {
   const item = props.data.item
   const newFit = currentObjectFit.value === 'fill' ? 'cover' : 'fill'
-  
+
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
@@ -577,7 +465,7 @@ function toggleObjectFit() {
       objectFit: newFit,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -595,11 +483,11 @@ const MIN_HEIGHT = 30
 
 function startResize(event: MouseEvent, handle: string) {
   console.log('[DmScreenFlowNode] Starting resize:', handle, 'rotation:', currentRotation.value)
-  
+
   isResizing.value = true
   resizeHandle.value = handle
   resizeStartMouse.value = { x: event.clientX, y: event.clientY }
-  
+
   const node = findNode(props.id)
   if (node) {
     const w = node.dimensions?.width || props.data.item.nodeOptions?.width || 300
@@ -613,63 +501,71 @@ function startResize(event: MouseEvent, handle: string) {
     }
     currentPosition.value = { ...resizeStartPosition.value }
   }
-  
+
   event.preventDefault()
   event.stopPropagation()
 }
 
 function handleResizeMove(event: MouseEvent) {
   if (!isResizing.value || !resizeHandle.value) return
-  
+
   // Get raw mouse delta in screen space
   const rawDx = event.clientX - resizeStartMouse.value.x
   const rawDy = event.clientY - resizeStartMouse.value.y
-  
+
   const angleRad = (currentRotation.value * Math.PI) / 180
   const cos = Math.cos(angleRad)
   const sin = Math.sin(angleRad)
-  
+
   // Transform mouse delta to local (rotated) coordinate space
   // This makes the resize feel natural relative to the rotated handles
   const localDx = rawDx * cos + rawDy * sin
   const localDy = -rawDx * sin + rawDy * cos
-  
+
   let newWidth = resizeStartDimensions.value.width
   let newHeight = resizeStartDimensions.value.height
-  
+
   // Calculate dimension changes based on handle
   const handle = resizeHandle.value
   let widthDelta = 0
   let heightDelta = 0
   let anchorX = 0 // -1 = left edge anchored, 0 = center, 1 = right edge anchored
   let anchorY = 0 // -1 = top edge anchored, 0 = center, 1 = bottom edge anchored
-  
-  // For shapes and effects, resize from center (like tokens)
-  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value || isTerrainNode.value
-  
+
+  // For shapes, effects, and tokens, resize from center
+  const shouldResizeFromCenter = isShapeNode.value || isEffectNode.value || isTerrainNode.value || isTokenNode.value
+
   if (shouldResizeFromCenter) {
     // Center-based resizing: all handles resize symmetrically from center
     // For center resizing, anchorX = 0 and anchorY = 0
     anchorX = 0
     anchorY = 0
-    
+
     // Calculate deltas based on handle direction
     if (handle.includes('right')) {
       widthDelta = localDx
     } else if (handle.includes('left')) {
       widthDelta = -localDx
     }
-    
+
     if (handle.includes('bottom')) {
       heightDelta = localDy
     } else if (handle.includes('top')) {
       heightDelta = -localDy
     }
-    
+
     // For center-based resizing, we double the delta since we're expanding from center
     // Each handle moves the edge by the full delta, so total size change is 2x
     widthDelta *= 2
     heightDelta *= 2
+
+    // For tokens, enforce 1:1 aspect ratio
+    if (isTokenNode.value) {
+      // Use the larger absolute change to drive both dimensions
+      const delta = Math.abs(widthDelta) > Math.abs(heightDelta) ? widthDelta : heightDelta
+      widthDelta = delta
+      heightDelta = delta
+    }
   } else {
     // Edge-based resizing for other node types
     if (handle.includes('right')) {
@@ -689,56 +585,56 @@ function handleResizeMove(event: MouseEvent) {
       anchorY = 1 // Bottom edge stays put
     }
   }
-  
+
   // Apply deltas with minimum constraints
   newWidth = Math.max(MIN_WIDTH, resizeStartDimensions.value.width + widthDelta)
   newHeight = Math.max(MIN_HEIGHT, resizeStartDimensions.value.height + heightDelta)
-  
+
   // Calculate actual change (may be clamped)
   const actualWidthDelta = newWidth - resizeStartDimensions.value.width
   const actualHeightDelta = newHeight - resizeStartDimensions.value.height
-  
+
   // Calculate position adjustment
   // The node's position is its top-left corner in world space
   // When resizing with rotation, we need to keep the anchor point fixed
   // The anchor point in local space is at (anchorX * width/2, anchorY * height/2) from center
-  
+
   // Calculate how much the center moves in local space
   // If left edge is anchored (anchorX = -1), center moves right by widthDelta/2
   // If right edge is anchored (anchorX = 1), center moves left by widthDelta/2
   const localCenterDx = -anchorX * actualWidthDelta / 2
   const localCenterDy = -anchorY * actualHeightDelta / 2
-  
+
   // Transform center movement back to world space
   const worldCenterDx = localCenterDx * cos - localCenterDy * sin
   const worldCenterDy = localCenterDx * sin + localCenterDy * cos
-  
+
   // The node position is top-left, which is center - (width/2, height/2) in local space
   // But we also need to account for how the top-left moves relative to the new center
   const oldHalfWidth = resizeStartDimensions.value.width / 2
   const oldHalfHeight = resizeStartDimensions.value.height / 2
   const newHalfWidth = newWidth / 2
   const newHalfHeight = newHeight / 2
-  
+
   // In local space, top-left is at (-halfWidth, -halfHeight) from center
   // Change in top-left position in local space due to size change:
   const localTopLeftDx = -(newHalfWidth - oldHalfWidth)
   const localTopLeftDy = -(newHalfHeight - oldHalfHeight)
-  
+
   // Transform to world space
   const worldTopLeftDx = localTopLeftDx * cos - localTopLeftDy * sin
   const worldTopLeftDy = localTopLeftDx * sin + localTopLeftDy * cos
-  
+
   // Final position = start position + center movement + top-left adjustment
   const newX = resizeStartPosition.value.x + worldCenterDx + worldTopLeftDx
   const newY = resizeStartPosition.value.y + worldCenterDy + worldTopLeftDy
-  
+
   // Store current values for visual feedback and final save
   currentDimensions.value = { width: newWidth, height: newHeight }
   currentPosition.value = { x: newX, y: newY }
-  
+
   // Update the node in VueFlow for immediate visual feedback
-  setNodes((nodes) => 
+  setNodes((nodes) =>
     nodes.map((node) => {
       if (node.id === props.id) {
         return {
@@ -760,18 +656,18 @@ function handleResizeMove(event: MouseEvent) {
 
 function handleResizeEnd() {
   if (!isResizing.value) return
-  
+
   const width = currentDimensions.value.width
   const height = currentDimensions.value.height
   const x = currentPosition.value.x
   const y = currentPosition.value.y
-  
+
   isResizing.value = false
   resizeHandle.value = null
-  
+
   // CRITICAL: Update VueFlow node position FIRST to ensure it matches what we're saving
   // This prevents VueFlow from recalculating the position incorrectly
-  setNodes((nodes) => 
+  setNodes((nodes) =>
     nodes.map((node) => {
       if (node.id === props.id) {
         return {
@@ -789,7 +685,7 @@ function handleResizeEnd() {
       return node
     })
   )
-  
+
   // Save to store (triggers debounced API call)
   // Position is already updated in VueFlow above, so this should maintain it
   dmScreensStore.updateItemDimensions(
@@ -816,13 +712,13 @@ function getAngleFromCenter(centerX: number, centerY: number, mouseX: number, mo
 function handleRotationStart(event: MouseEvent) {
   isRotating.value = true
   rotationStartAngle.value = currentRotation.value
-  
+
   const nodeElement = document.querySelector(`[data-id="${props.id}"]`)
   if (nodeElement) {
     const nodeRect = nodeElement.getBoundingClientRect()
     const nodeCenterX = nodeRect.left + nodeRect.width / 2
     const nodeCenterY = nodeRect.top + nodeRect.height / 2
-    
+
     rotationStartMouseAngle.value = getAngleFromCenter(
       nodeCenterX,
       nodeCenterY,
@@ -830,50 +726,50 @@ function handleRotationStart(event: MouseEvent) {
       event.clientY
     )
   }
-  
+
   event.preventDefault()
   event.stopPropagation()
 }
 
 function handleRotationMove(event: MouseEvent) {
   if (!isRotating.value) return
-  
+
   const nodeElement = document.querySelector(`[data-id="${props.id}"]`)
   if (!nodeElement) return
-  
+
   const nodeRect = nodeElement.getBoundingClientRect()
   const nodeCenterX = nodeRect.left + nodeRect.width / 2
   const nodeCenterY = nodeRect.top + nodeRect.height / 2
-  
+
   const currentMouseAngle = getAngleFromCenter(
     nodeCenterX,
     nodeCenterY,
     event.clientX,
     event.clientY
   )
-  
+
   let deltaAngle = currentMouseAngle - rotationStartMouseAngle.value
-  
+
   if (deltaAngle > 180) deltaAngle -= 360
   if (deltaAngle < -180) deltaAngle += 360
-  
+
   let newRotation = rotationStartAngle.value + deltaAngle
   newRotation = ((newRotation % 360) + 360) % 360
-  
+
   // Snap to 15 degrees when shift is held
   if (event.shiftKey) {
     newRotation = Math.round(newRotation / 15) * 15
   }
-  
+
   // Update local rotation for immediate visual feedback
   currentRotation.value = newRotation
 }
 
 function handleRotationEnd() {
   if (!isRotating.value) return
-  
+
   isRotating.value = false
-  
+
   // Persist rotation to store (debounced API call)
   dmScreensStore.updateItemRotation(
     props.data.dmScreenId,
@@ -885,7 +781,7 @@ function handleRotationEnd() {
 
 function resetRotation() {
   currentRotation.value = 0
-  
+
   dmScreensStore.updateItemRotation(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -900,7 +796,22 @@ function resetRotation() {
 
 function convertToToken() {
   const item = props.data.item
-  
+
+  // Determine label based on item type
+  let tokenLabel = item.data.name || item.data.fileName || 'Token'
+  let tokenBorderColor = '#6366f1'
+
+  if (item.type === 'DmScreenNode') {
+    tokenLabel = item.data.label || 'DM Screen'
+    tokenBorderColor = '#9333ea' // Purple for DM screen tokens
+  } else if (item.type === 'LibraryItemId' && item.data.id) {
+    // Try to get name from store if available
+    const libraryItem = itemsStore.getItemById(item.data.id)
+    if (libraryItem) {
+      tokenLabel = libraryItem.name
+    }
+  }
+
   // Store original type and data for restoration
   const tokenItem: DmScreenItem = {
     ...item,
@@ -909,10 +820,10 @@ function convertToToken() {
       ...item.data,
       originalType: item.type,
       originalData: { ...item.data },
-      tokenLabel: item.data.name || item.data.fileName || 'Token',
+      tokenLabel,
       tokenShowLabel: true,
       tokenBorderWidth: 3,
-      tokenBorderColor: '#6366f1',
+      tokenBorderColor,
     },
     nodeOptions: {
       ...item.nodeOptions,
@@ -924,7 +835,7 @@ function convertToToken() {
       height: 100,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -935,12 +846,12 @@ function convertToToken() {
 
 function restoreFromToken() {
   const item = props.data.item
-  
+
   if (!item.data.originalType) {
     console.warn('[DmScreenFlowNode] Cannot restore token: no original type stored')
     return
   }
-  
+
   // Restore to original type
   const restoredItem: DmScreenItem = {
     ...item,
@@ -955,7 +866,7 @@ function restoreFromToken() {
       height: item.nodeOptions?.fullHeight || 200,
     },
   }
-  
+
   // Clean up token-specific fields
   delete restoredItem.data.originalType
   delete restoredItem.data.originalData
@@ -965,7 +876,7 @@ function restoreFromToken() {
   delete restoredItem.data.tokenBorderColor
   delete restoredItem.data.tokenBorderWidth
   delete restoredItem.data.tokenSize
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -1000,10 +911,10 @@ function openSettings() {
 
 function saveTokenSettings() {
   if (!tokenSettingsRef.value) return
-  
+
   const values = tokenSettingsRef.value.getValues()
   const item = props.data.item
-  
+
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
@@ -1013,23 +924,23 @@ function saveTokenSettings() {
       tokenBorderColor: values.tokenBorderColor,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
     item.id,
     updatedItem
   )
-  
+
   showTokenSettings.value = false
 }
 
 function saveEffectSettings() {
   if (!effectSettingsRef.value) return
-  
+
   const config = effectSettingsRef.value.getConfig()
   const item = props.data.item
-  
+
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
@@ -1037,23 +948,23 @@ function saveEffectSettings() {
       effectConfig: config,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
     item.id,
     updatedItem
   )
-  
+
   showEffectSettings.value = false
 }
 
 function saveShapeSettings() {
   if (!shapeSettingsRef.value) return
-  
+
   const shapeData = shapeSettingsRef.value.getShapeData()
   const item = props.data.item
-  
+
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
@@ -1061,23 +972,23 @@ function saveShapeSettings() {
       shapeData: shapeData,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
     item.id,
     updatedItem
   )
-  
+
   showShapeSettings.value = false
 }
 
 function saveTerrainSettings() {
   if (!terrainSettingsRef.value) return
-  
+
   const terrainConfig = terrainSettingsRef.value.getConfig()
   const item = props.data.item
-  
+
   const updatedItem: DmScreenItem = {
     ...item,
     data: {
@@ -1085,23 +996,23 @@ function saveTerrainSettings() {
       terrainConfig: terrainConfig,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
     item.id,
     updatedItem
   )
-  
+
   showTerrainSettings.value = false
 }
 
 function handleTerrainRegenerate() {
   if (!terrainSettingsRef.value) return
-  
+
   const terrainConfig = terrainSettingsRef.value.getConfig()
   const item = props.data.item
-  
+
   // Save the new config (with new seed)
   const updatedItem: DmScreenItem = {
     ...item,
@@ -1110,18 +1021,18 @@ function handleTerrainRegenerate() {
       terrainConfig: terrainConfig,
     },
   }
-  
+
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
     item.id,
     updatedItem
   )
-  
+
   // Dispatch a custom event to trigger regeneration in the TerrainNodeDisplay
   // This avoids watcher loops and reactive issues
-  window.dispatchEvent(new CustomEvent('terrain-regenerate', { 
-    detail: { itemId: item.id } 
+  window.dispatchEvent(new CustomEvent('terrain-regenerate', {
+    detail: { itemId: item.id }
   }))
 }
 
@@ -1184,8 +1095,7 @@ onUnmounted(() => {
   height: 100%;
   min-width: 20px;
   min-height: 20px;
-  border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .dm-screen-flow-node.is-effect {

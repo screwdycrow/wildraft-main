@@ -538,6 +538,8 @@ onBeforeUnmount(() => {
   padding: 24px 32px;
   transition: all 0.3s ease;
   border-radius: 8px;
+  max-height: v-bind(minHeight);
+  overflow-y: auto;
 }
 
 :deep(.tiptap-content) {
