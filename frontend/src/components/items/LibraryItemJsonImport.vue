@@ -58,8 +58,32 @@
               </v-col>
 
               <v-col cols="12" md="8">
-                <div class="import-section">
-                  <h3 class="text-h6 mb-3">Paste JSON Data</h3>
+                  <div class="import-section">
+                    <h3 class="text-h6 mb-3">AI Generation</h3>
+                    <v-textarea
+                      v-model="aiInstructions"
+                      label="Instructions for AI"
+                      placeholder="E.g., A level 5 elf wizard specializing in fire magic..."
+                      rows="3"
+                      variant="outlined"
+                      class="mb-2"
+                      hide-details="auto"
+                    />
+                    <v-btn
+                      block
+                      color="secondary"
+                      variant="tonal"
+                      prepend-icon="mdi-robot"
+                      class="mb-4"
+                      :loading="isGenerating"
+                      @click="generateWithAI"
+                    >
+                      Generate with AI
+                    </v-btn>
+
+                    <v-divider class="mb-4" />
+
+                    <h3 class="text-h6 mb-3">Paste JSON Data</h3>
                   
                   <!-- Note Customization -->
                   <v-expand-transition>
@@ -286,6 +310,15 @@
                       >
                         Validate
                       </v-btn>
+                      <v-btn
+                        variant="tonal"
+                        color="secondary"
+                        @click="generateBulkWithAI"
+                        prepend-icon="mdi-robot"
+                        :loading="isGenerating"
+                      >
+                        Generate with AI
+                      </v-btn>
                     </div>
                   </div>
                 </v-col>
@@ -330,6 +363,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { aiApi } from '@/api/ai'
+import { useUserSettingsStore } from '@/stores/userSettings'
 import type { ItemType, CreateLibraryItemPayload, LibraryItem } from '@/types/item.types'
 import { useItemComponents, type JsonImportSchema } from '@/composables/useItemComponents'
 import NotePromptCustomization from './NotePromptCustomization.vue'
@@ -361,7 +396,9 @@ const isImporting = ref(false)
 const parseError = ref<string[]>([])
 const parseSuccess = ref(false)
 const promptCopied = ref(false)
+const isGenerating = ref(false)
 const importDescription = ref(true) // Default to importing description
+const aiInstructions = ref('')
 
 // Note customization
 const noteCustomization = ref({
@@ -370,6 +407,8 @@ const noteCustomization = ref({
   additionalContext: '',
   numChapters: 0
 })
+
+const userSettingsStore = useUserSettingsStore()
 
 const hasCurrentItem = computed(() => !!props.currentItem)
 const isNoteType = computed(() => props.itemType === 'NOTE')
@@ -453,7 +492,9 @@ function resetState() {
   parseError.value = []
   parseSuccess.value = false
   isValidating.value = false
+  isValidating.value = false
   importDescription.value = true // Reset to default (import description)
+  aiInstructions.value = ''
   // Reset note customization
   noteCustomization.value = {
     noteType: 'general',
@@ -513,6 +554,96 @@ async function copyPrompt() {
 async function copyBulkPrompt() {
   const prompt = generateBulkAIPrompt()
   await copyToClipboard(prompt)
+}
+
+async function generateWithAI() {
+  if (!schema.value) return
+  
+  const customParams = props.itemType === 'NOTE' ? {
+    noteType: noteCustomization.value.noteType,
+    theme: noteCustomization.value.theme,
+    additionalContext: noteCustomization.value.additionalContext || aiInstructions.value, // Fallback to generic instructions for notes if context is empty
+    numChapters: noteCustomization.value.numChapters
+  } : undefined
+
+  let prompt = generateAIPrompt(schema.value, customParams)
+  
+  if (aiInstructions.value && props.itemType !== 'NOTE') {
+    prompt += `\n\nUSER INSTRUCTIONS:\n${aiInstructions.value}\n\nPlease incorporate these instructions into the generated content while maintaining the required JSON structure.`
+  }
+  
+  isGenerating.value = true
+  parseError.value = []
+  
+  // Relaxed check: Trust if model is selected
+  if (!userSettingsStore.aiSettings?.model) {
+    parseError.value = ['Please select an AI model in User Settings to use this feature.']
+    isGenerating.value = false
+    return
+  }
+
+  try {
+    const response = await aiApi.generateJson({
+      systemPrompt: 'You are a JSON generator for a D&D application. Output ONLY valid JSON.',
+      userPrompt: prompt,
+      model: userSettingsStore.aiSettings?.model,
+      temperature: userSettingsStore.aiSettings?.temperature,
+    })
+    
+    // Extract JSON from response (sometimes models wrap in markdown blocks)
+    let content = response.content
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/)
+    if (jsonMatch) {
+      content = jsonMatch[1]
+    }
+    
+    jsonInput.value = content
+    validateJson()
+    
+  } catch (error) {
+    console.error('AI Generation failed:', error)
+    parseError.value = ['AI generation failed. Please check your API key and try again.']
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+async function generateBulkWithAI() {
+  const prompt = generateBulkAIPrompt()
+  
+  isGenerating.value = true
+  parseError.value = []
+  
+  // Relaxed check: Trust if model is selected
+  if (!userSettingsStore.aiSettings?.model) {
+    parseError.value = ['Please select an AI model in User Settings to use this feature.']
+    isGenerating.value = false
+    return
+  }
+
+  try {
+    const response = await aiApi.generateJson({
+      systemPrompt: 'You are a JSON generator for a D&D application. Output ONLY valid JSON array.',
+      userPrompt: prompt,
+      model: userSettingsStore.aiSettings?.model,
+      temperature: userSettingsStore.aiSettings?.temperature,
+    })
+    
+    let content = response.content
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/)
+    if (jsonMatch) {
+      content = jsonMatch[1]
+    }
+    
+    jsonInput.value = content
+    validateJson()
+    
+  } catch (error) {
+    console.error('AI Generation failed:', error)
+    parseError.value = ['AI generation failed. Please check your API key and try again.']
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 async function copyToClipboard(text: string) {

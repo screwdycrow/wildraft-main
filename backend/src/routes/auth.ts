@@ -119,7 +119,7 @@ export const authRoutes = async (fastify: FastifyInstance) => {
         // Check if user has a password (might be Google-only user)
         if (!user.password) {
           reply.code(401);
-          return { 
+          return {
             error: 'This account uses Google sign-in. Please login with Google.',
           };
         }
@@ -237,8 +237,8 @@ export const authRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Failed to exchange authorization code for tokens' };
         }
 
-        const tokenData = await tokenResponse.json() as { 
-          access_token: string; 
+        const tokenData = await tokenResponse.json() as {
+          access_token: string;
           refresh_token?: string;
         };
         const { access_token, refresh_token } = tokenData;
@@ -405,6 +405,8 @@ export const authRoutes = async (fastify: FastifyInstance) => {
             name: true,
             picture: true,
             createdAt: true,
+            aiSettings: true,
+            openaiApiKey: true,
           },
         });
 
@@ -413,7 +415,13 @@ export const authRoutes = async (fastify: FastifyInstance) => {
           return { error: 'User not found' };
         }
 
-        return { user };
+        const { openaiApiKey, ...userData } = user;
+        return {
+          user: {
+            ...userData,
+            hasOpenaiApiKey: !!openaiApiKey,
+          }
+        };
       } catch (error) {
         reply.code(500);
         return {

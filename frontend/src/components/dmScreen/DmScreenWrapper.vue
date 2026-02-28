@@ -1,5 +1,5 @@
 <template>
-  <div class="dm-screen-wrapper">t
+  <div class="dm-screen-wrapper">
     <div class="dm-screen-flow-container" :class="{
       'dm-screen-flow-container--measuring': currentVttTool === 'measure',
       'dm-screen-flow-container--pinging': currentVttTool === 'ping'

@@ -243,6 +243,10 @@ const localData = ref<SVGShapeData & { gradientStops: SVGGradientStop[] }>(getDe
 const colorPresets = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b',
   '#10b981', '#14b8a6', '#3b82f6', '#ffffff', '#000000',
+  // Wood Palette
+  '#5c4033', '#4a3020', '#6c5043', '#3a2010', '#7c6053',
+  // Stone Palette
+  '#6a6a6a', '#7a7060', '#5a5a5a', '#8a8a8a', '#4a4a4a',
 ]
 
 interface EditablePoint {

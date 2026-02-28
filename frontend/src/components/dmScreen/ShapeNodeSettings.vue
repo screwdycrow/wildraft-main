@@ -341,9 +341,9 @@
                   density="compact"
                 >
                   <v-btn value="" size="small">Solid</v-btn>
-                  <v-btn value="5,5" size="small">Dashed</v-btn>
-                  <v-btn value="2,2" size="small">Dotted</v-btn>
-                  <v-btn value="10,5,2,5" size="small">Dash-Dot</v-btn>
+                  <v-btn value="8,8" size="small">Dashed</v-btn>
+                  <v-btn value="2,6" size="small">Dotted</v-btn>
+                  <v-btn value="12,6,2,6" size="small">Dash-Dot</v-btn>
                 </v-btn-toggle>
               </div>
             </template>
@@ -530,6 +530,10 @@ watch(() => props.shapeData, initializeFromProps, { deep: true })
 const colorPresets = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b',
   '#10b981', '#14b8a6', '#3b82f6', '#ffffff', '#000000',
+  // Wood Palette
+  '#5c4033', '#4a3020', '#6c5043', '#3a2010', '#7c6053',
+  // Stone Palette
+  '#6a6a6a', '#7a7060', '#5a5a5a', '#8a8a8a', '#4a4a4a',
 ]
 
 const dashPattern = computed({

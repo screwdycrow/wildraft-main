@@ -4,6 +4,8 @@ export interface User {
   name: string | null
   picture: string | null
   createdAt: string
+  aiSettings?: Record<string, any>
+  hasOpenaiApiKey?: boolean
 }
 
 export interface AuthResponse {

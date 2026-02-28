@@ -249,7 +249,7 @@ function setDrawerContentRef(categoryId: number, el: any) {
 
 const masonryColumns = {
   default: 3,
-  1920: 4,
+  1920: 3,
   1280: 3,
   960: 3,
   600: 2,

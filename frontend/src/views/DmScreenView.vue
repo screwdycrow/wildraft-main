@@ -323,7 +323,7 @@ async function handleFilesSelected(fileIds: number | number[] | string | string[
 <style scoped>
 .dm-screen-view {
   width: 100%;
-  height: 90vh;
+  height: 93vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

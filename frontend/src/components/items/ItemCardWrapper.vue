@@ -463,12 +463,11 @@ function handleDragEnd() {
     0 0 0 4px rgba(var(--v-theme-success), 0.2),
     0 0 20px rgba(var(--v-theme-success), 0.4),
     0 0 40px rgba(var(--v-theme-success), 0.2);
-  transform: scale(1.02);
   z-index: 100;
 }
 
 .item-card-wrapper:hover {
-  transform: translateY(-2px);
+  /* Removed translateY to prevent losing focus on hover actions */
 }
 
 .item-card-wrapper.draggable-item {
@@ -489,7 +488,7 @@ function handleDragEnd() {
 }
 
 .item-card-wrapper.drag-over:hover {
-  transform: scale(1.02) translateY(-2px);
+  /* Removed scale and translateY */
 }
 
 .card-actions {

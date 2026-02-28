@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
 import type { User, LoginCredentials, RegisterCredentials } from '@/types/auth.types'
+import { useUserSettingsStore } from './userSettings'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -16,13 +17,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value)
-  
+
   const isTokenExpiringSoon = computed(() => {
     if (!tokenExpiresAt.value) return false
     // Token expires in less than 5 minutes
     return Date.now() > tokenExpiresAt.value - 5 * 60 * 1000
   })
-  
+
   const isTokenExpired = computed(() => {
     if (!tokenExpiresAt.value) return false
     return Date.now() > tokenExpiresAt.value
@@ -53,11 +54,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function getCurrentUser() {
     if (!accessToken.value) return null
-    
+
     isLoading.value = true
     try {
       const response = await authApi.getCurrentUser()
       user.value = response.user
+      // Initialize settings store
+      const settingsStore = useUserSettingsStore()
+      settingsStore.setSettings({
+        aiSettings: response.user.aiSettings,
+        hasOpenaiApiKey: response.user.hasOpenaiApiKey
+      })
       return response.user
     } catch (error) {
       clearAuthData()
@@ -92,8 +99,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   function setAuthData(userData: User, token: string, refresh: string) {
     user.value = userData
-     setTokens(token, refresh)
-  } 
+    setTokens(token, refresh)
+
+    // Initialize settings store
+    const settingsStore = useUserSettingsStore()
+    settingsStore.setSettings({
+      aiSettings: userData.aiSettings,
+      hasOpenaiApiKey: userData.hasOpenaiApiKey
+    })
+  }
 
   function setTokens(token: string, refresh: string) {
     accessToken.value = token
@@ -113,7 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
       tokenExpiresAt.value = expiresAt
       localStorage.setItem('tokenExpiresAt', expiresAt.toString())
     }
-    
+
     // Start proactive refresh timer
     scheduleTokenRefresh()
   }
@@ -123,30 +137,30 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null
     refreshTokenValue.value = null
     tokenExpiresAt.value = null
-    
+
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('tokenExpiresAt')
-    
+
     // Clear refresh timer
     if (refreshTimer.value) {
       clearTimeout(refreshTimer.value)
       refreshTimer.value = null
     }
   }
-  
+
   // Schedule automatic token refresh before expiration
   function scheduleTokenRefresh() {
     // Clear existing timer
     if (refreshTimer.value) {
       clearTimeout(refreshTimer.value)
     }
-    
+
     if (!tokenExpiresAt.value) return
-    
+
     // Refresh 2 minutes before expiration
     const refreshTime = tokenExpiresAt.value - Date.now() - 2 * 60 * 1000
-    
+
     if (refreshTime > 0) {
       console.log('[Auth] Scheduling token refresh in', Math.round(refreshTime / 1000), 'seconds')
       refreshTimer.value = window.setTimeout(async () => {

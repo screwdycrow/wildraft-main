@@ -6,7 +6,7 @@ import { updateProfileSchema, changePasswordSchema } from '../schemas/user.schem
 
 export const userRoutes = async (fastify: FastifyInstance) => {
   // Update current user profile
-  fastify.put<{ Body: { name?: string; email?: string } }>(
+  fastify.put<{ Body: { name?: string; email?: string; openaiApiKey?: string; aiSettings?: any } }>(
     '/me',
     { schema: updateProfileSchema, preHandler: authenticateToken },
     async (request, reply) => {
@@ -16,12 +16,12 @@ export const userRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Unauthorized' };
         }
 
-        const { name, email } = request.body;
+        const { name, email, openaiApiKey, aiSettings } = request.body;
 
         // At least one field must be provided
-        if (!name && !email) {
+        if (name === undefined && email === undefined && openaiApiKey === undefined && aiSettings === undefined) {
           reply.code(400);
-          return { error: 'At least one field (name or email) must be provided' };
+          return { error: 'At least one field to update must be provided' };
         }
 
         // If email is being changed, validate format and check if it's already taken
@@ -41,7 +41,9 @@ export const userRoutes = async (fastify: FastifyInstance) => {
           where: { id: request.user.userId },
           data: {
             ...(name !== undefined && { name }),
-            ...(email && { email }),
+            ...(email !== undefined && { email }),
+            ...(openaiApiKey !== undefined && { openaiApiKey }),
+            ...(aiSettings !== undefined && { aiSettings }),
           },
           select: {
             id: true,
@@ -49,6 +51,8 @@ export const userRoutes = async (fastify: FastifyInstance) => {
             name: true,
             picture: true,
             updatedAt: true,
+            aiSettings: true, // Return non-sensitive settings
+            // openaiApiKey is intentionally excluded
           },
         });
 

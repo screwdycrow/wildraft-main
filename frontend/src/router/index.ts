@@ -46,7 +46,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'settings',
         name: 'Settings',
-        component: () => import('@/views/SettingsView.vue'),
+        component: () => import('@/views/UserSettingsView.vue'),
       },
     ],
   },
@@ -134,6 +134,7 @@ const routes: RouteRecordRaw[] = [
         path: ':id/dm-screens/:dmScreenId',
         name: 'DmScreen',
         component: () => import('@/views/DmScreenView.vue'),
+        meta: { noPadding: true },
       },
     ],
   },

@@ -392,7 +392,10 @@
     </v-navigation-drawer>
 
     <v-main class="gradient-background">
-      <v-container fluid class="pa-lg-8 pa-md-6 pa-sm-1" >
+      <v-container 
+        fluid 
+        :class="route.meta.noPadding ? 'pa-0' : 'pa-lg-8 pa-md-6 pa-sm-1'"
+      >
         <router-view />
       </v-container>
     </v-main>

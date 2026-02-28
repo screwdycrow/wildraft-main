@@ -19,6 +19,16 @@ export const updateProfileSchema = {
         description: 'User email address',
         example: 'newemail@example.com',
       },
+      openaiApiKey: {
+        type: 'string',
+        description: 'OpenAI API Key for AI features',
+        example: 'sk-...',
+      },
+      aiSettings: {
+        type: 'object',
+        description: 'AI configuration settings (model, temperature, etc)',
+        example: { model: 'gpt-4o' },
+      },
     },
   },
   response: {

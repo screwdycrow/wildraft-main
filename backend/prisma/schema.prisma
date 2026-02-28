@@ -24,6 +24,8 @@ model User {
   updatedAt     DateTime        @updatedAt
   libraryAccess LibraryAccess[]
   UserFile      UserFile[]
+  openaiApiKey  String?
+  aiSettings    Json?
 }
 
 model Library {
