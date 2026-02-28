@@ -220,7 +220,7 @@
           </v-tooltip>
         </v-btn>
 
-        <!-- Edit Text (only for text nodes) -->
+        <!-- Text Note Settings (only for text nodes) -->
         <v-btn
           v-if="selectedItem.type === 'TextNode'"
           icon
@@ -230,9 +230,9 @@
           class="toolbar-btn"
           @click="$emit('edit-text')"
         >
-          <v-icon size="20">mdi-pencil</v-icon>
+          <v-icon size="20">mdi-text-box-edit</v-icon>
           <v-tooltip activator="parent" location="top">
-            Edit Text
+            Note Settings
           </v-tooltip>
         </v-btn>
 

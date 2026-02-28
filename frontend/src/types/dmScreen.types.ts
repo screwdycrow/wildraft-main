@@ -418,6 +418,16 @@ export interface DmScreenItem {
     fontWeight?: string
     textColor?: string
     textAlign?: string
+    // TextNode enhanced styling
+    title?: string // Optional note title
+    backgroundColor?: string
+    backgroundOpacity?: number
+    borderRadius?: number
+    noteCategory?: string // 'combat'|'npc'|'lore'|'reminder'|'custom'
+    categoryColor?: string
+    notePreset?: string // preset ID
+    useMarkdown?: boolean
+    isCollapsed?: boolean
 
     // For ShapeNode (SVG-based)
     shape?: SVGShapeType
@@ -571,6 +581,74 @@ export interface DmScreensListResponse {
 export interface DmScreenResponse {
   dmScreen: DmScreen
 }
+
+// =====================================================
+// TEXT NOTE PRESETS & CATEGORIES
+// =====================================================
+
+export interface TextNotePreset {
+  id: string
+  name: string
+  icon: string
+  backgroundColor: string
+  backgroundOpacity: number
+  textColor: string
+  borderRadius: number
+}
+
+export const TEXT_NOTE_PRESETS: TextNotePreset[] = [
+  {
+    id: 'yellow-sticky',
+    name: 'Yellow Sticky',
+    icon: 'mdi-note',
+    backgroundColor: '#fef08a',
+    backgroundOpacity: 0.92,
+    textColor: '#1a1a1a',
+    borderRadius: 4,
+  },
+  {
+    id: 'parchment',
+    name: 'Parchment',
+    icon: 'mdi-script-text',
+    backgroundColor: '#d4a574',
+    backgroundOpacity: 0.88,
+    textColor: '#2c1810',
+    borderRadius: 2,
+  },
+  {
+    id: 'dark-panel',
+    name: 'Dark Panel',
+    icon: 'mdi-card',
+    backgroundColor: '#1e1e2e',
+    backgroundOpacity: 0.92,
+    textColor: '#cdd6f4',
+    borderRadius: 12,
+  },
+  {
+    id: 'glass',
+    name: 'Glass',
+    icon: 'mdi-blur',
+    backgroundColor: '#ffffff',
+    backgroundOpacity: 0.12,
+    textColor: '#ffffff',
+    borderRadius: 16,
+  },
+]
+
+export interface NoteCategory {
+  id: string
+  name: string
+  icon: string
+  color: string
+}
+
+export const NOTE_CATEGORIES: NoteCategory[] = [
+  { id: 'combat', name: 'Combat', icon: 'mdi-sword-cross', color: '#ef4444' },
+  { id: 'npc', name: 'NPC', icon: 'mdi-account', color: '#8b5cf6' },
+  { id: 'lore', name: 'Lore', icon: 'mdi-book-open-page-variant', color: '#3b82f6' },
+  { id: 'reminder', name: 'Reminder', icon: 'mdi-bell', color: '#f59e0b' },
+  { id: 'custom', name: 'Custom', icon: 'mdi-tag', color: '#6b7280' },
+]
 
 // Helper function to get default layers
 export function getDefaultLayers(): DmScreenLayer[] {

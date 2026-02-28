@@ -81,6 +81,22 @@
           </v-tooltip>
         </v-btn>
 
+        <!-- Text Note Settings -->
+        <v-btn v-if="isTextNode" icon size="x-small" variant="text" color="white" @click.stop="openSettings">
+          <v-icon size="small">mdi-text-box-edit</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            Note Settings
+          </v-tooltip>
+        </v-btn>
+
+        <!-- Minimize / Expand -->
+        <v-btn v-if="!isTokenNode && !isBackgroundImage" icon size="x-small" variant="text" color="white" @click.stop="toggleMinimize">
+          <v-icon size="small">{{ isItemMinimized ? 'mdi-arrow-expand' : 'mdi-arrow-collapse' }}</v-icon>
+          <v-tooltip activator="parent" location="bottom">
+            {{ isItemMinimized ? 'Expand' : 'Minimize' }}
+          </v-tooltip>
+        </v-btn>
+
         <v-btn icon size="x-small" variant="text" color="error" @click.stop="handleDelete">
           <v-icon size="small">mdi-close</v-icon>
           <v-tooltip activator="parent" location="bottom">
@@ -98,12 +114,18 @@
       'is-token': isTokenNode,
       'is-effect': isEffectNode,
       'is-shape': isShapeNode,
-      'is-terrain': isTerrainNode
+      'is-terrain': isTerrainNode,
+      'is-minimized': isItemMinimized
     }" @dblclick.stop="handleDoubleClick">
-      <dm-screen-item-wrapper :key="data.item.id" :item="data.item" :library-id="data.libraryId"
+      <dm-screen-item-wrapper v-show="!isItemMinimized" :key="data.item.id" :item="data.item" :library-id="data.libraryId"
         :dm-screen-id="data.dmScreenId" :snap-to-grid="data.snapToGrid" :grid-size="data.gridSize"
         :background-opacity="data.backgroundOpacity" :selected="isSelected" :rotation="rotation"
-        @update="handleItemUpdate" @delete="handleDelete" @open-settings="handleDoubleClick" />
+        @update="handleItemUpdate" @delete="handleDelete" @open-settings="openSettings" />
+      <!-- Minimized label -->
+      <div v-if="isItemMinimized" class="minimized-label">
+        <v-icon size="14" color="rgba(255,255,255,0.6)" class="mr-1">mdi-text-box</v-icon>
+        <span>{{ minimizedLabel }}</span>
+      </div>
     </div>
 
     <!-- Settings Dialogs -->
@@ -130,6 +152,13 @@
       <TerrainNodeSettings v-if="showTerrainSettings" ref="terrainSettingsRef" :config="currentTerrainConfig"
         @save="saveTerrainSettings" @cancel="showTerrainSettings = false" @regenerate="handleTerrainRegenerate" />
     </v-dialog>
+
+    <!-- Text Node Settings -->
+    <TextNodeSettings
+      v-model="showTextSettings"
+      :item="props.data.item"
+      @save="saveTextSettings"
+    />
   </div>
 </template>
 
@@ -144,6 +173,7 @@ import EffectNodeSettings from './EffectNodeSettings.vue'
 import TokenNodeSettings from './TokenNodeSettings.vue'
 import ShapeNodeSettings from './ShapeNodeSettings.vue'
 import TerrainNodeSettings from './TerrainNodeSettings.vue'
+import TextNodeSettings from './TextNodeSettings.vue'
 
 // =====================================================
 // PROPS
@@ -201,6 +231,7 @@ const showEffectSettings = ref(false)
 const showTokenSettings = ref(false)
 const showShapeSettings = ref(false)
 const showTerrainSettings = ref(false)
+const showTextSettings = ref(false)
 const effectSettingsRef = ref<InstanceType<typeof EffectNodeSettings> | null>(null)
 const tokenSettingsRef = ref<InstanceType<typeof TokenNodeSettings> | null>(null)
 const shapeSettingsRef = ref<InstanceType<typeof ShapeNodeSettings> | null>(null)
@@ -346,6 +377,10 @@ const isTerrainNode = computed(() => {
   return props.data.item.type === 'TerrainNode'
 })
 
+const isTextNode = computed(() => {
+  return props.data.item.type === 'TextNode'
+})
+
 const currentEffectConfig = computed(() => {
   return props.data.item.data.effectConfig || {
     effectType: 'fire' as const,
@@ -424,6 +459,96 @@ const canConvertToToken = computed(() => {
     !item.data.isBackground &&
     item.type !== 'TokenNode'
 })
+
+// Minimized state
+const isItemMinimized = computed(() => {
+  return props.data.item.isMinimized || false
+})
+
+const minimizedLabel = computed(() => {
+  const item = props.data.item
+  if (item.type === 'TextNode') {
+    if (item.data.title) return item.data.title
+    const text = item.data.text || 'Text Note'
+    return text.length > 30 ? text.substring(0, 30) + '...' : text
+  }
+  if (item.type === 'ShapeNode') return 'Shape'
+  if (item.type === 'EffectNode') return item.data.effectConfig?.effectType || 'Effect'
+  if (item.type === 'TerrainNode') return item.data.terrainConfig?.terrainType || 'Terrain'
+  return 'Item'
+})
+
+function toggleMinimize() {
+  const item = props.data.item
+  const newMinimized = !item.isMinimized
+
+  if (newMinimized) {
+    // Store current dimensions before minimizing
+    const node = findNode(props.id)
+    const w = node?.dimensions?.width || item.nodeOptions?.width || 260
+    const h = node?.dimensions?.height || item.nodeOptions?.height || 160
+
+    const updatedItem: DmScreenItem = {
+      ...item,
+      isMinimized: true,
+      minimizedDimensions: { width: w, height: h },
+    }
+    handleItemUpdate(updatedItem)
+
+    // Resize node to minimized height
+    setNodes((nodes) =>
+      nodes.map((n) => {
+        if (n.id === props.id) {
+          return {
+            ...n,
+            width: w,
+            height: 32,
+            style: { ...n.style, width: `${w}px`, height: '32px' },
+          }
+        }
+        return n
+      })
+    )
+    dmScreensStore.updateItemDimensions(
+      props.data.dmScreenId,
+      props.data.libraryId,
+      item.id,
+      w,
+      32
+    )
+  } else {
+    // Restore original dimensions
+    const restoreW = item.minimizedDimensions?.width || item.nodeOptions?.width || 260
+    const restoreH = item.minimizedDimensions?.height || item.nodeOptions?.height || 160
+
+    const updatedItem: DmScreenItem = {
+      ...item,
+      isMinimized: false,
+    }
+    handleItemUpdate(updatedItem)
+
+    setNodes((nodes) =>
+      nodes.map((n) => {
+        if (n.id === props.id) {
+          return {
+            ...n,
+            width: restoreW,
+            height: restoreH,
+            style: { ...n.style, width: `${restoreW}px`, height: `${restoreH}px` },
+          }
+        }
+        return n
+      })
+    )
+    dmScreensStore.updateItemDimensions(
+      props.data.dmScreenId,
+      props.data.libraryId,
+      item.id,
+      restoreW,
+      restoreH
+    )
+  }
+}
 
 // =====================================================
 // ITEM UPDATE HANDLER
@@ -886,7 +1011,8 @@ function restoreFromToken() {
 }
 
 function handleDoubleClick() {
-  // Only open settings for effect, shape, and terrain nodes, not tokens
+  // Only open settings for effect, shape, terrain nodes, not tokens or text nodes
+  // TextNode handles double-click for editing internally
   if (isEffectNode.value) {
     showEffectSettings.value = true
   } else if (isShapeNode.value) {
@@ -894,7 +1020,6 @@ function handleDoubleClick() {
   } else if (isTerrainNode.value) {
     showTerrainSettings.value = true
   }
-  // Tokens should not open settings on double-click
 }
 
 function openSettings() {
@@ -906,6 +1031,8 @@ function openSettings() {
     showShapeSettings.value = true
   } else if (isTerrainNode.value) {
     showTerrainSettings.value = true
+  } else if (isTextNode.value) {
+    showTextSettings.value = true
   }
 }
 
@@ -1005,6 +1132,25 @@ function saveTerrainSettings() {
   )
 
   showTerrainSettings.value = false
+}
+
+function saveTextSettings(newData: Record<string, any>) {
+  const item = props.data.item
+
+  const updatedItem: DmScreenItem = {
+    ...item,
+    data: {
+      ...item.data,
+      ...newData,
+    },
+  }
+
+  dmScreensStore.updateItem(
+    props.data.dmScreenId,
+    props.data.libraryId,
+    item.id,
+    updatedItem
+  )
 }
 
 function handleTerrainRegenerate() {
@@ -1392,5 +1538,27 @@ onUnmounted(() => {
   border-color: rgb(var(--v-theme-primary));
   box-shadow: 0 0 0 3px rgba(var(--v-theme-primary-rgb, 99, 102, 241), 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
   transform: scale(1.1);
+}
+
+/* Minimized state */
+.dm-screen-flow-node.is-minimized {
+  overflow: hidden;
+}
+
+.minimized-label {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(30, 30, 40, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  user-select: none;
 }
 </style>

@@ -6,7 +6,7 @@
     'is-effect': item.type === 'EffectNode',
     'is-shape': item.type === 'ShapeNode',
     'is-terrain': item.type === 'TerrainNode',
-    'transparent': item.type === 'TextNode' || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
+    'transparent': (item.type === 'TextNode' && !item.data.backgroundColor) || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
   }" :style="wrapperStyle">
     <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
     <div
@@ -75,7 +75,7 @@
       <image-url-component v-else-if="item.type === 'ImageUrl'" :item="item" @update="handleItemUpdate" />
 
       <!-- TextNode -->
-      <text-node v-else-if="item.type === 'TextNode'" :item="item" @update:text="handleTextUpdate" />
+      <text-node v-else-if="item.type === 'TextNode'" :item="item" @update:text="handleTextUpdate" @update:data="handleTextDataUpdate" @open-settings="$emit('open-settings')" />
 
       <!-- ShapeNode -->
       <shape-node v-else-if="item.type === 'ShapeNode'" :item="item" :selected="props.selected"
@@ -368,6 +368,17 @@ function handleTextUpdate(text: string) {
     data: {
       ...props.item.data,
       text,
+    }
+  }
+  emit('update', updatedItem)
+}
+
+function handleTextDataUpdate(data: Record<string, any>) {
+  const updatedItem = {
+    ...props.item,
+    data: {
+      ...props.item.data,
+      ...data,
     }
   }
   emit('update', updatedItem)
