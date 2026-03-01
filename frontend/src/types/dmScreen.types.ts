@@ -423,6 +423,7 @@ export interface DmScreenItem {
     backgroundColor?: string
     backgroundOpacity?: number
     borderRadius?: number
+    blur?: number
     noteCategory?: string // 'combat'|'npc'|'lore'|'reminder'|'custom'
     categoryColor?: string
     notePreset?: string // preset ID

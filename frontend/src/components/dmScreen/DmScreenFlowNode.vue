@@ -125,6 +125,15 @@
       <div v-if="isItemMinimized" class="minimized-label">
         <v-icon size="14" color="rgba(255,255,255,0.6)" class="mr-1">mdi-text-box</v-icon>
         <span>{{ minimizedLabel }}</span>
+        <v-tooltip
+          v-if="isNoteNode && hasNoteContent"
+          activator="parent"
+          location="top"
+          max-width="400"
+          content-class="text-white"
+        >
+          <div class="markdown-content" v-html="renderedTooltipMarkdown" />
+        </v-tooltip>
       </div>
     </div>
 
@@ -174,6 +183,7 @@ import TokenNodeSettings from './TokenNodeSettings.vue'
 import ShapeNodeSettings from './ShapeNodeSettings.vue'
 import TerrainNodeSettings from './TerrainNodeSettings.vue'
 import TextNodeSettings from './TextNodeSettings.vue'
+import { simpleMarkdown } from '@/utils/helpers'
 
 // =====================================================
 // PROPS
@@ -467,15 +477,35 @@ const isItemMinimized = computed(() => {
 
 const minimizedLabel = computed(() => {
   const item = props.data.item
-  if (item.type === 'TextNode') {
+  if (item.type === 'TextNode' || item.type === 'quickNote') {
     if (item.data.title) return item.data.title
-    const text = item.data.text || 'Text Note'
-    return text.length > 30 ? text.substring(0, 30) + '...' : text
+    const text = item.type === 'TextNode' ? item.data.text : item.data.content
+    return text && text.length > 30 ? text.substring(0, 30) + '...' : (text || 'Note')
   }
   if (item.type === 'ShapeNode') return 'Shape'
   if (item.type === 'EffectNode') return item.data.effectConfig?.effectType || 'Effect'
   if (item.type === 'TerrainNode') return item.data.terrainConfig?.terrainType || 'Terrain'
   return 'Item'
+})
+
+const isNoteNode = computed(() => {
+  return props.data.item.type === 'TextNode' || props.data.item.type === 'quickNote'
+})
+
+const hasNoteContent = computed(() => {
+  if (props.data.item.type === 'TextNode') return !!props.data.item.data.text
+  if (props.data.item.type === 'quickNote') return !!props.data.item.data.content
+  return false
+})
+
+const renderedTooltipMarkdown = computed(() => {
+  if (props.data.item.type === 'TextNode') {
+    return simpleMarkdown(props.data.item.data.text || '')
+  }
+  if (props.data.item.type === 'quickNote') {
+    return simpleMarkdown(props.data.item.data.content || '')
+  }
+  return ''
 })
 
 function toggleMinimize() {
@@ -1561,4 +1591,5 @@ onUnmounted(() => {
   border-radius: 6px;
   user-select: none;
 }
+.chkbx.unchecked { color: #94a3b8; }
 </style>

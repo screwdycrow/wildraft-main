@@ -96,6 +96,7 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 import { NOTE_CATEGORIES } from '@/types/dmScreen.types'
+import { simpleMarkdown } from '@/utils/helpers'
 
 const props = defineProps<{
   item: DmScreenItem
@@ -160,87 +161,12 @@ const textStyle = computed(() => ({
   textAlign: (data.value.textAlign || 'left') as 'left' | 'center' | 'right',
 }))
 
+
 // Simple markdown renderer (no external deps)
 const renderedMarkdown = computed(() => {
   const text = data.value.text || ''
   return simpleMarkdown(text)
 })
-
-function simpleMarkdown(text: string): string {
-  // Escape HTML
-  let html = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  // Headers (must be at start of line)
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>')
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>')
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>')
-
-  // Horizontal rule
-  html = html.replace(/^---$/gm, '<hr>')
-
-  // Process list blocks BEFORE converting newlines to <br>
-  // Match consecutive lines starting with '- '
-  html = html.replace(/(^- .+$\n?)+/gm, (match) => {
-    const items = match.trim().split('\n').map(line => {
-      let content = line.replace(/^- /, '')
-      
-      // Checkboxes [x] or [ ]
-      if (content.startsWith('[x] ') || content.startsWith('[X] ')) {
-        content = `<span class="chkbox checked">&#9745;</span> ` + content.substring(4)
-      } else if (content.startsWith('[ ] ')) {
-        content = `<span class="chkbox unchecked">&#9744;</span> ` + content.substring(4)
-      }
-      return `<li>${content}</li>`
-    }).join('')
-    return `<ul>${items}</ul>`
-  })
-
-  // Basic Tables
-  // Find lines with |
-  const tableRegex = /((?:\|.+\|\n)+)/g
-  html = html.replace(tableRegex, (match) => {
-    const rows = match.trim().split('\n')
-    let tableHtml = '<div class="table-container"><table>'
-    let isHeader = true
-
-    rows.forEach(row => {
-      // Skip separator rows like |---|---|
-      if (row.match(/^\|[-\s:|]+\|$/)) {
-        isHeader = false
-        return
-      }
-
-      const cells = row.split('|').filter((_, i, arr) => i > 0 && i < arr.length - 1).map(c => c.trim())
-      tableHtml += '<tr>'
-      cells.forEach(cell => {
-        tableHtml += isHeader ? `<th>${cell}</th>` : `<td>${cell}</td>`
-      })
-      tableHtml += '</tr>'
-      if (isHeader) isHeader = false // fallback if no separator
-    })
-    tableHtml += '</table></div>'
-    return tableHtml
-  })
-
-  // Inline formatting
-  html = html
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/~~(.+?)~~/g, '<del>$1</del>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-
-  // Line breaks (but not inside block elements)
-  html = html.replace(/\n/g, '<br>')
-
-  // Clean up extra <br> around block elements
-  html = html.replace(/<br><(ul|ol|h[1-3]|hr|div class="table-container")/g, '<$1')
-  html = html.replace(/<\/(ul|ol|h[1-3]|div)><br>/g, '</$1>')
-
-  return html
-}
 
 // Watch for external changes
 watch(() => data.value.text, (newText) => {

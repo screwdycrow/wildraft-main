@@ -6,7 +6,7 @@
     'is-effect': item.type === 'EffectNode',
     'is-shape': item.type === 'ShapeNode',
     'is-terrain': item.type === 'TerrainNode',
-    'transparent': (item.type === 'TextNode' && !item.data.backgroundColor) || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode'
+    'transparent': (item.type === 'TextNode' && !item.data.backgroundColor) || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode' || item.type === 'quickNote'
   }" :style="wrapperStyle">
     <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
     <div
