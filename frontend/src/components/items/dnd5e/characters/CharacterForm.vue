@@ -418,6 +418,7 @@ interface Props {
   libraryId: number
   itemType: ItemType
   initialTagIds?: number[]
+  initialData?: any
   hideHeader?: boolean
 }
 
@@ -723,14 +724,14 @@ watch(() => props.item, (newItem) => {
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     
     if (newItem.userFiles && newItem.userFiles.length > 0) {
-      filesStore.addFiles(newItem.userFiles)
+      filesStore.addFiles(newItem.userFiles as any)
       formData.value.userFileIds = newItem.userFiles.map(f => f.id)
     } else {
       formData.value.userFileIds = []
     }
     
     if (newItem.featuredImage) {
-      filesStore.addFiles(newItem.featuredImage)
+      filesStore.addFiles(newItem.featuredImage as any)
       formData.value.featuredImageId = newItem.featuredImage.id
     } else {
       formData.value.featuredImageId = null

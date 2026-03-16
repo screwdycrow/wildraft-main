@@ -189,7 +189,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
   );
 
   // Update a library
-  fastify.put<{ Params: { id: string }; Body: { name?: string; description?: string } }>(
+  fastify.put<{ Params: { id: string }; Body: { name?: string; description?: string; frontPageDmScreenId?: string } }>(
     '/:id',
     { schema: updateLibrarySchema, preHandler: [authenticateToken, requireEditorAccess] },
     async (request, reply) => {
@@ -201,12 +201,12 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           return { error: 'Invalid library ID' };
         }
 
-        const { name, description } = request.body;
+        const { name, description, frontPageDmScreenId } = request.body;
 
         // Validate at least one field is provided
-        if (name === undefined && description === undefined) {
+        if (name === undefined && description === undefined && frontPageDmScreenId === undefined) {
           reply.code(400);
-          return { error: 'At least one field (name or description) must be provided' };
+          return { error: 'At least one field (name, description, or frontPageDmScreenId) must be provided' };
         }
 
         // Validate name if provided
@@ -222,6 +222,7 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
             data: {
               ...(name !== undefined && { name: name.trim() }),
               ...(description !== undefined && { description: description.trim() || null }),
+              ...(frontPageDmScreenId !== undefined && { frontPageDmScreenId: frontPageDmScreenId || null }),
             },
           });
 

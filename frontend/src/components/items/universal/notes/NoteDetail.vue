@@ -44,7 +44,7 @@
       </v-col>
 
       <!-- Content -->
-      <v-col class="note-content-col" cols="12" md="7">
+      <v-col class="note-content-col" cols="12" md="8">
         <div class="note-content-wrapper">
           <v-card-text class="pa-6">
             <div class="note-body">
@@ -80,7 +80,7 @@
       </v-col>
 
       <!-- Content Outline -->
-      <v-col class="note-outline-col" cols="12" md="3">
+      <v-col class="note-outline-col" cols="12" md="2">
         <div class="outline-wrapper">
           <div class="outline-header">
             <v-icon icon="mdi-format-list-text" size="small" class="mr-2" />
@@ -355,8 +355,10 @@ function formatDate(dateString: string) {
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: calc(100vh - 40px);
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+  max-height: calc(100vh - 40px);
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 16px;

@@ -387,7 +387,7 @@
     </v-dialog>
 
     <!-- Library Item Selector -->
-    <library-item-selector v-model="showItemSelector" :library-id="dmScreen.libraryId" @select="handleAddLibraryItem" />
+    <library-item-selector v-model="showItemSelector" :library-id="dmScreen.libraryId" @select="handleAddLibraryItem" @create="contextMenuCreateItem" />
 
     <!-- File Manager for Background Image -->
     <file-manager v-model="showFileManager" select-mode :multiple="false" return-type="id" filter-type="image"
@@ -397,63 +397,70 @@
     <file-manager v-model="showCanvasBackgroundSelector" select-mode :multiple="false" return-type="id"
       filter-type="image" @select="handleCanvasBackgroundSelect" />
 
-    <!-- Shape Style Editor Dialog -->
-    <v-dialog v-model="showShapeStyleDialog" max-width="400" persistent :attach="false">
-      <v-card>
-        <v-card-title>Edit Shape Style</v-card-title>
-        <v-divider />
-        <v-card-text class="py-6">
-          <div class="d-flex flex-column gap-4">
-            <!-- Fill Color -->
-            <div>
-              <label class="text-body2 font-weight-600 mb-2 d-block">Fill Color</label>
-              <div class="d-flex gap-2">
-                <input v-model="editingShapeData.color" type="color" class="shape-color-picker" />
-                <v-text-field v-model="editingShapeData.color" label="Hex Color" density="compact" />
+      <!-- Shape Style Editor Dialog -->
+      <v-dialog v-model="showShapeStyleDialog" max-width="400" persistent :attach="false">
+        <v-card>
+          <v-card-title>Edit Shape Style</v-card-title>
+          <v-divider />
+          <v-card-text class="py-6">
+            <div class="d-flex flex-column gap-4">
+              <!-- Fill Color -->
+              <div>
+                <label class="text-body2 font-weight-600 mb-2 d-block">Fill Color</label>
+                <div class="d-flex gap-2">
+                  <input v-model="editingShapeData.color" type="color" class="shape-color-picker" />
+                  <v-text-field v-model="editingShapeData.color" label="Hex Color" density="compact" />
+                </div>
               </div>
-            </div>
 
-            <!-- Opacity -->
-            <div>
-              <label class="text-body2 font-weight-600 mb-2 d-block">
-                Opacity: {{ Math.round((editingShapeData.opacity || 1) * 100) }}%
-              </label>
-              <v-slider v-model="editingShapeData.opacity" :min="0" :max="1" :step="0.1" />
-            </div>
-
-            <!-- Border Color -->
-            <div>
-              <label class="text-body2 font-weight-600 mb-2 d-block">Border Color</label>
-              <div class="d-flex gap-2">
-                <input v-model="editingShapeData.borderColor" type="color" class="shape-color-picker" />
-                <v-text-field v-model="editingShapeData.borderColor" label="Hex Color" density="compact" />
+              <!-- Opacity -->
+              <div>
+                <label class="text-body2 font-weight-600 mb-2 d-block">
+                  Opacity: {{ Math.round((editingShapeData.opacity || 1) * 100) }}%
+                </label>
+                <v-slider v-model="editingShapeData.opacity" :min="0" :max="1" :step="0.1" />
               </div>
-            </div>
 
-            <!-- Border Width -->
-            <div>
-              <label class="text-body2 font-weight-600 mb-2 d-block">
-                Border Width: {{ editingShapeData.borderWidth || 0 }}px
-              </label>
-              <v-slider v-model="editingShapeData.borderWidth" :min="0" :max="10" :step="1" />
-            </div>
+              <!-- Border Color -->
+              <div>
+                <label class="text-body2 font-weight-600 mb-2 d-block">Border Color</label>
+                <div class="d-flex gap-2">
+                  <input v-model="editingShapeData.borderColor" type="color" class="shape-color-picker" />
+                  <v-text-field v-model="editingShapeData.borderColor" label="Hex Color" density="compact" />
+                </div>
+              </div>
 
-            <!-- Label -->
-            <v-text-field v-model="editingShapeData.label" label="Label (optional)" density="compact" />
-          </div>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showShapeStyleDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn color="primary" variant="flat" @click="saveShapeStyle">
-            Save
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+              <!-- Border Width -->
+              <div>
+                <label class="text-body2 font-weight-600 mb-2 d-block">
+                  Border Width: {{ editingShapeData.borderWidth || 0 }}px
+                </label>
+                <v-slider v-model="editingShapeData.borderWidth" :min="0" :max="10" :step="1" />
+              </div>
+
+              <!-- Label -->
+              <v-text-field v-model="editingShapeData.label" label="Label (optional)" density="compact" />
+            </div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showShapeStyleDialog = false">
+              Cancel
+            </v-btn>
+            <v-btn color="primary" variant="flat" @click="saveShapeStyle">
+              Save
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Library Item Creation Dialog -->
+      <item-dialog
+        v-model="showItemCreationDialog"
+        :library-id="dmScreen.libraryId"
+        :item-type="itemTypeToCreate"
+        @created="handleItemCreated"
+      />
 
     <!-- Node Context Menu (right-click on node) -->
     <div v-if="showNodeContextMenu" class="context-menu-overlay" @click="closeContextMenus"
@@ -508,6 +515,26 @@
           <v-list-item prepend-icon="mdi-card-plus-outline" title="Add Library Item"
             @click="contextMenuAddLibraryItem" />
 
+          <!-- Create New Library Item submenu -->
+          <v-menu location="end" open-on-hover :close-on-content-click="true">
+            <template #activator="{ props: menuProps }">
+              <v-list-item v-bind="menuProps" prepend-icon="mdi-plus-circle-outline" title="Create New Library Item"
+                append-icon="mdi-chevron-right" />
+            </template>
+            <v-card min-width="180" class="context-menu-card">
+              <v-list density="compact" class="py-1">
+                <v-list-item prepend-icon="mdi-account-plus" title="Character"
+                  @click="contextMenuCreateItem('CHARACTER_DND_5E')" />
+                <v-list-item prepend-icon="mdi-treasure-chest" title="Magic Item"
+                  @click="contextMenuCreateItem('ITEM_DND_5E')" />
+                <v-list-item prepend-icon="mdi-sword-cross" title="Stat Block"
+                  @click="contextMenuCreateItem('STAT_BLOCK_DND_5E')" />
+                <v-list-item prepend-icon="mdi-note-plus-outline" title="Note"
+                  @click="contextMenuCreateItem('NOTE')" />
+              </v-list>
+            </v-card>
+          </v-menu>
+
           <v-divider class="my-1" />
 
           <!-- Add Text Note -->
@@ -560,12 +587,40 @@
           Select DM Screen
         </v-card-title>
         <v-card-text>
-          <v-list v-if="availableDmScreens.length > 0" density="compact">
+          <!-- Create New Screen Action -->
+          <div v-if="!isCreatingNewDmScreen" class="mb-4">
+            <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" block @click="isCreatingNewDmScreen = true">
+              Create New Screen
+            </v-btn>
+          </div>
+
+          <!-- Create New Screen Form -->
+          <div v-else class="mb-4 pa-3 rounded border border-primary border-opacity-25">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Create New DM Screen</div>
+            <v-text-field v-model="newDmScreenName" label="Screen Name" density="compact" hide-details class="mb-3"
+              autofocus @keyup.enter="handleCreateNewDmScreen" />
+            <div class="d-flex gap-2">
+              <v-btn color="primary" size="small" variant="flat" :loading="dmScreensStore.isLoading"
+                @click="handleCreateNewDmScreen">
+                Create & Add
+              </v-btn>
+              <v-btn variant="text" size="small" @click="isCreatingNewDmScreen = false; newDmScreenName = ''">
+                Cancel
+              </v-btn>
+            </div>
+          </div>
+
+          <v-divider v-if="availableDmScreens.length > 0" class="mb-2" />
+          <div v-if="availableDmScreens.length > 0" class="text-caption text-medium-emphasis mb-1 px-1">
+            Existing Screens:
+          </div>
+
+          <v-list v-if="availableDmScreens.length > 0" density="compact" class="overflow-y-auto" max-height="300">
             <v-list-item v-for="screen in availableDmScreens" :key="screen.id" :title="screen.name"
               :subtitle="`${screen.items?.length || 0} items`" prepend-icon="mdi-monitor-dashboard"
               @click="handleDmScreenSelect(screen)" />
           </v-list>
-          <div v-else class="text-center py-4 text-medium-emphasis">
+          <div v-else-if="!isCreatingNewDmScreen" class="text-center py-4 text-medium-emphasis">
             <v-icon icon="mdi-information-outline" size="24" class="mb-2" />
             <p>No other DM screens available to embed.</p>
           </div>
@@ -576,6 +631,14 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Library Item Creation Dialog -->
+    <item-dialog
+      v-model="showItemCreationDialog"
+      :library-id="dmScreen.libraryId"
+      :item-type="itemTypeToCreate"
+      @created="handleItemCreated"
+    />
 
     <!-- Empty State -->
     <div v-if="!dmScreen.items || dmScreen.items.length === 0" class="empty-state-overlay">
@@ -606,11 +669,12 @@ import { MiniMap } from '@vue-flow/minimap'
 import type { Node, NodeDragEvent, NodeChange } from '@vue-flow/core'
 import type { DmScreen, DmScreenItem, DmScreenSettings, GridOptions, DmScreenLayer, VttToolMode, MeasurementLine } from '@/types/dmScreen.types'
 import { EFFECT_PRESETS, getDefaultGridOptions, calculateDistanceFeet, DEFAULT_LAYERS } from '@/types/dmScreen.types'
-import type { LibraryItem } from '@/types/item.types'
+import type { LibraryItem, ItemType } from '@/types/item.types'
 import DmScreenFlowNode from './DmScreenFlowNode.vue'
 import GridNode from './GridNode.vue'
 import LayerControl from './LayerControl.vue'
 import LibraryItemSelector from './LibraryItemSelector.vue'
+import { ItemDialog } from '@/components/items'
 import FileManager from '@/components/files/FileManager.vue'
 import EffectsPanel from './EffectsPanel.vue'
 import ShapesPanel from './ShapesPanel.vue'
@@ -675,9 +739,9 @@ const vueFlowRef = ref<any>(null)
 // NODE TYPES (marked raw to prevent reactivity)
 // =====================================================
 
-const nodeTypes = markRaw({
-  dmScreenItem: DmScreenFlowNode,
-})
+const nodeTypes = {
+  dmScreenItem: markRaw(DmScreenFlowNode),
+}
 
 // =====================================================
 // UI STATE (local only, no watchers)
@@ -688,6 +752,10 @@ const showFileManager = ref(false)
 const showItemSelector = ref(false)
 const showCanvasBackgroundSelector = ref(false)
 const showDmScreenSelector = ref(false)
+const showItemCreationDialog = ref(false)
+const itemTypeToCreate = ref<ItemType>('NOTE')
+const isCreatingNewDmScreen = ref(false)
+const newDmScreenName = ref('')
 const showShapeStyleDialog = ref(false)
 const canvasBackgroundUrl = ref<string | null>(null)
 
@@ -1732,6 +1800,19 @@ function contextMenuAddLibraryItem() {
   closeContextMenus()
 }
 
+function contextMenuCreateItem(type: ItemType) {
+  // Store position before opening creator
+  lastContextMenuFlowPosition.value = { ...contextMenuFlowPosition.value }
+  itemTypeToCreate.value = type
+  showItemCreationDialog.value = true
+  closeContextMenus()
+}
+
+function handleItemCreated(item: LibraryItem) {
+  // Automatically add the new item to the screen
+  handleAddLibraryItem(item)
+}
+
 function contextMenuAddTextNode() {
   // Use default layer logic (Notes) by passing undefined for targetLayer
   dmScreensStore.addTextNode(props.dmScreen.id, props.dmScreen.libraryId, contextMenuFlowPosition.value)
@@ -1767,6 +1848,8 @@ function contextMenuAddEffect(preset: typeof EFFECT_PRESETS[0]) {
 function contextMenuAddDmScreen() {
   // Store position before opening selector
   lastContextMenuFlowPosition.value = { ...contextMenuFlowPosition.value }
+  isCreatingNewDmScreen.value = false
+  newDmScreenName.value = ''
   showDmScreenSelector.value = true
   closeContextMenus()
 }
@@ -1790,6 +1873,29 @@ function handleDmScreenSelect(screen: DmScreen) {
   )
   toast.success(`Added DM Screen: ${screen.name}`)
   showDmScreenSelector.value = false
+}
+
+async function handleCreateNewDmScreen() {
+  if (!newDmScreenName.value.trim()) {
+    toast.error('Please enter a name for the new DM screen')
+    return
+  }
+
+  try {
+    const newScreen = await dmScreensStore.createDmScreen(props.dmScreen.libraryId, {
+      name: newDmScreenName.value.trim()
+    })
+    
+    // Immediately add the new screen as a node
+    handleDmScreenSelect(newScreen)
+    
+    // Reset state
+    isCreatingNewDmScreen.value = false
+    newDmScreenName.value = ''
+  } catch (error: any) {
+    console.error('[DmScreenWrapper] Failed to create and add new DM screen:', error)
+    toast.error('Failed to create new DM screen')
+  }
 }
 
 // Get current item's layer for display
@@ -1847,7 +1953,7 @@ function handleDiagonalRuleChange(rule: 'standard' | 'alternating' | 'euclidean'
   dmScreensStore.updateSettings(props.dmScreen.id, props.dmScreen.libraryId, updatedSettings)
 }
 
-function handleMeasurementEnd(result: { feet: number; squares: number; line: MeasurementLine }) {
+function handleMeasurementEnd(result: { feet: number; squares: number; lines: MeasurementLine[] }) {
   // Update the toolbar display
   vttToolbarRef.value?.setLastMeasurement({ feet: result.feet, squares: result.squares })
 

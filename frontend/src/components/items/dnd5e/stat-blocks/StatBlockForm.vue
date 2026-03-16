@@ -305,6 +305,7 @@ interface Props {
   libraryId: number
   itemType: ItemType
   initialTagIds?: number[]
+  initialData?: any
   hideHeader?: boolean
 }
 
@@ -532,18 +533,98 @@ watch(() => props.item, (newItem) => {
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     
     if (newItem.userFiles && newItem.userFiles.length > 0) {
-      filesStore.addFiles(newItem.userFiles)
+      filesStore.addFiles(newItem.userFiles as any)
       formData.value.userFileIds = newItem.userFiles.map(f => f.id)
     } else {
       formData.value.userFileIds = []
     }
     
     if (newItem.featuredImage) {
-      filesStore.addFiles(newItem.featuredImage)
+      filesStore.addFiles(newItem.featuredImage as any)
       formData.value.featuredImageId = newItem.featuredImage.id
     } else {
       formData.value.featuredImageId = null
     }
+  } else {
+    // Create Mode
+    if (props.initialData) {
+      formData.value.name = props.initialData.name || ''
+      formData.value.description = props.initialData.description || ''
+      
+      const itemData = props.initialData.data || props.initialData
+      if (typeof itemData === 'object' && itemData !== null) {
+        Object.assign(formData.value.data, {
+          cr: itemData.cr || '1',
+          hp: itemData.hp || 10,
+          ac: itemData.ac || 10,
+          speed: itemData.speed || '30 ft',
+          initiative: itemData.initiative ?? 0,
+          str: itemData.str || 10,
+          dex: itemData.dex || 10,
+          con: itemData.con || 10,
+          int: itemData.int || 10,
+          wis: itemData.wis || 10,
+          cha: itemData.cha || 10,
+          strSavingThrow: itemData.strSavingThrow || false,
+          dexSavingThrow: itemData.dexSavingThrow || false,
+          conSavingThrow: itemData.conSavingThrow || false,
+          intSavingThrow: itemData.intSavingThrow || false,
+          wisSavingThrow: itemData.wisSavingThrow || false,
+          chaSavingThrow: itemData.chaSavingThrow || false,
+          size: itemData.size || 'Medium',
+          type: itemData.type || 'humanoid',
+          alignment: itemData.alignment || 'Unaligned',
+          senses: itemData.senses || '',
+          languages: itemData.languages || '',
+          immunities: itemData.immunities || '',
+          resistances: itemData.resistances || '',
+          traits: itemData.traits || [],
+          actions: itemData.actions || [],
+          spells: itemData.spells || [],
+          customCounters: itemData.customCounters || [],
+        })
+      }
+    } else {
+      formData.value.name = ''
+      formData.value.description = ''
+      // Reset data to defaults
+      Object.assign(formData.value.data, {
+        cr: '1',
+        hp: 10,
+        ac: 10,
+        speed: '30 ft',
+        initiative: 0,
+        str: 10,
+        dex: 10,
+        con: 10,
+        int: 10,
+        wis: 10,
+        cha: 10,
+        strSavingThrow: false,
+        dexSavingThrow: false,
+        conSavingThrow: false,
+        intSavingThrow: false,
+        wisSavingThrow: false,
+        chaSavingThrow: false,
+        size: 'Medium',
+        type: 'humanoid',
+        alignment: 'Unaligned',
+        senses: '',
+        languages: '',
+        immunities: '',
+        resistances: '',
+        traits: [],
+        actions: [],
+        spells: [],
+        customCounters: [],
+      })
+    }
+    
+    if (!props.initialTagIds || props.initialTagIds.length === 0) {
+      formData.value.tagIds = []
+    }
+    formData.value.userFileIds = []
+    formData.value.featuredImageId = null
   }
 }, { immediate: true })
 

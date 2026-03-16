@@ -19,6 +19,20 @@ export interface ChatCompletionResponse {
     }
 }
 
+export interface AiConversation {
+    id: string
+    title: string | null
+    updatedAt: string
+}
+
+export interface AiMessage {
+    id: string
+    role: 'system' | 'user' | 'assistant'
+    content: string
+    contextItems: any | null
+    createdAt: string
+}
+
 export const aiApi = {
     async generateJson(params: GenerateJsonRequest): Promise<ChatCompletionResponse> {
         const response = await apiClient.post<ChatCompletionResponse>('/ai/chat/completions', {
@@ -31,4 +45,33 @@ export const aiApi = {
         })
         return response.data
     },
+
+    async getConversations(libraryId: number): Promise<AiConversation[]> {
+        const response = await apiClient.get<AiConversation[]>('/ai/conversations', {
+            params: { libraryId }
+        })
+        return response.data
+    },
+
+    async createConversation(libraryId: number, title: string): Promise<AiConversation> {
+        const response = await apiClient.post<AiConversation>('/ai/conversations', {
+            libraryId,
+            title
+        })
+        return response.data
+    },
+
+    async getConversationMessages(id: string): Promise<AiMessage[]> {
+        const response = await apiClient.get<AiMessage[]>(`/ai/conversations/${id}/messages`)
+        return response.data
+    },
+
+    async chatInConversation(id: string, content: string, contextItems?: any[], model?: string): Promise<AiMessage> {
+        const response = await apiClient.post<AiMessage>(`/ai/conversations/${id}/chat`, {
+            content,
+            contextItems,
+            model
+        })
+        return response.data
+    }
 }

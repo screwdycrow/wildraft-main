@@ -102,8 +102,19 @@
                     rows="15"
                     variant="outlined"
                     class="json-textarea"
-                    :error-messages="parseError"
+                    :error-messages="syntaxError ? [syntaxError] : (bypassSchemaValidation ? [] : schemaErrors)"
                   />
+
+                  <v-alert
+                    v-if="!syntaxError && schemaErrors.length > 0 && bypassSchemaValidation"
+                    type="warning"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-4"
+                  >
+                    <v-icon icon="mdi-alert" class="mr-2" />
+                    Ignoring {{ schemaErrors.length }} validation error{{ schemaErrors.length > 1 ? 's' : '' }}.
+                  </v-alert>
 
                   <v-alert
                     v-if="parseSuccess"
@@ -201,8 +212,19 @@
                       rows="15"
                       variant="outlined"
                       class="json-textarea"
-                      :error-messages="parseError"
+                      :error-messages="syntaxError ? [syntaxError] : (bypassSchemaValidation ? [] : schemaErrors)"
                     />
+
+                    <v-alert
+                      v-if="!syntaxError && schemaErrors.length > 0 && bypassSchemaValidation"
+                      type="warning"
+                      variant="tonal"
+                      density="compact"
+                      class="mb-4"
+                    >
+                      <v-icon icon="mdi-alert" class="mr-2" />
+                      Ignoring {{ schemaErrors.length }} validation error{{ schemaErrors.length > 1 ? 's' : '' }}.
+                    </v-alert>
 
                     <v-alert
                       v-if="bulkItems.length > 0"
@@ -273,8 +295,19 @@
                       rows="20"
                       variant="outlined"
                       class="json-textarea"
-                      :error-messages="parseError"
+                      :error-messages="syntaxError ? [syntaxError] : (bypassSchemaValidation ? [] : schemaErrors)"
                     />
+
+                  <v-alert
+                    v-if="!syntaxError && schemaErrors.length > 0 && bypassSchemaValidation"
+                    type="warning"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-4"
+                  >
+                    <v-icon icon="mdi-alert" class="mr-2" />
+                    Ignoring {{ schemaErrors.length }} validation error{{ schemaErrors.length > 1 ? 's' : '' }}.
+                  </v-alert>
 
                     <v-alert
                       v-if="bulkItems.length > 0"
@@ -330,15 +363,25 @@
 
       <v-divider v-if="!isMultipleMode" />
 
-      <!-- Import Options (only for single item import) -->
-      <v-card-text v-if="!isMultipleMode" class="py-3 px-6">
-        <v-checkbox
-          v-model="importDescription"
-          label="Import description"
-          density="compact"
-          hide-details
-          color="primary"
-        />
+      <!-- Import Options -->
+      <v-card-text class="py-3 px-6">
+        <div class="d-flex flex-column gap-1">
+          <v-checkbox
+            v-if="!isMultipleMode"
+            v-model="importDescription"
+            label="Import description"
+            density="compact"
+            hide-details
+            color="primary"
+          />
+          <v-checkbox
+            v-model="bypassSchemaValidation"
+            label="Ignore schema validation errors"
+            density="compact"
+            hide-details
+            color="warning"
+          />
+        </div>
       </v-card-text>
 
       <v-card-actions class="px-6 py-4">
@@ -393,12 +436,14 @@ const { getJsonImportSchema, getItemTypeInfo, getItemTypesForTemplate, getUniver
 const jsonInput = ref('')
 const isValidating = ref(false)
 const isImporting = ref(false)
-const parseError = ref<string[]>([])
+const aiInstructions = ref('')
+const bypassSchemaValidation = ref(false)
+const schemaErrors = ref<string[]>([])
+const syntaxError = ref<string | null>(null)
 const parseSuccess = ref(false)
 const promptCopied = ref(false)
 const isGenerating = ref(false)
-const importDescription = ref(true) // Default to importing description
-const aiInstructions = ref('')
+const importDescription = ref(true)
 
 // Note customization
 const noteCustomization = ref({
@@ -454,10 +499,15 @@ const bulkItems = computed(() => {
 })
 
 const canImport = computed(() => {
+  if (!jsonInput.value.trim() || syntaxError.value) return false
+
+  const hasSchemaErrors = schemaErrors.value.length > 0
+  if (hasSchemaErrors && !bypassSchemaValidation.value) return false
+
   if (props.isMultipleMode) {
-    return bulkItems.value.length > 0 && parseError.value.length === 0
+    return bulkItems.value.length > 0
   } else {
-    return parseSuccess.value && parseError.value.length === 0
+    return parseSuccess.value
   }
 })
 
@@ -489,9 +539,11 @@ function close() {
 
 function resetState() {
   jsonInput.value = ''
-  parseError.value = []
+  schemaErrors.value = []
+  syntaxError.value = null
   parseSuccess.value = false
   isValidating.value = false
+  bypassSchemaValidation.value = false
   isValidating.value = false
   importDescription.value = true // Reset to default (import description)
   aiInstructions.value = ''
@@ -507,7 +559,8 @@ function resetState() {
 function loadExample() {
   if (props.currentItem) {
     jsonInput.value = formatCurrentItemJson(props.currentItem)
-    parseError.value = []
+    schemaErrors.value = []
+    syntaxError.value = null
     parseSuccess.value = false
     validateJson()
   } else if (schema.value) {
@@ -573,11 +626,12 @@ async function generateWithAI() {
   }
   
   isGenerating.value = true
-  parseError.value = []
+  syntaxError.value = null
+  schemaErrors.value = []
   
   // Relaxed check: Trust if model is selected
   if (!userSettingsStore.aiSettings?.model) {
-    parseError.value = ['Please select an AI model in User Settings to use this feature.']
+    syntaxError.value = 'Please select an AI model in User Settings to use this feature.'
     isGenerating.value = false
     return
   }
@@ -602,7 +656,7 @@ async function generateWithAI() {
     
   } catch (error) {
     console.error('AI Generation failed:', error)
-    parseError.value = ['AI generation failed. Please check your API key and try again.']
+    syntaxError.value = 'AI generation failed. Please check your API key and try again.'
   } finally {
     isGenerating.value = false
   }
@@ -612,11 +666,12 @@ async function generateBulkWithAI() {
   const prompt = generateBulkAIPrompt()
   
   isGenerating.value = true
-  parseError.value = []
+  syntaxError.value = null
+  schemaErrors.value = []
   
   // Relaxed check: Trust if model is selected
   if (!userSettingsStore.aiSettings?.model) {
-    parseError.value = ['Please select an AI model in User Settings to use this feature.']
+    syntaxError.value = 'Please select an AI model in User Settings to use this feature.'
     isGenerating.value = false
     return
   }
@@ -640,7 +695,7 @@ async function generateBulkWithAI() {
     
   } catch (error) {
     console.error('AI Generation failed:', error)
-    parseError.value = ['AI generation failed. Please check your API key and try again.']
+    syntaxError.value = 'AI generation failed. Please check your API key and try again.'
   } finally {
     isGenerating.value = false
   }
@@ -902,13 +957,14 @@ Please provide only the JSON array, no additional text or explanations.`
 }
 
 function validateJson() {
-  parseError.value = []
+  schemaErrors.value = []
+  syntaxError.value = null
   parseSuccess.value = false
   isValidating.value = true
 
   try {
     if (!jsonInput.value.trim()) {
-      parseError.value.push('JSON input is empty')
+      syntaxError.value = 'JSON input is empty'
       isValidating.value = false
       return
     }
@@ -918,13 +974,13 @@ function validateJson() {
     if (props.isMultipleMode) {
       // Validate array of items
       if (!Array.isArray(parsed)) {
-        parseError.value.push('Expected an array of items')
+        schemaErrors.value.push('Expected an array of items')
         isValidating.value = false
         return
       }
 
       if (parsed.length === 0) {
-        parseError.value.push('Array is empty')
+        schemaErrors.value.push('Array is empty')
         isValidating.value = false
         return
       }
@@ -935,19 +991,19 @@ function validateJson() {
       for (let i = 0; i < parsed.length; i++) {
         const item = parsed[i]
         if (!item || typeof item !== 'object') {
-          parseError.value.push(`Item ${i + 1}: Must be an object`)
+          schemaErrors.value.push(`Item ${i + 1}: Must be an object`)
           continue
         }
         if (!item.name || typeof item.name !== 'string') {
-          parseError.value.push(`Item ${i + 1}: Missing required 'name' field`)
+          schemaErrors.value.push(`Item ${i + 1}: Missing required 'name' field`)
         }
 
         // In type-specific mode, we don't require the type field since it will be added automatically
         if (!isTypeSpecific) {
           if (!item.type || typeof item.type !== 'string') {
-            parseError.value.push(`Item ${i + 1}: Missing required 'type' field`)
+            schemaErrors.value.push(`Item ${i + 1}: Missing required 'type' field`)
           } else if (!availableItemTypes.value.includes(item.type)) {
-            parseError.value.push(`Item ${i + 1}: Invalid item type '${item.type}'`)
+            schemaErrors.value.push(`Item ${i + 1}: Invalid item type '${item.type}'`)
           }
         } else {
           // In type-specific mode, move any "type" field to the data object
@@ -962,13 +1018,13 @@ function validateJson() {
     } else {
       // Validate single item
       if (!parsed || typeof parsed !== 'object') {
-        parseError.value.push('Expected an object')
+        schemaErrors.value.push('Expected an object')
         isValidating.value = false
         return
       }
 
       if (!parsed.name || typeof parsed.name !== 'string') {
-        parseError.value.push('Missing required "name" field')
+        schemaErrors.value.push('Missing required "name" field')
       }
 
       // Check required fields for this item type
@@ -981,7 +1037,7 @@ function validateJson() {
           // Check if the array exists and is actually an array
           if (parsed[arrayFieldName]) {
             if (!Array.isArray(parsed[arrayFieldName])) {
-              parseError.value.push(`Field "${arrayFieldName}" must be an array`)
+              schemaErrors.value.push(`Field "${arrayFieldName}" must be an array`)
               continue
             }
             
@@ -990,14 +1046,14 @@ function validateJson() {
             for (let i = 0; i < arrayItems.length; i++) {
               const item = arrayItems[i]
               if (!item || typeof item !== 'object') {
-                parseError.value.push(`${arrayFieldName}[${i}]: Must be an object`)
+                schemaErrors.value.push(`${arrayFieldName}[${i}]: Must be an object`)
                 continue
               }
               
               // Check if the nested field exists in this array item
               const fieldName = nestedField.replace(/^\./, '') // Remove leading dot
               if (!(fieldName in item) || item[fieldName] === null || item[fieldName] === undefined || item[fieldName] === '') {
-                parseError.value.push(`Missing required field: "${field}" in ${arrayFieldName}[${i}]`)
+                schemaErrors.value.push(`Missing required field: "${field}" in ${arrayFieldName}[${i}]`)
               }
             }
           }
@@ -1005,17 +1061,15 @@ function validateJson() {
         } else {
           // Regular top-level field validation
           if (!(field in parsed) || parsed[field] === null || parsed[field] === undefined || parsed[field] === '') {
-            parseError.value.push(`Missing required field: "${field}"`)
+            schemaErrors.value.push(`Missing required field: "${field}"`)
           }
         }
       }
     }
 
-    if (parseError.value.length === 0) {
-      parseSuccess.value = true
-    }
+    parseSuccess.value = true
   } catch (error) {
-    parseError.value.push(`Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    syntaxError.value = `Invalid JSON: ${error instanceof Error ? error.message : 'Unknown error'}`
   }
 
   isValidating.value = false
@@ -1063,7 +1117,7 @@ async function importData() {
 
     close()
   } catch (error) {
-    parseError.value.push(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    syntaxError.value = `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`
   }
 
   isImporting.value = false

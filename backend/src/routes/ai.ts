@@ -1,7 +1,13 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { chatCompletionSchema } from '../schemas/ai.schemas';
+import {
+    chatCompletionSchema,
+    getConversationsSchema,
+    createConversationSchema,
+    getConversationMessagesSchema,
+    chatInConversationSchema
+} from '../schemas/ai.schemas';
 import OpenAI from 'openai';
 
 interface ChatMessage {
@@ -17,6 +23,7 @@ interface AIChatBody {
 }
 
 export const aiRoutes = async (fastify: FastifyInstance) => {
+    // Standard prompt-based chat (one-off)
     fastify.post<{ Body: AIChatBody }>(
         '/chat/completions',
         {
@@ -50,30 +57,24 @@ export const aiRoutes = async (fastify: FastifyInstance) => {
                 const { messages, model, temperature, maxTokens } = request.body;
 
                 const userSettings = user.aiSettings as Record<string, any> || {};
-                const selectedModel = model || userSettings.model || 'gpt-5.2'; // Default to new model
+                const selectedModel = model || userSettings.model || 'gpt-5.2';
                 const selectedTemp = temperature ?? userSettings.temperature ?? 0.7;
 
-                // Initialize OpenAI client
                 const openai = new OpenAI({
                     apiKey: user.openaiApiKey,
                 });
 
-                // Check if using new Responses API (e.g. gpt-5.2)
                 if (selectedModel === 'gpt-5.2') {
-                    // Extract system instruction and user input from messages
                     const systemMessage = messages.find(m => m.role === 'system');
                     const lastUserMessage = messages.slice().reverse().find(m => m.role === 'user');
 
                     const instructions = systemMessage ? systemMessage.content : 'You are a helpful assistant.';
                     const input = lastUserMessage ? lastUserMessage.content : '';
 
-                    // Use the new responses.create API
-                    // Casting to any because types might not be updated in the package yet
                     const response = await (openai as any).responses.create({
                         model: selectedModel,
                         instructions,
                         input,
-                        // temperature might not be supported or is handled differently, omitting for now based on snippet
                     });
 
                     return {
@@ -82,13 +83,12 @@ export const aiRoutes = async (fastify: FastifyInstance) => {
                         role: 'assistant',
                         model: selectedModel,
                         usage: {
-                            prompt_tokens: 0, // Not returned in snippet
+                            prompt_tokens: 0,
                             completion_tokens: 0,
                             total_tokens: 0
                         },
                     };
                 } else {
-                    // Fallback to standard chat completions for older models
                     const completion = await openai.chat.completions.create({
                         messages,
                         model: selectedModel,
@@ -108,17 +108,229 @@ export const aiRoutes = async (fastify: FastifyInstance) => {
 
             } catch (error: any) {
                 console.error('AI Chat Error:', error);
-
                 if (error.status === 401) {
                     reply.code(401);
                     return { error: 'Invalid OpenAI API Key', message: 'The API key provided is invalid or expired.' };
                 }
-
                 reply.code(500);
                 return {
                     error: 'AI Request Failed',
                     message: error.message || 'Unknown error occurred while communicating with AI service',
                 };
+            }
+        }
+    );
+
+    // List conversations
+    fastify.get<{ Querystring: { libraryId: number } }>(
+        '/conversations',
+        {
+            schema: getConversationsSchema,
+            preHandler: authenticateToken,
+        },
+        async (request, reply) => {
+            if (!request.user) return reply.code(401).send({ error: 'Unauthorized' });
+
+            const conversations = await prisma.aiConversation.findMany({
+                where: {
+                    userId: request.user.userId,
+                    libraryId: Number(request.query.libraryId),
+                },
+                orderBy: { updatedAt: 'desc' },
+                select: { id: true, title: true, updatedAt: true },
+            });
+
+            return conversations;
+        }
+    );
+
+    // Create conversation
+    fastify.post<{ Body: { libraryId: number; title: string } }>(
+        '/conversations',
+        {
+            schema: createConversationSchema,
+            preHandler: authenticateToken,
+        },
+        async (request, reply) => {
+            if (!request.user) return reply.code(401).send({ error: 'Unauthorized' });
+
+            const conversation = await prisma.aiConversation.create({
+                data: {
+                    userId: request.user.userId,
+                    libraryId: Number(request.body.libraryId),
+                    title: request.body.title || 'New Conversation',
+                },
+            });
+
+            reply.code(201);
+            return conversation;
+        }
+    );
+
+    // Get messages for a conversation
+    fastify.get<{ Params: { id: string } }>(
+        '/conversations/:id/messages',
+        {
+            schema: getConversationMessagesSchema,
+            preHandler: authenticateToken,
+        },
+        async (request, reply) => {
+            if (!request.user) return reply.code(401).send({ error: 'Unauthorized' });
+
+            const messages = await prisma.aiMessage.findMany({
+                where: { conversationId: request.params.id },
+                orderBy: { createdAt: 'asc' },
+            });
+
+            return messages;
+        }
+    );
+
+    // Context-aware chat in conversation
+    fastify.post<{ Params: { id: string }; Body: { content: string; contextItems?: any[]; model?: string } }>(
+        '/conversations/:id/chat',
+        {
+            schema: chatInConversationSchema,
+            preHandler: authenticateToken,
+        },
+        async (request, reply) => {
+            try {
+                if (!request.user) return reply.code(401).send({ error: 'Unauthorized' });
+
+                const conversationId = request.params.id;
+                const { content, contextItems, model } = request.body;
+
+                // 1. Fetch user settings and API key
+                const user = await prisma.user.findUnique({
+                    where: { id: request.user.userId },
+                    select: { openaiApiKey: true, aiSettings: true },
+                });
+
+                if (!user?.openaiApiKey) {
+                    return reply.code(402).send({ error: 'OpenAI API Key not configured' });
+                }
+
+                const userSettings = user.aiSettings as Record<string, any> || {};
+                const selectedModel = model || userSettings.model || 'gpt-5.2';
+
+                // 2. Fetch conversation history
+                const history = await prisma.aiMessage.findMany({
+                    where: { conversationId },
+                    orderBy: { createdAt: 'desc' },
+                    take: 10, // Just the last 10 messages for context
+                });
+
+                // 3. Format messages for AI
+                const basePrompt = `You are a helpful Dungeon Master assistant for the "Wildraft" RPG platform. 
+Your primary goal is to assist the DM by providing information from the "Wildraft" library and help with creative tasks.
+
+IMPORT RULES:
+If the user asks you to create or suggest a character, item, stat block, or note, you should provide a JSON block with the language tag "json:wildraft-item".
+The format MUST be:
+\`\`\`json:wildraft-item
+{
+  "type": "CHARACTER" | "STAT_BLOCK" | "ITEM" | "NOTE",
+  "name": "Name of the item",
+  "description": "Short summary",
+  "data": { ... appropriate fields for the type ... }
+}
+\`\`\`
+
+SCHEMA DETAILS:
+- NOTE: data should contain "content" (string with HTML allowed) and "chapters" (array of {title: string, content: string}).
+- STAT_BLOCK: data should contain stats (cr, hp, ac, str, dex, con, int, wis, cha), "traits" (array of {name, description}), "actions" (array of {name, actionType, description, toHit, dc, roll}), "spells" (array of {name, level, description}).
+- ITEM: data should contain "rarity", "itemType", "attunement" (bool), "description", and "actions" (array of actions granted by the item).
+- CHARACTER: data should contain class, level, race, stats, skills, traits, inventory, spells.
+
+Ensure the JSON is valid and fits the expected schema for that type.
+When providing such an item, briefly explain what it is before or after the code block.
+
+CRITICAL: When items are provided in the context below, treat them as the absolute truth for the current game state. Use them to answer questions about stats, descriptions, note contents, or any other relevant details.`;
+
+                // 3.1 Consolidate current context items into instructions
+                let contextInstructions = basePrompt;
+                if (contextItems && contextItems.length > 0) {
+                    contextInstructions += '\n\n--- CURRENTLY ATTACHED CONTEXT ITEMS ---\n';
+                    contextInstructions += 'The following items are explicitly referenced by the user in this specific message:\n';
+                    contextItems.forEach(item => {
+                        contextInstructions += `[${item.type}] NAME: ${item.name}\nDATA: ${JSON.stringify(item.data || '')}\n\n`;
+                    });
+                    contextInstructions += '-------------------------------------------';
+                }
+
+                const messages: ChatMessage[] = [
+                    { role: 'system', content: contextInstructions },
+                ];
+
+                // 3.2 Add history with historical context items injected into the content
+                messages.push(...history.reverse().map(m => {
+                    let content = m.content;
+                    const historicalContext = m.contextItems as any[];
+
+                    if (historicalContext && Array.isArray(historicalContext) && historicalContext.length > 0) {
+                        let contextSummary = '\n\n(Context provided in this turn: ';
+                        contextSummary += historicalContext.map(c => `[${c.type}] ${c.name}`).join(', ');
+                        contextSummary += ')';
+                        content += contextSummary;
+                    }
+
+                    return { role: m.role as any, content };
+                }));
+
+                messages.push({ role: 'user', content });
+
+                // 4. Call OpenAI
+                const openai = new OpenAI({ apiKey: user.openaiApiKey });
+                let aiResponseContent = '';
+
+                if (selectedModel === 'gpt-5.2') {
+                    // GPT-5.2 specialized API often expects consolidated instructions
+                    // We need to include the history in the input for this specific model
+                    const consolidatedInput = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n') + `\nUSER: ${content}`;
+
+                    const response = await (openai as any).responses.create({
+                        model: selectedModel,
+                        instructions: contextInstructions,
+                        input: consolidatedInput,
+                    });
+                    aiResponseContent = response.output_text;
+                } else {
+                    const completion = await openai.chat.completions.create({
+                        messages,
+                        model: selectedModel,
+                    });
+                    aiResponseContent = completion.choices[0].message.content || '';
+                }
+
+                // 5. Store messages in database
+                await prisma.aiMessage.create({
+                    data: {
+                        role: 'user',
+                        content,
+                        contextItems: contextItems || ({} as any),
+                        conversationId,
+                    },
+                });
+
+                const aiMessage = await prisma.aiMessage.create({
+                    data: {
+                        role: 'assistant',
+                        content: aiResponseContent,
+                        conversationId,
+                    },
+                });
+
+                // Update conversation's updatedAt
+                await prisma.aiConversation.update({
+                    where: { id: conversationId },
+                    data: { updatedAt: new Date() },
+                });
+
+                return aiMessage;
+
+            } catch (error: any) {
+                console.error('AI Conversation Chat Error:', error);
+                return reply.code(500).send({ error: 'AI Request Failed', message: error.message });
             }
         }
     );

@@ -100,6 +100,28 @@
         >
           Add to DM Screen
         </v-btn>
+
+        <v-divider vertical class="mx-2" />
+
+        <!-- Create New Item Menu -->
+        <v-menu location="top end">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              color="secondary"
+              variant="tonal"
+              v-bind="menuProps"
+              prepend-icon="mdi-plus"
+            >
+              Create New
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-account-plus" title="Character" @click="$emit('create', 'CHARACTER_DND_5E'); close()" />
+            <v-list-item prepend-icon="mdi-treasure-chest" title="Magic Item" @click="$emit('create', 'ITEM_DND_5E'); close()" />
+            <v-list-item prepend-icon="mdi-sword-cross" title="Stat Block" @click="$emit('create', 'STAT_BLOCK_DND_5E'); close()" />
+            <v-list-item prepend-icon="mdi-note-plus-outline" title="Note" @click="$emit('create', 'NOTE'); close()" />
+          </v-list>
+        </v-menu>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -109,7 +131,7 @@
 import { ref, computed, watch } from 'vue'
 import { useItemsStore } from '@/stores/items'
 import { useFilesStore } from '@/stores/files'
-import type { LibraryItem } from '@/types/item.types'
+import type { LibraryItem, ItemType } from '@/types/item.types'
 
 interface Props {
   libraryId: number
@@ -123,6 +145,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   select: [item: LibraryItem]
+  create: [type: ItemType]
 }>()
 
 const itemsStore = useItemsStore()

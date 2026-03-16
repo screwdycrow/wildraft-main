@@ -393,6 +393,26 @@ provide('openRightSidebar', openRightSidebar)
 
 onMounted(async () => {
   if (libraryId.value) {
+    // Check for front page DM screen redirection
+    // We only redirect if we're on the main library view and NOT explicitly asking for the dashboard
+    const isExplicitDashboard = route.query.dashboard === 'true'
+    
+    // Make sure library is loaded
+    if (!libraryStore.currentLibrary || libraryStore.currentLibrary.id !== libraryId.value) {
+      await libraryStore.fetchLibrary(libraryId.value)
+    }
+
+    if (libraryStore.currentLibrary?.frontPageDmScreenId && !isExplicitDashboard) {
+      router.replace({
+        name: 'DmScreen',
+        params: {
+          id: libraryId.value,
+          dmScreenId: libraryStore.currentLibrary.frontPageDmScreenId
+        }
+      })
+      return
+    }
+
     // Load tags for the dashboard
     try {
       await tagsStore.fetchTags(libraryId.value)

@@ -14,8 +14,9 @@
         :is="formComponent"
         :item="dialogsStore.itemEditorData.item"
         :library-id="dialogsStore.itemEditorData.libraryId"
-        :item-type="dialogsStore.itemEditorData.itemType"
+        :item-type="(dialogsStore.itemEditorData.itemType as any)"
         :initial-tag-ids="dialogsStore.itemEditorData.initialTagIds"
+        :initial-data="dialogsStore.itemEditorData.initialData"
         @submit="handleSubmit"
         @cancel="handleCancel"
       />
@@ -43,7 +44,7 @@ const toast = useToast()
 
 const formComponent = computed(() => {
   if (!dialogsStore.itemEditorData) return null
-  const itemType = dialogsStore.itemEditorData.itemType || dialogsStore.itemEditorData.item?.type
+  const itemType = (dialogsStore.itemEditorData.itemType || dialogsStore.itemEditorData.item?.type) as any
   if (!itemType) return null
   return getItemComponent(itemType, 'form')
 })

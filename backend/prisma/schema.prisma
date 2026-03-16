@@ -26,6 +26,7 @@ model User {
   UserFile      UserFile[]
   openaiApiKey  String?
   aiSettings    Json?
+  aiConversations AiConversation[]
 }
 
 model Library {
@@ -44,6 +45,8 @@ model Library {
   DMScreen        DMScreen[]
   version         LibraryVersion?
   userFileCategories UserFileCategory[] @relation("LibraryUserFileCategories")
+  frontPageDmScreenId String?
+  aiConversations AiConversation[]
 }
 
 enum LibraryTemplate {
@@ -223,4 +226,31 @@ model LibraryVersion {
   updatedAt    DateTime @default(now()) @updatedAt
 
   @@index([libraryId])
+}
+
+model AiConversation {
+  id        String      @id @default(uuid())
+  title     String?
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  libraryId Int
+  library   Library     @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([libraryId])
+}
+
+model AiMessage {
+  id             String         @id @default(uuid())
+  role           String // 'system' | 'user' | 'assistant'
+  content        String         @db.Text
+  contextItems   Json? // Stores metadata about mentioned items [{ id, name, type, source }]
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId])
 }

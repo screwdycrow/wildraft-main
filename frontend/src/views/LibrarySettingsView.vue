@@ -96,6 +96,31 @@
                 class="mb-4"
                 auto-grow
               />
+              <v-select
+                v-model="libraryForm.frontPageDmScreenId"
+                label="Front Page DM Screen"
+                placeholder="None (Default Dashboard)"
+                persistent-placeholder
+                prepend-inner-icon="mdi-monitor-dashboard"
+                variant="outlined"
+                :items="dmScreensStore.dmScreens"
+                item-title="name"
+                item-value="id"
+                clearable
+                class="mb-4"
+              >
+                <template #prepend-item>
+                  <v-list-item
+                    title="None (Default Dashboard)"
+                    @click="libraryForm.frontPageDmScreenId = null"
+                  >
+                    <template #prepend>
+                      <v-icon icon="mdi-view-dashboard" />
+                    </template>
+                  </v-list-item>
+                  <v-divider class="mb-2" />
+                </template>
+              </v-select>
               <div class="d-flex justify-end">
                 <v-btn
                   color="primary"
@@ -406,6 +431,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useLibraryStore } from '@/stores/library'
 import { useAuthStore } from '@/stores/auth'
+import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import type { LibraryAccess } from '@/types/library.types'
@@ -417,6 +443,7 @@ const route = useRoute()
 const theme = useTheme()
 const libraryStore = useLibraryStore()
 const authStore = useAuthStore()
+const dmScreensStore = useDmScreensStore()
 const toast = useToast()
 
 const libraryAccess = ref<LibraryAccess[]>([])
@@ -445,6 +472,7 @@ const inviteForm = ref({
 const libraryForm = ref({
   name: '',
   description: '',
+  frontPageDmScreenId: null as string | null,
 })
 
 const nameRules = [
@@ -657,6 +685,7 @@ async function handleUpdate() {
     await libraryStore.updateLibrary(libraryStore.currentLibrary.id, {
       name: libraryForm.value.name,
       description: libraryForm.value.description || undefined,
+      frontPageDmScreenId: libraryForm.value.frontPageDmScreenId,
     })
     toast.success('Library updated successfully!')
   } catch (error) {
@@ -672,6 +701,7 @@ watch(() => libraryStore.currentLibrary, (library) => {
     libraryForm.value = {
       name: library.name || '',
       description: library.description || '',
+      frontPageDmScreenId: library.frontPageDmScreenId || null,
     }
   }
 }, { immediate: true })

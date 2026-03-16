@@ -1,24 +1,21 @@
 <template>
   <v-app>
-    <v-app-bar elevation="0" class="glass-header" height="70">
-      <v-app-bar-nav-icon @click="mobile ? drawer = !drawer : toggleRail()" />
+    <v-app-bar elevation="0" class="glass-header" density="compact">
+      <v-app-bar-nav-icon @click="mobile ? drawer = !drawer : toggleRail()" size="small" />
 
 
       
       <v-toolbar-title class="d-flex align-center">
         <span 
-          class="text-h6 font-weight-bold library-title"
+          class="text-subtitle-1 font-weight-bold library-title"
           style="cursor: pointer;"
           @click="goToDashboard"
         >
           {{ currentLibrary?.name || 'Library' }}
         </span>
         
-        <!-- Portal Control Menu -->
-        <portal-control-menu class="ml-4" />
-        
         <!-- DM Screen Control Menu -->
-        <dm-screen-control-menu class="ml-2" />
+        <dm-screen-control-menu class="ml-4" />
       </v-toolbar-title>
 
       <v-spacer />
@@ -28,14 +25,12 @@
       
       <v-spacer />
       
-      <!-- Dice Roller -->
-      <dice-roller class="mr-1" />
-      
       <quick-actions class="mr-2" />
       
       <!-- Right Sidebar Toggle -->
       <v-btn
         icon
+        size="small"
         class="sidebar-toggle-btn mr-2"
         :permanent="!mobile"
         @click="rightDrawer = !rightDrawer"
@@ -405,11 +400,63 @@
       v-model="rightDrawer"
       location="right"
       :temporary="mobile"
-      width="350"
+      width="400"
       :color="isPapyrusTheme ? 'sidebar-background' : undefined"
-      class="glass-sidebar"
+      class="glass-sidebar right-sidebar-with-tabs"
     >
-      <combat-encounter />
+      <div class="d-flex h-100">
+        <!-- Vertical Tabs -->
+        <div class="right-vertical-tabs border-r d-flex flex-column py-4">
+          <v-btn
+            variant="text"
+            size="small"
+            :color="rightSidebarMode === 'combat' ? 'primary' : undefined"
+            class="mb-2"
+            @click="rightSidebarMode = 'combat'"
+          >
+            <v-icon>mdi-sword-cross</v-icon>
+            <v-tooltip activator="parent" location="left">Combat Tracker</v-tooltip>
+          </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            :color="rightSidebarMode === 'chat' ? 'primary' : undefined"
+            class="mb-2"
+            @click="rightSidebarMode = 'chat'"
+          >
+            <v-icon>mdi-robot-outline</v-icon>
+            <v-tooltip activator="parent" location="left">AI Chat</v-tooltip>
+          </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            :color="rightSidebarMode === 'portal' ? 'primary' : undefined"
+            class="mb-2"
+            @click="rightSidebarMode = 'portal'"
+          >
+            <v-icon>mdi-monitor</v-icon>
+            <v-tooltip activator="parent" location="left">Portal Controls</v-tooltip>
+          </v-btn>
+          <v-btn
+            variant="text"
+            size="small"
+            :color="rightSidebarMode === 'dice' ? 'primary' : undefined"
+            class="mb-2"
+            @click="rightSidebarMode = 'dice'"
+          >
+            <v-icon>mdi-dice-multiple</v-icon>
+            <v-tooltip activator="parent" location="left">Dice Roller</v-tooltip>
+          </v-btn>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-grow-1 overflow-hidden h-100">
+          <combat-encounter v-show="rightSidebarMode === 'combat'" />
+          <dm-screen-chat v-if="rightSidebarMode === 'chat'" />
+          <portal-control-menu v-if="rightSidebarMode === 'portal'" inline />
+          <dice-roller v-if="rightSidebarMode === 'dice'" inline />
+        </div>
+      </div>
     </v-navigation-drawer>
 
     <!-- Global Item Dialogs -->
@@ -449,8 +496,8 @@ import GlobalItemViewerDialog from '@/components/dialogs/GlobalItemViewerDialog.
 import GlobalItemEditorDialog from '@/components/dialogs/GlobalItemEditorDialog.vue'
 import GlobalFileViewerDialog from '@/components/dialogs/GlobalFileViewerDialog.vue'
 import DmScreenCardsInHand from '@/components/dmScreen/DmScreenCardsInHand.vue'
+import DmScreenChat from '@/components/dmScreen/DmScreenChat.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
-import { usePortalViewsStore } from '@/stores/portalViews'
 import { useDmScreensStore } from '@/stores/dmScreens'
 
 const { mobile } = useDisplay()
@@ -459,13 +506,13 @@ const theme = useTheme()
 const drawer = ref(false)
 const rail = ref(true)
 const rightDrawer = ref(false)
+const rightSidebarMode = ref<'combat' | 'chat' | 'portal' | 'dice'>('combat')
 const sidebarTab = ref('menu')
 const route = useRoute()
 const router = useRouter()
 const libraryStore = useLibraryStore()
 const tagsStore = useTagsStore()
 const combatEncountersStore = useCombatEncountersStore()
-const portalViewsStore = usePortalViewsStore()
 const dmScreensStore = useDmScreensStore()
 const toast = useToast()
 
@@ -477,15 +524,6 @@ const libraryId = computed(() => {
 const currentLibrary = computed(() => libraryStore.currentLibrary)
 
 const canManage = computed(() => ['OWNER', 'EDITOR'].includes(currentLibrary.value?.role || ''))
-
-const roleColor = computed(() => {
-  switch (currentLibrary.value?.role) {
-    case 'OWNER': return 'primary'
-    case 'EDITOR': return 'secondary'
-    case 'VIEWER': return 'info'
-    default: return 'grey'
-  }
-})
 
 const isPapyrusTheme = computed(() => theme.global.name.value === 'papyrusTheme')
 
@@ -515,13 +553,6 @@ const uncategorizedTags = computed(() => {
   return tagsStore.tags
     .filter(tag => !tag.folderId)
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
-})
-
-// Check if portal viewer is connected (placeholder - you might want to track this via socket)
-const isPortalViewerConnected = computed(() => {
-  // This would ideally be tracked via the portal socket
-  // For now, just show if portal is active
-  return !!portalViewsStore.activePortal
 })
 
 // Toggle rail (only works on desktop)
@@ -908,5 +939,22 @@ onMounted(async () => {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+}
+
+.right-sidebar-with-tabs :deep(.v-navigation-drawer__content) {
+  overflow: hidden;
+}
+
+.right-vertical-tabs {
+  width: 48px;
+  background: rgba(var(--v-theme-surface), 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+:deep(.glass-sidebar.right-sidebar-with-tabs) {
+  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: none !important;
 }
 </style>

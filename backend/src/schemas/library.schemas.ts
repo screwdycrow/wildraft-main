@@ -27,6 +27,7 @@ export const getLibrariesSchema = {
               },
               createdAt: { type: 'string', format: 'date-time' },
               updatedAt: { type: 'string', format: 'date-time' },
+              frontPageDmScreenId: { type: 'string', nullable: true },
             },
           },
         },
@@ -89,6 +90,7 @@ export const createLibrarySchema = {
             },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+            frontPageDmScreenId: { type: 'string', nullable: true },
           },
         },
       },
@@ -138,6 +140,7 @@ export const getLibrarySchema = {
             },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+            frontPageDmScreenId: { type: 'string', nullable: true },
           },
         },
       },
@@ -165,6 +168,7 @@ export const updateLibrarySchema = {
     properties: {
       name: { type: 'string', minLength: 1, description: 'Library name' },
       description: { type: 'string', description: 'Library description' },
+      frontPageDmScreenId: { type: 'string', nullable: true, description: 'ID of the DM screen to use as front page' },
     },
   },
   response: {
@@ -187,6 +191,7 @@ export const updateLibrarySchema = {
               example: 'DND_5E',
             },
             updatedAt: { type: 'string', format: 'date-time' },
+            frontPageDmScreenId: { type: 'string', nullable: true },
           },
         },
       },
@@ -210,7 +215,7 @@ export const deleteLibrarySchema = {
     },
   },
   response: {
-    204: { 
+    204: {
       description: 'Library deleted',
       type: 'null',
     },

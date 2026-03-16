@@ -683,6 +683,7 @@ interface Props {
   libraryId: number
   itemType: ItemType
   initialTagIds?: number[]
+  initialData?: any
   hideHeader?: boolean
 }
 
@@ -907,18 +908,64 @@ watch(() => props.item, (newItem) => {
     formData.value.tagIds = newItem.tags?.map(t => t.id) || []
     
     if (newItem.userFiles && newItem.userFiles.length > 0) {
-      filesStore.addFiles(newItem.userFiles)
+      filesStore.addFiles(newItem.userFiles as any)
       formData.value.userFileIds = newItem.userFiles.map(f => f.id)
     } else {
       formData.value.userFileIds = []
     }
     
     if (newItem.featuredImage) {
-      filesStore.addFiles(newItem.featuredImage)
+      filesStore.addFiles(newItem.featuredImage as any)
       formData.value.featuredImageId = newItem.featuredImage.id
     } else {
       formData.value.featuredImageId = null
     }
+  } else {
+    // Create Mode
+    if (props.initialData) {
+      formData.value.name = props.initialData.name || ''
+      formData.value.description = props.initialData.description || ''
+      
+      const itemData = props.initialData.data || props.initialData
+      if (typeof itemData === 'object' && itemData !== null) {
+        Object.assign(formData.value.data, {
+          rarity: itemData.rarity || 'common',
+          itemType: itemData.itemType || '',
+          attunement: itemData.attunement || false,
+          value: itemData.value || '',
+          weight: itemData.weight || undefined,
+          damage: itemData.damage || '',
+          properties: Array.isArray(itemData.properties) ? itemData.properties : [],
+          effect: itemData.effect || '',
+          modifiers: itemData.modifiers || {},
+          actions: itemData.actions || [],
+          toHit: itemData.toHit || '',
+          dc: itemData.dc || '',
+          roll: itemData.roll || '',
+          range: itemData.range || '',
+        })
+      }
+    } else {
+      formData.value.name = ''
+      formData.value.description = ''
+      formData.value.data = {
+        rarity: 'common',
+        itemType: '',
+        attunement: false,
+        value: '',
+        weight: undefined,
+        damage: '',
+        properties: [],
+        modifiers: {},
+        actions: [],
+      }
+    }
+    
+    if (!props.initialTagIds || props.initialTagIds.length === 0) {
+      formData.value.tagIds = []
+    }
+    formData.value.userFileIds = []
+    formData.value.featuredImageId = null
   }
 }, { immediate: true })
 

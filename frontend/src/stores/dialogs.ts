@@ -43,41 +43,33 @@ export const useDialogsStore = defineStore('dialogs', () => {
 
   // Item Editor Dialog
   const itemEditorOpen = ref(false)
-  const itemEditorData = ref<{ item: LibraryItem | null; libraryId: number; itemType?: string; initialTagIds?: number[] } | null>(null)
+  const itemEditorData = ref<{ item: LibraryItem | null; libraryId: number; itemType?: string; initialTagIds?: number[]; initialData?: any } | null>(null)
 
   function openItemEditor(item: LibraryItem, libraryId: number) {
     itemEditorData.value = { item, libraryId }
     itemEditorOpen.value = true
   }
 
-  function openItemEditorCreate(itemType: string, libraryId: number, initialTagIds?: number[]) {
-    itemEditorData.value = { item: null, libraryId, itemType, initialTagIds }
+  function openItemEditorCreate(itemType: string, libraryId: number, initialTagIds?: number[], initialData?: any) {
+    itemEditorData.value = { item: null, libraryId, itemType, initialTagIds, initialData }
     itemEditorOpen.value = true
   }
+
+  const itemEditorMergeData = ref<any>(null)
 
   function closeItemEditor() {
     itemEditorOpen.value = false
     setTimeout(() => {
       itemEditorData.value = null
+      itemEditorMergeData.value = null
     }, 300)
   }
 
   return {
-    // Item Viewer
-    itemViewerOpen,
-    itemViewerData,
-    openItemViewer,
-    closeItemViewer,
-
-    // File Viewer
-    fileViewerOpen,
-    fileViewerData,
-    openFileViewer,
-    closeFileViewer,
-
-    // Item Editor
+    // ... items ...
     itemEditorOpen,
     itemEditorData,
+    itemEditorMergeData,
     openItemEditor,
     openItemEditorCreate,
     closeItemEditor,

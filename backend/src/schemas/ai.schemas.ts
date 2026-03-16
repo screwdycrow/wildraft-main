@@ -60,3 +60,118 @@ export const chatCompletionSchema = {
         },
     },
 };
+
+export const getConversationsSchema = {
+    tags: ['ai'],
+    summary: 'Get AI Conversations',
+    description: 'Fetch all AI conversations for a specific library.',
+    security: [{ bearerAuth: [] }],
+    querystring: {
+        type: 'object',
+        required: ['libraryId'],
+        properties: {
+            libraryId: { type: 'number' },
+        },
+    },
+    response: {
+        200: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string' },
+                    title: { type: 'string', nullable: true },
+                    updatedAt: { type: 'string' },
+                },
+            },
+        },
+    },
+};
+
+export const createConversationSchema = {
+    tags: ['ai'],
+    summary: 'Create AI Conversation',
+    description: 'Start a new AI conversation for a library.',
+    security: [{ bearerAuth: [] }],
+    body: {
+        type: 'object',
+        required: ['libraryId'],
+        properties: {
+            libraryId: { type: 'number' },
+            title: { type: 'string' },
+        },
+    },
+    response: {
+        201: {
+            type: 'object',
+            properties: {
+                id: { type: 'string' },
+                title: { type: 'string', nullable: true },
+            },
+        },
+    },
+};
+
+export const getConversationMessagesSchema = {
+    tags: ['ai'],
+    summary: 'Get Conversation Messages',
+    description: 'Fetch the full message history of an AI conversation.',
+    security: [{ bearerAuth: [] }],
+    params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+            id: { type: 'string' },
+        },
+    },
+    response: {
+        200: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    id: { type: 'string' },
+                    role: { type: 'string' },
+                    content: { type: 'string' },
+                    contextItems: { type: 'object', nullable: true },
+                    createdAt: { type: 'string' },
+                },
+            },
+        },
+    },
+};
+
+export const chatInConversationSchema = {
+    tags: ['ai'],
+    summary: 'Chat in Conversation',
+    description: 'Post a new message to an existing AI conversation and get a response.',
+    security: [{ bearerAuth: [] }],
+    params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+            id: { type: 'string' },
+        },
+    },
+    body: {
+        type: 'object',
+        required: ['content'],
+        properties: {
+            content: { type: 'string' },
+            contextItems: { type: 'array', items: { type: 'object' } },
+            model: { type: 'string' },
+        },
+    },
+    response: {
+        200: {
+            description: 'AI Response',
+            type: 'object',
+            properties: {
+                id: { type: 'string' },
+                role: { type: 'string' },
+                content: { type: 'string' },
+                contextItems: { type: 'object', nullable: true },
+            },
+        },
+    },
+};

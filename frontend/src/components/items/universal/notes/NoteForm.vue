@@ -207,10 +207,12 @@ import type {
   ItemType,
 } from '@/types/item.types'
 import { useFilesStore } from '@/stores/files'
+import { useDialogsStore } from '@/stores/dialogs'
 import ItemFormLayout from '@/components/items/common/ItemFormLayout.vue'
 import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import TagCreationDialog from '@/components/tags/TagCreationDialog.vue'
 import DragDropUpload from '@/components/files/DragDropUpload.vue'
+import { useToast } from 'vue-toastification'
 import type { UserFile } from '@/api/files'
 
 interface Props {
@@ -218,6 +220,7 @@ interface Props {
   libraryId: number
   itemType: ItemType
   initialTagIds?: number[]
+  initialData?: any
   hideHeader?: boolean
 }
 
@@ -231,6 +234,8 @@ const emit = defineEmits<{
 }>()
 
 const filesStore = useFilesStore()
+const dialogsStore = useDialogsStore()
+const toast = useToast()
 
 const layoutRef = ref<InstanceType<typeof ItemFormLayout>>()
 const isLoading = ref(false)
@@ -462,6 +467,7 @@ watch(
   () => props.item,
   (newItem) => {
     if (newItem) {
+      // Edit Mode
       formData.value.name = newItem.name
       formData.value.description = newItem.description || ''
       const incomingData = (newItem.data || {}) as NoteData
@@ -484,14 +490,14 @@ watch(
       formData.value.tagIds = newItem.tags?.map((t) => t.id) || []
 
       if (newItem.userFiles && newItem.userFiles.length > 0) {
-        filesStore.addFiles(newItem.userFiles)
+        filesStore.addFiles(newItem.userFiles as any)
         formData.value.userFileIds = newItem.userFiles.map((f) => f.id)
       } else {
         formData.value.userFileIds = []
       }
 
       if (newItem.featuredImage) {
-        filesStore.addFiles(newItem.featuredImage)
+        filesStore.addFiles(newItem.featuredImage as any)
         formData.value.featuredImageId = newItem.featuredImage.id
       } else {
         formData.value.featuredImageId = null
@@ -499,16 +505,42 @@ watch(
 
       activeTab.value = 'main'
     } else {
-      formData.value.name = ''
-      formData.value.description = ''
-      formData.value.data = {
-        content: '',
-        isPinned: false,
-        chapters: [],
+      // Create Mode
+      if (props.initialData) {
+        formData.value.name = props.initialData.name || ''
+        formData.value.description = props.initialData.description || ''
+        
+        const itemData = props.initialData.data || props.initialData
+        if (typeof itemData === 'object' && itemData !== null) {
+          const incomingChapters = (itemData.chapters || [])
+            .slice()
+            .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+            .map((chapter: any, index: number) => ({
+              id: chapter.id || generateChapterId(),
+              order: index + 1,
+              title: chapter.title || `Chapter ${index + 1}`,
+              content: chapter.content || '',
+            }))
+
+          formData.value.data = {
+            content: itemData.content || '',
+            isPinned: itemData.isPinned ?? false,
+            chapters: incomingChapters,
+          }
+        }
+      } else {
+        formData.value.name = ''
+        formData.value.description = ''
+        formData.value.data = {
+          content: '',
+          isPinned: false,
+          chapters: [],
+        }
       }
+      
       // Don't clear tagIds if initialTagIds are provided (for preselected tags)
       if (!props.initialTagIds || props.initialTagIds.length === 0) {
-      formData.value.tagIds = []
+        formData.value.tagIds = []
       }
       formData.value.userFileIds = []
       formData.value.featuredImageId = null
@@ -521,6 +553,32 @@ watch(
   },
   { immediate: true }
 )
+
+// Watch for AI Merge Data
+watch(() => dialogsStore.itemEditorMergeData, (newMergeData) => {
+  if (newMergeData && newMergeData.chapters && Array.isArray(newMergeData.chapters)) {
+    console.log('[NoteForm] Merging chapters from AI draft:', newMergeData.chapters)
+    
+    // Process new chapters
+    const currentChapters = formData.value.data.chapters || []
+    const nextOrder = (currentChapters.length > 0) 
+      ? Math.max(...currentChapters.map((c: any) => c.order || 0)) + 1 
+      : 1
+
+    const mergedChapters = newMergeData.chapters.map((chapter: any, index: number) => ({
+      id: chapter.id || generateChapterId(),
+      order: nextOrder + index,
+      title: chapter.title || `New Chapter ${nextOrder + index}`,
+      content: chapter.content || '',
+    }))
+
+    formData.value.data.chapters = [...currentChapters, ...mergedChapters]
+    toast.success(`Added ${mergedChapters.length} chapters from AI draft`)
+    
+    // Clear merge data after consuming
+    dialogsStore.itemEditorMergeData = null
+  }
+}, { deep: true })
 
 async function handleSubmit() {
   if (isLoading.value) return

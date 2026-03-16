@@ -5,6 +5,7 @@ export interface Library {
   role: 'OWNER' | 'EDITOR' | 'VIEWER'
   createdAt: string
   updatedAt: string
+  frontPageDmScreenId: string | null
 }
 
 //DICTIONARY OF LIBRARY TEMPLATES WITH LABELS AND DESCRIPTIONS
@@ -12,7 +13,7 @@ export const LibraryTemplates = [
   {
     label: 'Dungeons & Dragons 5E',
     description: 'A library template for Dungeons & Dragons 5E. It includes stat blocks, characters, items, and notes.',
-    id:'DND_5E',
+    id: 'DND_5E',
   },
 ]
 
@@ -25,6 +26,7 @@ export interface CreateLibraryPayload {
 export interface UpdateLibraryPayload {
   name?: string
   description?: string
+  frontPageDmScreenId?: string | null
 }
 
 export interface LibraryAccess {
@@ -35,7 +37,7 @@ export interface LibraryAccess {
   user: {
     id: number
     email: string
-    name: string | null 
+    name: string | null
   }
   createdAt: string
   updatedAt: string
