@@ -229,7 +229,7 @@ If the user asks you to create or suggest a character, item, stat block, or note
 The format MUST be:
 \`\`\`json:wildraft-item
 {
-  "type": "CHARACTER" | "STAT_BLOCK" | "ITEM" | "NOTE",
+  "type": "CHARACTER_DND_5E" | "STAT_BLOCK_DND_5E" | "ITEM_DND_5E" | "NOTE",
   "name": "Name of the item",
   "description": "Short summary",
   "data": { ... appropriate fields for the type ... }
@@ -237,13 +237,20 @@ The format MUST be:
 \`\`\`
 
 SCHEMA DETAILS:
-- NOTE: data should contain "content" (string with HTML allowed) and "chapters" (array of {title: string, content: string}).
-- STAT_BLOCK: data should contain stats (cr, hp, ac, str, dex, con, int, wis, cha), "traits" (array of {name, description}), "actions" (array of {name, actionType, description, toHit, dc, roll}), "spells" (array of {name, level, description}).
-- ITEM: data should contain "rarity", "itemType", "attunement" (bool), "description", and "actions" (array of actions granted by the item).
-- CHARACTER: data should contain class, level, race, stats, skills, traits, inventory, spells.
+- NOTE: data should contain "content" (string with markdown/HTML allowed).
+- STAT_BLOCK_DND_5E: data should be FLAT (no nested "stats" object). Required: "cr" (string, e.g. "1", "1/4"), "hp" (number), "ac" (number), "speed" (string, e.g. "30 ft."). Optional: str, dex, con, int, wis, cha (all numbers), "traits" (array of {name, description}), "actions" (array of {name, description, roll?, range?}), "legendaryActions" (array of {name, description}), "spells" (array of {name, level: number, school?, castingTime?, range?, components?, duration?, description}), "spellSlots" (array of {level: number, max: number, remaining: number}).
+- ITEM_DND_5E: data should contain "rarity" (common, uncommon, rare, very rare, legendary, artifact), "itemType" (string, e.g. "Weapon", "Wondrous Item"), "attunement" (boolean), "description" (string), "weight" (number), "value" (string), "actions" (array of actions granted by the item).
+- CHARACTER_DND_5E: data should contain "level" (number), "class" (string), "race" (string), "ac" (number). Optional: "subclass", "background", "str", "dex", "con", "int", "wis", "cha", "hp", "maxHp", "speed" (as above). Arrays for "equipment", "spells", and "features" MUST be arrays of objects: { "name": string, "description": string }. Spells MUST also include "level" (number, 0-9). Include "spellSlots" (array of {level: number, max: number, remaining: number}) if they have spellcasting.
+
+COMMAND SHORTCUTS:
+Users might use shortcuts to create items. Respond by generating the requested JSON.
+- "/create character [name] [level] [class] [subclass?] [race] [background]": Create a D&D 5E character using these specific details.
+- "/create monster [details]": Create a D&D 5E stat block.
+- "/create item [details]": Create a D&D 5E magic item.
 
 Ensure the JSON is valid and fits the expected schema for that type.
 When providing such an item, briefly explain what it is before or after the code block.
+IMPORTANT: Spells must NOT be simple strings. They must be objects with name, level, and description.
 
 CRITICAL: When items are provided in the context below, treat them as the absolute truth for the current game state. Use them to answer questions about stats, descriptions, note contents, or any other relevant details.`;
 

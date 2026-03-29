@@ -81,14 +81,18 @@ const isMergeable = computed(() => {
   if (!dialogsStore.itemEditorOpen || !dialogsStore.itemEditorData) return false
   
   const typeMap: Record<string, string> = {
-    'CHARACTER': 'CHARACTER',
-    'STAT_BLOCK': 'STAT_BLOCK',
-    'ITEM': 'MAGIC_ITEM',
+    'CHARACTER': 'CHARACTER_DND_5E',
+    'CHARACTER_DND_5E': 'CHARACTER_DND_5E',
+    'STAT_BLOCK': 'STAT_BLOCK_DND_5E',
+    'STAT_BLOCK_DND_5E': 'STAT_BLOCK_DND_5E',
+    'ITEM': 'ITEM_DND_5E',
+    'ITEM_DND_5E': 'ITEM_DND_5E',
+    'MAGIC_ITEM': 'ITEM_DND_5E',
     'NOTE': 'NOTE'
   }
   
   const mappedType = typeMap[props.item.type.toUpperCase()] || 'NOTE'
-  const currentOpenType = dialogsStore.itemEditorData.itemType || dialogsStore.itemEditorData.item?.type
+  const currentOpenType = dialogsStore.itemEditorData?.itemType || dialogsStore.itemEditorData?.item?.type
   
   console.log('[AiDraftItemCard] isMergeable check:', {
     mappedType,
@@ -107,11 +111,20 @@ function onMerge() {
 
 function getItemIcon() {
   switch (props.item.type.toUpperCase()) {
-    case 'CHARACTER': return 'mdi-account-circle'
-    case 'STAT_BLOCK': return 'mdi-sword-cross'
-    case 'ITEM': return 'mdi-treasure-chest'
-    case 'NOTE': return 'mdi-note-text'
-    default: return 'mdi-help-circle'
+    case 'CHARACTER':
+    case 'CHARACTER_DND_5E': 
+      return 'mdi-account-circle'
+    case 'STAT_BLOCK':
+    case 'STAT_BLOCK_DND_5E': 
+      return 'mdi-sword-cross'
+    case 'ITEM':
+    case 'ITEM_DND_5E':
+    case 'MAGIC_ITEM': 
+      return 'mdi-treasure-chest'
+    case 'NOTE': 
+      return 'mdi-note-text'
+    default: 
+      return 'mdi-help-circle'
   }
 }
 
@@ -121,15 +134,102 @@ function onPreview() {
   
   // Use the ItemType mapping
   const typeMap: Record<string, string> = {
-    'CHARACTER': 'CHARACTER',
-    'STAT_BLOCK': 'STAT_BLOCK',
-    'ITEM': 'MAGIC_ITEM',
+    'CHARACTER': 'CHARACTER_DND_5E',
+    'CHARACTER_DND_5E': 'CHARACTER_DND_5E',
+    'STAT_BLOCK': 'STAT_BLOCK_DND_5E',
+    'STAT_BLOCK_DND_5E': 'STAT_BLOCK_DND_5E',
+    'ITEM': 'ITEM_DND_5E',
+    'ITEM_DND_5E': 'ITEM_DND_5E',
+    'MAGIC_ITEM': 'ITEM_DND_5E',
     'NOTE': 'NOTE'
   }
   
   const mappedType = typeMap[props.item.type.toUpperCase()] || 'NOTE'
   
-  dialogsStore.openItemEditorCreate(mappedType, libraryId, [], props.item)
+  // Create a transformed version for the editor
+  const transformedItem = transformLegacyData({
+    ...props.item,
+    type: mappedType
+  })
+  
+  dialogsStore.openItemEditorCreate(mappedType, libraryId, [], transformedItem)
+}
+
+/**
+ * Transforms legacy nested AI data into the flat structure expected by the backend
+ */
+function transformLegacyData(item: any) {
+  const newItem = JSON.parse(JSON.stringify(item))
+  const data = newItem.data || {}
+
+  // 1. Flatten "stats" object if it exists (Stat Blocks / Characters)
+  if (data.stats && typeof data.stats === 'object') {
+    Object.assign(data, data.stats)
+    delete data.stats
+  }
+
+  // 2. Ensure CR is a string
+  if (data.cr !== undefined && typeof data.cr !== 'string') {
+    data.cr = String(data.cr)
+  }
+
+  // 3. Ensure speed exists for Stat Blocks
+  if (newItem.type === 'STAT_BLOCK_DND_5E' && !data.speed) {
+    data.speed = '30 ft.' // Default fallback
+  }
+
+  // 4. Handle legacy "actionType" in actions (Stat Blocks)
+  if (Array.isArray(data.actions)) {
+    data.actions = data.actions.map((a: any) => ({
+      name: a.name,
+      description: a.description || '',
+      roll: a.roll || '',
+      range: a.range || (a.actionType === 'RANGED' ? '60 ft.' : '5 ft.'),
+      ...a
+    }))
+  }
+
+  // 5. Transform string arrays to object arrays (Equipment / Spells / Features)
+  // Backend expects these as objects { name, description? }
+  const arrayFields = ['equipment', 'spells', 'features']
+  arrayFields.forEach(field => {
+    if (Array.isArray(data[field])) {
+      data[field] = data[field].map((val: any) => {
+        if (typeof val === 'string') {
+          const result: any = { name: val, description: '' }
+          
+          if (field === 'spells') {
+            // Try to extract level from name like "Cantrip: Mage Hand" or "1st level: Bless"
+            if (val.toLowerCase().includes('cantrip')) result.level = 0
+            else if (val.toLowerCase().includes('1st')) result.level = 1
+            else if (val.toLowerCase().includes('2nd')) result.level = 2
+            else if (val.toLowerCase().includes('3rd')) result.level = 3
+            else if (val.toLowerCase().includes('4th')) result.level = 4
+            else if (val.toLowerCase().includes('5th')) result.level = 5
+            else if (val.toLowerCase().includes('6th')) result.level = 6
+            else if (val.toLowerCase().includes('7th')) result.level = 7
+            else if (val.toLowerCase().includes('8th')) result.level = 8
+            else if (val.toLowerCase().includes('9th')) result.level = 9
+            else result.level = 0 // Default to cantrip if unknown
+            
+            // Clean up name if level prefix was found
+            result.name = val.split(':').pop()?.trim() || val
+          }
+          
+          return result
+        }
+        
+        // Ensure spells always have a level property
+        if (field === 'spells' && typeof val === 'object' && val.level === undefined) {
+          val.level = 0
+        }
+        
+        return val
+      })
+    }
+  })
+
+  return newItem
 }
 
 async function onImport() {
@@ -139,18 +239,28 @@ async function onImport() {
   isImporting.value = true
   try {
     const typeMap: Record<string, string> = {
-      'CHARACTER': 'CHARACTER',
-      'STAT_BLOCK': 'STAT_BLOCK',
-      'ITEM': 'MAGIC_ITEM',
+      'CHARACTER': 'CHARACTER_DND_5E',
+      'CHARACTER_DND_5E': 'CHARACTER_DND_5E',
+      'STAT_BLOCK': 'STAT_BLOCK_DND_5E',
+      'STAT_BLOCK_DND_5E': 'STAT_BLOCK_DND_5E',
+      'ITEM': 'ITEM_DND_5E',
+      'ITEM_DND_5E': 'ITEM_DND_5E',
+      'MAGIC_ITEM': 'ITEM_DND_5E',
       'NOTE': 'NOTE'
     }
     
     const mappedType = typeMap[props.item.type.toUpperCase()] || 'NOTE'
     
+    // Transform data to ensure it passes backend validation
+    const transformed = transformLegacyData({
+      ...props.item,
+      type: mappedType
+    })
+    
     const payload = {
-      name: props.item.name,
-      description: props.item.description,
-      data: props.item.data,
+      name: transformed.name,
+      description: transformed.description,
+      data: transformed.data,
       type: mappedType as any
     }
 

@@ -101,15 +101,27 @@
           </v-tooltip>
         </v-btn>
         <v-btn
+          icon="mdi-play"
+          size="x-small"
+          color="white"
+          variant="flat"
+          @click.stop="dialogsStore.openItemPresentation(props.item)"
+        >
+          <v-icon />
+          <v-tooltip activator="parent" location="bottom">
+            Presentation Mode (Slides)
+          </v-tooltip>
+        </v-btn>
+        <v-btn
           icon="mdi-eye"
           size="x-small"
           color="info"
           variant="flat"
-          @click.stop="$emit('view', item)"
+          @click.stop="dialogsStore.openItemViewer(props.item, props.libraryId!)"
         >
           <v-icon />
           <v-tooltip activator="parent" location="bottom">
-            Quick View
+            Preview
           </v-tooltip>
         </v-btn>
         <v-btn
@@ -134,9 +146,7 @@
 import { ref, computed } from 'vue'
 import type { LibraryItem } from '@/types/item.types'
 import { useItemComponents } from '@/composables/useItemComponents'
-import { useQuickItemViewStore } from '@/stores/quickItemView'
 import { useCombat } from '@/composables/useCombat'
-import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import { useItemsStore } from '@/stores/items'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { usePortalSocket } from '@/composables/usePortalSocket'
@@ -174,9 +184,7 @@ const isDragOver = ref(false)
 const isDragging = ref(false)
 
 const { getItemComponent } = useItemComponents()
-const quickItemViewStore = useQuickItemViewStore()
 const { addToActiveEncounter, activeEncounter } = useCombat()
-const combatStore = useCombatEncountersStore()
 const itemsStore = useItemsStore()
 const portalViewsStore = usePortalViewsStore()
 const dmScreensStore = useDmScreensStore()
@@ -356,7 +364,6 @@ async function handleDrop(event: DragEvent) {
   
   try {
     let tagId: number | null = null
-    let libraryItemId: number | null = null
     
     // Try to get data from application/json
     try {
@@ -365,8 +372,6 @@ async function handleDrop(event: DragEvent) {
         const parsed = JSON.parse(data)
         if (parsed.type === 'tag' && parsed.tagId) {
           tagId = parsed.tagId
-        } else if (parsed.type === 'library-item' && parsed.itemId) {
-          libraryItemId = parsed.itemId
         }
       }
     } catch (e) {
@@ -374,9 +379,7 @@ async function handleDrop(event: DragEvent) {
       const textData = event.dataTransfer.getData('text/plain')
       if (textData) {
         if (textData.startsWith('tag:')) {
-        tagId = parseInt(textData.replace('tag:', ''))
-        } else if (textData.startsWith('item:')) {
-          libraryItemId = parseInt(textData.replace('item:', ''))
+          tagId = parseInt(textData.replace('tag:', ''))
         }
       }
     }

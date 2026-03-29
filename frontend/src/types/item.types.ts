@@ -24,6 +24,7 @@ export interface UserFile {
   fileName: string
   fileType: string
   fileSize: number
+  categoryId: number | null
   downloadUrl: string
   createdAt: string
   updatedAt: string

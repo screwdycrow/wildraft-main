@@ -464,6 +464,7 @@
     <global-item-viewer-dialog />
     <global-item-editor-dialog />
     <global-file-viewer-dialog />
+    <global-item-presentation-dialog />
 
     <!-- DM Screen Cards in Hand -->
     <dm-screen-cards-in-hand
@@ -495,6 +496,7 @@ import DigitalClock from '@/components/common/DigitalClock.vue'
 import GlobalItemViewerDialog from '@/components/dialogs/GlobalItemViewerDialog.vue'
 import GlobalItemEditorDialog from '@/components/dialogs/GlobalItemEditorDialog.vue'
 import GlobalFileViewerDialog from '@/components/dialogs/GlobalFileViewerDialog.vue'
+import GlobalItemPresentationDialog from '@/components/dialogs/GlobalItemPresentationDialog.vue'
 import DmScreenCardsInHand from '@/components/dmScreen/DmScreenCardsInHand.vue'
 import DmScreenChat from '@/components/dmScreen/DmScreenChat.vue'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'

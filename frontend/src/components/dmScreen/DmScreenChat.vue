@@ -125,9 +125,42 @@
         variant="outlined"
         hide-details
         class="chat-input"
-        @keydown.enter.prevent="handleEnter"
+        @keydown="handleKeyDown"
         @input="handleInput"
       >
+        <template #prepend-inner>
+          <v-menu
+            v-model="showCommandMenu"
+            offset="10"
+            :open-on-click="false"
+            :open-on-focus="false"
+            :open-on-hover="false"
+          >
+            <template #activator="{ props }">
+              <v-btn
+                v-bind="props"
+                size="x-small"
+                variant="text"
+                color="primary"
+                icon="mdi-slash-forward"
+              />
+            </template>
+            <v-list density="compact" class="command-menu">
+              <v-list-subheader class="text-overline">Create Commands</v-list-subheader>
+              <v-list-item
+                v-for="(cmd, idx) in creationCommands"
+                :key="cmd.id"
+                :active="idx === focusedCommandIndex"
+                :class="{ 'focused-item': idx === focusedCommandIndex }"
+                @click="openCommandBuilder(cmd.id)"
+              >
+                <template #prepend><v-icon size="small">{{ cmd.icon }}</v-icon></template>
+                <v-list-item-title>{{ cmd.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-tiny">{{ cmd.description }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
         <template #append-inner>
           <v-btn
             size="x-small"
@@ -142,20 +175,89 @@
         </template>
       </v-textarea>
 
+      <!-- Command Builder Overlay -->
+      <v-expand-transition>
+        <div v-if="activeCommandBuilder" class="command-builder-pane mt-2 pa-3 rounded-lg border">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="text-caption font-weight-bold d-flex align-center">
+              <v-icon size="small" class="mr-1" color="primary">
+                {{ activeCommandBuilder === 'character' ? 'mdi-account-plus' : activeCommandBuilder === 'monster' ? 'mdi-ghost' : 'mdi-treasure-chest' }}
+              </v-icon>
+              Create {{ activeCommandBuilder === 'character' ? 'Character' : activeCommandBuilder === 'monster' ? 'Monster' : 'Item' }}
+            </div>
+            <v-btn icon="mdi-close" size="x-small" variant="text" @click="activeCommandBuilder = null" />
+          </div>
+
+          <!-- Character Form -->
+          <div v-if="activeCommandBuilder === 'character'" class="command-form">
+            <v-row density="compact">
+              <v-col cols="8"><v-text-field ref="nameInput" v-model="commandData.name" label="Character Name" placeholder="e.g. Valerius the Bold" density="compact" hide-details /></v-col>
+              <v-col cols="4"><v-text-field v-model="commandData.level" label="Level" type="number" density="compact" hide-details /></v-col>
+              <v-col cols="6"><v-text-field v-model="commandData.class" label="Class" placeholder="e.g. Paladin" density="compact" hide-details /></v-col>
+              <v-col cols="6"><v-text-field v-model="commandData.subclass" label="Subclass" placeholder="e.g. Oath of Ancients" density="compact" hide-details /></v-col>
+              <v-col cols="6"><v-text-field v-model="commandData.race" label="Race" placeholder="e.g. Dragonborn" density="compact" hide-details /></v-col>
+              <v-col cols="6"><v-text-field v-model="commandData.background" label="Background" placeholder="e.g. Noble" density="compact" hide-details /></v-col>
+            </v-row>
+          </div>
+
+          <!-- Monster/Item Form -->
+          <div v-else class="command-form">
+            <v-textarea
+              ref="detailsInput"
+              v-model="commandData.details"
+              :label="activeCommandBuilder === 'monster' ? 'Monster/NPC Details' : 'Magic Item Details'"
+              :placeholder="activeCommandBuilder === 'monster' ? 'Role, CR, Theme (e.g. CR 5 Boss, Undead, Necromantic spikes)' : 'Rarity, Type, Effect (e.g. Rare, Sword, Deals extra cold damage)'"
+              density="compact"
+              rows="2"
+              hide-details
+              class="mb-2"
+            />
+          </div>
+
+          <div class="d-flex align-center gap-2 mt-2 px-1">
+            <v-icon size="small" color="primary">mdi-layers-triple</v-icon>
+            <span class="text-caption">Variations:</span>
+            <v-btn-toggle v-model="commandData.variations" mandatory density="compact" color="primary" variant="tonal">
+              <v-btn :value="1" size="x-small">1</v-btn>
+              <v-btn :value="2" size="x-small">2</v-btn>
+              <v-btn :value="3" size="x-small">3</v-btn>
+              <v-btn :value="5" size="x-small">5</v-btn>
+            </v-btn-toggle>
+          </div>
+
+          <v-btn
+            block
+            color="primary"
+            size="small"
+            class="mt-3"
+            :disabled="!isCommandFormValid"
+            @click="submitCommand"
+          >
+            Create with AI
+          </v-btn>
+        </div>
+      </v-expand-transition>
+
       <!-- Mention Dropdown -->
       <v-menu
         v-model="showMentionMenu"
-        :position-x="mentionPos.x"
-        :position-y="mentionPos.y"
-        activator="parent"
         max-height="300"
         offset="10"
+        :close-on-content-click="false"
+        :open-on-click="false"
+        :open-on-focus="false"
+        :open-on-hover="false"
+        no-click-animation
+        attach=".chat-input-area"
+        location="top start"
       >
         <v-list density="compact" min-width="200" class="mention-list shadow-lg rounded-lg">
           <v-list-subheader class="text-overline">Mention Screen Items</v-list-subheader>
           <v-list-item
-            v-for="item in mentionItems"
+            v-for="(item, idx) in mentionItems"
             :key="item.id"
+            :active="idx === focusedMentionIndex"
+            :class="{ 'focused-item': idx === focusedMentionIndex }"
             @click="addMention(item)"
           >
             <template #prepend>
@@ -194,10 +296,42 @@ const showConversations = ref(false)
 const messageListRef = ref<HTMLElement | null>(null)
 const contextItems = ref<any[]>([])
 
+// Input Refs
+const nameInput = ref<any>(null)
+const detailsInput = ref<any>(null)
+
+// Command Builder logic
+const showCommandMenu = ref(false)
+const focusedCommandIndex = ref(0)
+const activeCommandBuilder = ref<'character' | 'monster' | 'item' | null>(null)
+
+const creationCommands = [
+  { id: 'character', title: 'Character', icon: 'mdi-account-plus', description: '/create character [name] [lvl] [class]...' },
+  { id: 'monster', title: 'Monster / NPC', icon: 'mdi-ghost', description: '/create monster [details]' },
+  { id: 'item', title: 'Magic Item', icon: 'mdi-treasure-chest', description: '/create item [details]' }
+] as const
+const commandData = ref({
+  name: '',
+  level: '1',
+  class: '',
+  subclass: '',
+  race: '',
+  background: '',
+  details: '',
+  variations: 1 as number
+})
+
+const isCommandFormValid = computed(() => {
+  if (activeCommandBuilder.value === 'character') {
+    return commandData.value.name && commandData.value.class && commandData.value.race
+  }
+  return commandData.value.details.trim().length > 0
+})
+
 // Mention logic
 const showMentionMenu = ref(false)
 const mentionSearch = ref('')
-const mentionPos = ref({ x: 0, y: 0 })
+const focusedMentionIndex = ref(0)
 
 const libraryId = computed(() => libraryStore.currentLibrary?.id)
 
@@ -302,17 +436,92 @@ function handleInput(e: any) {
   const value = textarea.value
   const caretPos = textarea.selectionStart
 
-  // Simple @ detection
-  const lastAtPos = value.lastIndexOf('@', caretPos - 1)
-  if (lastAtPos !== -1 && (lastAtPos === 0 || value[lastAtPos - 1] === ' ' || value[lastAtPos - 1] === '\n')) {
-    mentionSearch.value = value.substring(lastAtPos + 1, caretPos)
-    
-    // Position menu (approximation, Vuetify menus on textareas are tricky)
-    // For now, we use a fixed position near the input area or rely on Vuetify's activator:parent
-    showMentionMenu.value = true
+  // Command detection
+  const wordsBefore = value.substring(0, caretPos).split(/[\s\n]/)
+  const lastWord = wordsBefore[wordsBefore.length - 1].toLowerCase()
+  
+  if (lastWord === 'create' || lastWord === '/create' || lastWord === '/') {
+    if (!showCommandMenu.value) {
+      showCommandMenu.value = true
+      focusedCommandIndex.value = 0
+    }
   } else {
-    showMentionMenu.value = false
+    showCommandMenu.value = false
   }
+
+  // @ Mention detection
+  // Only open if '@' was JUST typed
+  if (e.inputType === 'insertText' && e.data === '@') {
+    showMentionMenu.value = true
+    focusedMentionIndex.value = 0
+  }
+
+  // Handle filtering/closing while menu is open
+  if (showMentionMenu.value) {
+    const lastAtPos = value.lastIndexOf('@', caretPos - 1)
+    if (lastAtPos !== -1 && (lastAtPos === 0 || value[lastAtPos - 1] === ' ' || value[lastAtPos - 1] === '\n')) {
+      mentionSearch.value = value.substring(lastAtPos + 1, caretPos)
+      focusedMentionIndex.value = 0 // Reset focus when search changes
+    } else {
+      showMentionMenu.value = false
+    }
+  }
+}
+
+function openCommandBuilder(type: 'character' | 'monster' | 'item') {
+  activeCommandBuilder.value = type
+  showCommandMenu.value = false
+  
+  // Reset form
+  commandData.value = {
+    name: '',
+    level: '1',
+    class: '',
+    subclass: '',
+    race: '',
+    background: '',
+    details: '',
+    variations: 1
+  }
+  
+  // Remove trigger from input
+  const triggers = ['create', '/create', '/']
+  const inputLower = inputContent.value.toLowerCase()
+  triggers.forEach(trigger => {
+    if (inputLower.endsWith(trigger)) {
+      inputContent.value = inputContent.value.substring(0, inputLower.lastIndexOf(trigger)).trim()
+    }
+  })
+
+  // Autofocus first field
+  nextTick(() => {
+    if (type === 'character' && nameInput.value) {
+      nameInput.value.focus()
+    } else if (detailsInput.value) {
+      detailsInput.value.focus()
+    }
+  })
+}
+
+async function submitCommand() {
+  let content = ''
+  const { variations } = commandData.value
+  
+  if (activeCommandBuilder.value === 'character') {
+    const { name, level, class: cls, subclass, race, background } = commandData.value
+    content = `/create character ${name} ${level} ${cls} ${subclass || ''} ${race} ${background || ''}`.replace(/\s+/g, ' ').trim()
+  } else {
+    content = `/create ${activeCommandBuilder.value} ${commandData.value.details}`
+  }
+
+  // Add variations request
+  if (variations > 1) {
+    content += `. Generate exactly ${variations} different unique variations of this item/character.`
+  }
+
+  activeCommandBuilder.value = null
+  await aiStore.sendMessage(content, [], libraryId.value || 0)
+  scrollToBottom()
 }
 
 function addMention(item: any) {
@@ -350,8 +559,38 @@ async function onSendMessage() {
 }
 
 function handleEnter(e: KeyboardEvent) {
+  if (showMentionMenu.value && mentionItems.value.length > 0) {
+    e.preventDefault()
+    addMention(mentionItems.value[focusedMentionIndex.value])
+    return
+  }
+
   if (!e.shiftKey) {
     onSendMessage()
+  }
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  // 1. Handle command menu navigation
+  if (showCommandMenu.value) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      focusedCommandIndex.value = (focusedCommandIndex.value + 1) % creationCommands.length
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      focusedCommandIndex.value = (focusedCommandIndex.value - 1 + creationCommands.length) % creationCommands.length
+    } else if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+      e.preventDefault()
+      openCommandBuilder(creationCommands[focusedCommandIndex.value].id)
+    } else if (e.key === 'Escape') {
+      showCommandMenu.value = false
+    }
+    return
+  }
+
+  // 2. Handle mention menu navigation
+  if (showMentionMenu.value) {
+    handleEnter(e)
   }
 }
 
@@ -552,5 +791,32 @@ watch(() => aiStore.isLoadingMessages, (loading) => {
   background: rgba(var(--v-theme-surface), 0.98) !important;
   backdrop-filter: blur(12px);
   border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.command-menu {
+  background: rgba(var(--v-theme-surface), 0.98) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+  border-radius: 8px !important;
+}
+
+.command-builder-pane {
+  background: rgba(var(--v-theme-primary), 0.05);
+  border: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
+  backdrop-filter: blur(8px);
+}
+
+.command-form :deep(.v-field) {
+  background: rgba(var(--v-theme-surface), 0.5) !important;
+  border-radius: 8px !important;
+}
+
+.command-form :deep(.v-label) {
+  font-size: 0.75rem;
+}
+
+.focused-item {
+  background: rgba(var(--v-theme-primary), 0.1) !important;
+  color: rgb(var(--v-theme-primary)) !important;
 }
 </style>

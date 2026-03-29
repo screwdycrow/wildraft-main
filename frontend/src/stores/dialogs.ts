@@ -65,14 +65,44 @@ export const useDialogsStore = defineStore('dialogs', () => {
     }, 300)
   }
 
+  // Item Presentation Dialog
+  const itemPresentationOpen = ref(false)
+  const itemPresentationData = ref<{ item: LibraryItem } | null>(null)
+
+  function openItemPresentation(item: LibraryItem) {
+    itemPresentationData.value = { item }
+    itemPresentationOpen.value = true
+  }
+
+  function closeItemPresentation() {
+    itemPresentationOpen.value = false
+    setTimeout(() => {
+      itemPresentationData.value = null
+    }, 300)
+  }
+
   return {
-    // ... items ...
+    itemViewerOpen,
+    itemViewerData,
+    openItemViewer,
+    closeItemViewer,
+
+    fileViewerOpen,
+    fileViewerData,
+    openFileViewer,
+    closeFileViewer,
+
     itemEditorOpen,
     itemEditorData,
     itemEditorMergeData,
     openItemEditor,
     openItemEditorCreate,
     closeItemEditor,
+
+    itemPresentationOpen,
+    itemPresentationData,
+    openItemPresentation,
+    closeItemPresentation,
   }
 })
 

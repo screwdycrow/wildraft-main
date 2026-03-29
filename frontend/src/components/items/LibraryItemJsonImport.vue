@@ -1088,25 +1088,38 @@ async function importData() {
       const isTypeSpecific = props.itemType && schema.value
 
       // Process bulk import - convert each item to CreateLibraryItemPayload format
-      const itemsToImport: CreateLibraryItemPayload[] = bulkItems.value.map(item => ({
-        type: isTypeSpecific ? props.itemType! : item.type,
-        name: item.name,
-        description: item.description || undefined,
-        data: isTypeSpecific ? item : (item.data || {}),
-        tagIds: item.tagIds || [],
-        userFileIds: item.userFileIds || [],
-        featuredImageId: item.featuredImageId || undefined,
-      }))
+      const itemsToImport: CreateLibraryItemPayload[] = bulkItems.value.map(item => {
+        const itemWithCorrectType = {
+          ...item,
+          type: isTypeSpecific ? props.itemType! : transformLegacyType(item.type)
+        }
+        
+        const transformed = transformLegacyData(itemWithCorrectType)
+        
+        return {
+          type: itemWithCorrectType.type,
+          name: transformed.name || item.name,
+          description: transformed.description || item.description || undefined,
+          data: transformed.data || (item.data || {}),
+          tagIds: item.tagIds || [],
+          userFileIds: item.userFileIds || [],
+          featuredImageId: item.featuredImageId || undefined,
+        }
+      })
 
       emit('import', itemsToImport)
     } else {
       // Process single item import
+      const transformed = transformLegacyData({
+        ...parsed,
+        type: props.itemType!
+      })
+
       const importData: CreateLibraryItemPayload = {
         type: props.itemType!,
-        name: parsed.name,
-        description: importDescription.value ? (parsed.description || undefined) : undefined,
-        data: parsed.data || parsed, // Handle both formats (with data wrapper or direct)
-        // Do NOT import tags or attachments - they stay as-is
+        name: transformed.name || parsed.name,
+        description: importDescription.value ? (transformed.description || parsed.description || undefined) : undefined,
+        data: transformed.data || (parsed.data || parsed),
         tagIds: [],
         userFileIds: [],
         featuredImageId: undefined,
@@ -1121,6 +1134,107 @@ async function importData() {
   }
 
   isImporting.value = false
+}
+
+/**
+ * Transforms legacy nested AI data into the flat structure expected by the backend
+ */
+function transformLegacyData(item: any) {
+  const newItem = JSON.parse(JSON.stringify(item))
+  let data = newItem.data
+
+  // Handle case where data is in the top-level
+  if (!data || typeof data !== 'object') {
+    // If it's a single item import and there's no data field, treat the whole object as data
+    // excluding meta fields
+    const { name, type, description, tagIds, userFileIds, ...rest } = newItem
+    data = rest
+    newItem.data = data
+  }
+
+  // 1. Flatten "stats" object if it exists (Stat Blocks / Characters)
+  if (data.stats && typeof data.stats === 'object') {
+    Object.assign(data, data.stats)
+    delete data.stats
+  }
+
+  // 2. Ensure CR is a string
+  if (data.cr !== undefined && typeof data.cr !== 'string') {
+    data.cr = String(data.cr)
+  }
+
+  // 3. Ensure speed exists for Stat Blocks
+  if (newItem.type === 'STAT_BLOCK_DND_5E' && !data.speed) {
+    data.speed = '30 ft.' // Default fallback
+  }
+
+  // 4. Handle legacy "actionType" in actions (Stat Blocks)
+  if (Array.isArray(data.actions)) {
+    data.actions = data.actions.map((a: any) => ({
+      name: a.name || 'Unnamed Action',
+      description: a.description || '',
+      roll: a.roll || '',
+      range: a.range || (a.actionType === 'RANGED' ? '60 ft.' : '5 ft.'),
+      ...a
+    }))
+  }
+
+  // 5. Transform string arrays to object arrays (Equipment / Spells / Features)
+  // Backend expects these as objects { name, description? }
+  const arrayFields = ['equipment', 'spells', 'features']
+  arrayFields.forEach(field => {
+    if (Array.isArray(data[field])) {
+      data[field] = data[field].map((val: any) => {
+        if (typeof val === 'string') {
+          const result: any = { name: val, description: '' }
+          
+          if (field === 'spells') {
+            // Try to extract level from name like "Cantrip: Mage Hand" or "1st level: Bless"
+            if (val.toLowerCase().includes('cantrip')) result.level = 0
+            else if (val.toLowerCase().includes('1st')) result.level = 1
+            else if (val.toLowerCase().includes('2nd')) result.level = 2
+            else if (val.toLowerCase().includes('3rd')) result.level = 3
+            else if (val.toLowerCase().includes('4th')) result.level = 4
+            else if (val.toLowerCase().includes('5th')) result.level = 5
+            else if (val.toLowerCase().includes('6th')) result.level = 6
+            else if (val.toLowerCase().includes('7th')) result.level = 7
+            else if (val.toLowerCase().includes('8th')) result.level = 8
+            else if (val.toLowerCase().includes('9th')) result.level = 9
+            else result.level = 0 // Default to cantrip if unknown
+            
+            // Clean up name if level prefix was found
+            result.name = val.split(':').pop()?.trim() || val
+          }
+          
+          return result
+        }
+        
+        // Ensure spells always have a level property
+        if (field === 'spells' && typeof val === 'object' && val.level === undefined) {
+          val.level = 0
+        }
+        
+        return val
+      })
+    }
+  })
+
+  return newItem
+}
+
+function transformLegacyType(type?: string): string {
+  if (!type) return 'NOTE'
+  const typeMap: Record<string, string> = {
+    'CHARACTER': 'CHARACTER_DND_5E',
+    'CHARACTER_DND_5E': 'CHARACTER_DND_5E',
+    'STAT_BLOCK': 'STAT_BLOCK_DND_5E',
+    'STAT_BLOCK_DND_5E': 'STAT_BLOCK_DND_5E',
+    'ITEM': 'ITEM_DND_5E',
+    'ITEM_DND_5E': 'ITEM_DND_5E',
+    'MAGIC_ITEM': 'ITEM_DND_5E',
+    'NOTE': 'NOTE'
+  }
+  return typeMap[type.toUpperCase()] || 'NOTE'
 }
 
 watch(() => props.modelValue, (newValue) => {
