@@ -1,5 +1,21 @@
 <template>
   <div class="magic-item-detail" :style="backgroundImageStyle">
+    <page-top-bar
+      :title="item.name"
+      icon="mdi-auto-fix"
+      icon-color="#9b59b6"
+      :description="itemData.itemType || 'Magic Item'"
+    >
+      <template #actions>
+        <v-btn
+          icon="mdi-printer"
+          variant="text"
+          size="small"
+          @click="showPrintDialog = true"
+        />
+      </template>
+    </page-top-bar>
+
     <v-row class="content-row" dense>
       <v-col cols="12" md="8" class="main-column">
         <div class="item-card glass-card">
@@ -136,6 +152,104 @@
         </aside>
       </v-col>  
     </v-row>
+
+    <!-- Print Dialog -->
+    <v-dialog v-model="showPrintDialog" fullscreen>
+      <v-card>
+        <v-toolbar color="primary">
+          <v-toolbar-title>{{ item.name }} - Magic Item Card</v-toolbar-title>
+          <v-spacer />
+          <v-btn icon="mdi-printer" @click="printItem" />
+          <v-btn icon="mdi-close" @click="showPrintDialog = false" />
+        </v-toolbar>
+        
+        <v-card-text class="pa-0">
+          <div id="magic-item-pdf-export" class="pdf-export-container">
+            <div class="pdf-card">
+              <div v-if="featuredImageUrl" class="pdf-image-wrapper">
+                <div class="pdf-image-container">
+                  <img :src="featuredImageUrl" class="pdf-image" />
+                </div>
+              </div>
+              <div class="pdf-card-content">
+                <div class="pdf-header">
+                <div class="pdf-title-row">
+                  <h1 class="pdf-name">{{ item.name }}</h1>
+                  <div class="pdf-rarity">{{ itemData.rarity || 'Common' }}</div>
+                </div>
+                <div class="pdf-meta">
+                  {{ itemData.itemType }}<span v-if="itemData.category">, {{ itemData.category }}</span>
+                  <span v-if="itemData.subtype"> ({{ itemData.subtype }})</span>
+                </div>
+                <div v-if="itemData.attunement || itemData.requiresAttunement" class="pdf-attunement">
+                  Requires Attunement {{ itemData.attunement ? `(${itemData.attunement})` : '' }}
+                </div>
+              </div>
+
+              <div class="pdf-stats-grid">
+                <template v-for="stat in statGrid" :key="stat.label">
+                  <div v-if="stat.value !== '—'" class="pdf-stat-item">
+                    <div class="pdf-stat-label">{{ stat.label }}</div>
+                    <div class="pdf-stat-value">{{ stat.value }}</div>
+                  </div>
+                </template>
+              </div>
+
+              <div v-if="activationText" class="pdf-section">
+                <h2 class="pdf-section-title">Activation</h2>
+                <div class="pdf-section-content">{{ activationText }}</div>
+              </div>
+
+              <div v-if="item.description" class="pdf-section">
+                <h2 class="pdf-section-title">Description</h2>
+                <div class="pdf-section-content rich-text pdf-clamp" v-html="item.description"></div>
+              </div>
+
+              <div v-if="itemData.effect" class="pdf-section">
+                <h2 class="pdf-section-title">Effect</h2>
+                <div class="pdf-section-content rich-text pdf-clamp" v-html="itemData.effect"></div>
+              </div>
+
+              <div v-if="itemData.properties && itemData.properties.length" class="pdf-section">
+                <h2 class="pdf-section-title">Properties</h2>
+                <div class="pdf-properties">
+                  <span v-for="prop in itemData.properties" :key="prop" class="pdf-prop-tag">{{ prop }}</span>
+                </div>
+              </div>
+
+              <div v-if="itemData.actions && itemData.actions.length" class="pdf-section">
+                <h2 class="pdf-section-title">Actions</h2>
+                <div v-for="(action, index) in itemData.actions" :key="index" class="pdf-effect-box">
+                  <div class="pdf-effect-header">
+                    <span class="pdf-effect-name">{{ action.name }}</span>
+                    <span v-if="action.actionType" class="pdf-effect-type">{{ action.actionType }}</span>
+                  </div>
+                  <div class="pdf-action-meta">
+                    <span v-if="action.toHit"><strong>To Hit:</strong> {{ action.toHit }}</span>
+                    <span v-if="action.roll"><strong>Damage:</strong> {{ action.roll }}</span>
+                    <span v-if="action.dc"><strong>DC:</strong> {{ action.dc }}</span>
+                    <span v-if="action.range"><strong>Range:</strong> {{ action.range }}</span>
+                  </div>
+                  <div v-if="action.description" class="pdf-effect-desc rich-text" v-html="action.description"></div>
+                </div>
+              </div>
+
+              <div v-if="itemData.additionalEffects && itemData.additionalEffects.length" class="pdf-section">
+                <h2 class="pdf-section-title">Additional Effects</h2>
+                <div v-for="(effect, index) in itemData.additionalEffects" :key="index" class="pdf-effect-box">
+                  <div class="pdf-effect-header">
+                    <span class="pdf-effect-name">{{ effect.name }}</span>
+                    <span v-if="effect.type" class="pdf-effect-type">{{ effect.type }}</span>
+                  </div>
+                  <div v-if="effect.description" class="pdf-effect-desc rich-text" v-html="effect.description"></div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -143,6 +257,7 @@
 import { computed, ref, watch } from 'vue'
 import type { LibraryItem, ItemData } from '@/types/item.types'
 import FileAttachmentManager from '@/components/items/common/FileAttachmentManager.vue'
+import PageTopBar from '@/components/common/PageTopBar.vue'
 import { useFilesStore } from '@/stores/files'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 
@@ -165,6 +280,7 @@ const filesStore = useFilesStore()
 const itemData = computed<ItemData>(() => props.item.data as ItemData)
 
 const featuredImageUrl = ref('')
+const showPrintDialog = ref(false)
 
 // Background image style
 const backgroundImageStyle = computed(() => {
@@ -264,6 +380,108 @@ function getRarityColor(rarity: string) {
     artifact: 'red',
   }
   return colors[rarity] || 'grey'
+}
+
+function printItem() {
+  const printContent = document.getElementById('magic-item-pdf-export')
+  if (!printContent) return
+  
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${props.item.name} - Magic Item Card</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: #000; padding: 10mm; }
+          
+          .pdf-export-container { width: 100%; max-width: 100mm; margin: 0 auto; height: 140mm; overflow: hidden; }
+          .pdf-card { 
+            border: 2px solid #333; 
+            padding: 20px; 
+            border-radius: 12px; 
+            position: relative; 
+            height: 100%; 
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+          }
+          .pdf-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: #9b59b6; z-index: 2; border-radius: 12px 12px 0 0; }
+          
+          .pdf-image-wrapper { display: flex; justify-content: center; margin-bottom: 12px; z-index: 2; }
+          .pdf-image-container { width: 40mm; height: 40mm; overflow: hidden; border-radius: 8px; border: 1px solid #eee; }
+          .pdf-image { width: 100%; height: 100%; object-fit: cover; }
+          
+          .pdf-card-content { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; }
+          
+          .pdf-header { margin-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 8px; }
+          .pdf-title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+          .pdf-name { font-size: 20px; font-weight: bold; color: #1a1a1a; }
+          .pdf-rarity { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #666; }
+          .pdf-meta { font-size: 12px; font-style: italic; color: #444; margin-bottom: 4px; }
+          .pdf-attunement { font-size: 11px; font-weight: bold; color: #d35400; text-transform: uppercase; }
+          
+          .pdf-stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(30mm, 1fr)); 
+            gap: 8px; 
+            margin-bottom: 12px; 
+            background: rgba(0,0,0,0.04); 
+            padding: 8px; 
+            border-radius: 6px; 
+          }
+          .pdf-stat-item { text-align: center; border-right: 1px solid rgba(0,0,0,0.1); }
+          .pdf-stat-item:last-child { border-right: none; }
+          .pdf-stat-label { font-size: 8px; font-weight: bold; text-transform: uppercase; color: #7f8c8d; }
+          .pdf-stat-value { font-size: 13px; font-weight: bold; color: #2c3e50; }
+          
+          .pdf-section { margin-bottom: 10px; flex-shrink: 1; overflow: hidden; }
+          .pdf-section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid rgba(0,0,0,0.1); margin-bottom: 5px; color: #555; }
+          .pdf-section-content { font-size: 11px; line-height: 1.4; color: #222; }
+          
+          .pdf-clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+          
+          .pdf-properties { display: flex; flex-wrap: wrap; gap: 4px; }
+          .pdf-prop-tag { font-size: 9px; font-weight: bold; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); }
+          
+          .pdf-effect-box { margin-bottom: 6px; padding: 8px; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); border-radius: 5px; }
+          .pdf-effect-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+          .pdf-effect-name { font-weight: bold; font-size: 11px; color: #2980b9; }
+          .pdf-effect-type { font-size: 9px; font-style: italic; color: #7f8c8d; }
+          .pdf-effect-desc { font-size: 10px; line-height: 1.3; }
+          .pdf-action-meta { font-size: 9px; margin-bottom: 3px; color: #444; display: flex; gap: 8px; }
+          .pdf-action-meta strong { color: #2c3e50; }
+          
+          .rich-text p { margin-bottom: 5px; }
+          .rich-text ul, .rich-text ol { padding-left: 15px; margin-bottom: 5px; }
+          
+          @media print {
+            body { padding: 0; }
+            .pdf-card { break-inside: avoid; border: 1px solid #000; }
+          }
+          
+          @media print {
+            body { padding: 0; }
+            .pdf-card { border: 1px solid #000; break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+  printWindow.focus()
+  
+  setTimeout(() => {
+    printWindow.print()
+    printWindow.close()
+  }, 250)
 }
 </script>
 

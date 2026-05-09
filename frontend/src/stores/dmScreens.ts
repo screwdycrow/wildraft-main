@@ -1007,6 +1007,97 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     return newItem
   }
 
+  function addWidget(
+    dmScreenId: string,
+    libraryId: number,
+    type: 'timer' | 'counter' | 'quickNote',
+    position: { x: number; y: number },
+    targetLayer?: string
+  ) {
+    const screen = findDmScreen(dmScreenId)
+    const layerId = targetLayer || DEFAULT_LAYERS.SCREEN
+
+    // Get max order in target layer
+    const layerItems = (screen?.items || []).filter(i => (i.layer || DEFAULT_LAYERS.SCREEN) === layerId)
+    const maxOrder = layerItems.reduce((max, i) => Math.max(max, i.order || 0), 0)
+
+    const newItem: DmScreenItem = {
+      id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: type as any,
+      layer: layerId,
+      order: maxOrder + 1,
+      data: {},
+      nodeOptions: {
+        x: position.x,
+        y: position.y,
+        position: position,
+        width: type === 'quickNote' ? 260 : 220,
+        height: type === 'quickNote' ? 160 : 180,
+        resizable: true,
+      },
+      isMinimized: false,
+    }
+
+    // Set defaults based on type
+    if (type === 'timer') {
+      newItem.data = {
+        title: 'Timer',
+        timeLeft: 300,
+        totalTime: 300,
+        backgroundColor: '#1e1e2e',
+        backgroundOpacity: 0.8,
+        blur: 10
+      }
+    } else if (type === 'counter') {
+      newItem.data = {
+        title: 'Counter',
+        value: 0,
+        step: 1,
+        backgroundColor: '#1e1e2e',
+        backgroundOpacity: 0.8,
+        blur: 10
+      }
+    } else if (type === 'quickNote') {
+      newItem.data = {
+        title: 'Quick Note',
+        content: '',
+        backgroundColor: '#fef08a',
+        backgroundOpacity: 0.92,
+        blur: 0
+      }
+    }
+
+    addItem(dmScreenId, libraryId, newItem)
+    return newItem
+  }
+
+  function addTimerNode(
+    dmScreenId: string,
+    libraryId: number,
+    position: { x: number; y: number },
+    targetLayer?: string
+  ) {
+    return addWidget(dmScreenId, libraryId, 'timer', position, targetLayer)
+  }
+
+  function addCounterNode(
+    dmScreenId: string,
+    libraryId: number,
+    position: { x: number; y: number },
+    targetLayer?: string
+  ) {
+    return addWidget(dmScreenId, libraryId, 'counter', position, targetLayer)
+  }
+
+  function addQuickNoteNode(
+    dmScreenId: string,
+    libraryId: number,
+    position: { x: number; y: number },
+    targetLayer?: string
+  ) {
+    return addWidget(dmScreenId, libraryId, 'quickNote', position, targetLayer)
+  }
+
   // =====================================================
   // API ACTIONS (non-debounced, direct calls)
   // =====================================================
@@ -1637,6 +1728,10 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     addBackgroundImage,
     addUserFile,
     addDmScreenNode,
+    addWidget,
+    addTimerNode,
+    addCounterNode,
+    addQuickNoteNode,
 
     // Layer Management
     getLayers,

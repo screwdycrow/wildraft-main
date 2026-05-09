@@ -2669,6 +2669,34 @@ defineExpose({
     dmScreensStore.addShapeNode(props.dmScreen.id, props.dmScreen.libraryId, center)
     toast.success('Shape node added')
   },
+  addTimerNode: () => {
+    const center = getViewportCenter(220, 180)
+    dmScreensStore.addTimerNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    toast.success('Timer added')
+  },
+  addCounterNode: () => {
+    const center = getViewportCenter(220, 180)
+    dmScreensStore.addCounterNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    toast.success('Counter added')
+  },
+  addQuickNoteNode: () => {
+    const center = getViewportCenter(260, 160)
+    dmScreensStore.addQuickNoteNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    toast.success('Quick note added')
+  },
+  addWidget: (type: 'timer' | 'counter' | 'quickNote') => {
+    if (type === 'timer') {
+      const center = getViewportCenter(220, 180)
+      dmScreensStore.addTimerNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    } else if (type === 'counter') {
+      const center = getViewportCenter(220, 180)
+      dmScreensStore.addCounterNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    } else if (type === 'quickNote') {
+      const center = getViewportCenter(260, 160)
+      dmScreensStore.addQuickNoteNode(props.dmScreen.id, props.dmScreen.libraryId, center, selectedLayerId.value)
+    }
+    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added`)
+  },
 
   // Toggle actions
   toggleLockBackground: () => {

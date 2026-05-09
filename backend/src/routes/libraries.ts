@@ -230,6 +230,8 @@ export const libraryRoutes = async (fastify: FastifyInstance) => {
           await incrementLibraryVersion(id, tx);
 
           return updated;
+        }, {
+          timeout: 10000,
         });
 
         return {

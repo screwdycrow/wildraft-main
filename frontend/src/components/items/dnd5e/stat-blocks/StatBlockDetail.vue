@@ -35,6 +35,12 @@
               </div>
             </div>
           </v-tooltip>
+          <v-btn
+            icon="mdi-printer"
+            variant="text"
+            size="small"
+            @click="showPrintDialog = true"
+          />
         </div>
       </template>
     </page-top-bar>
@@ -178,6 +184,96 @@
         />
       </v-col>
     </v-row>
+
+    <!-- Print Dialog -->
+    <v-dialog v-model="showPrintDialog" fullscreen>
+      <v-card>
+        <v-toolbar color="primary">
+          <v-toolbar-title>{{ item.name }} - Stat Block</v-toolbar-title>
+          <v-spacer />
+          <v-btn icon="mdi-printer" @click="printStatBlock" />
+          <v-btn icon="mdi-close" @click="showPrintDialog = false" />
+        </v-toolbar>
+        
+        <v-card-text class="pa-0">
+          <div id="stat-block-pdf-export" class="pdf-export-container">
+            <div class="pdf-stat-block">
+              <div v-if="featuredImageUrl" class="pdf-image-wrapper">
+                <div class="pdf-image-container">
+                  <img :src="featuredImageUrl" class="pdf-image" />
+                </div>
+              </div>
+              <div class="pdf-card-content">
+                <div class="pdf-header">
+                <h1 class="pdf-name">{{ item.name }}</h1>
+                <div class="pdf-meta">
+                  {{ statBlockData.size || '' }} {{ statBlockData.type || '' }}, {{ statBlockData.alignment || '' }}
+                </div>
+              </div>
+
+              <div class="pdf-stats-row">
+                <div class="pdf-stat-line"><strong>Armor Class</strong> {{ statBlockData.ac || '—' }}</div>
+                <div class="pdf-stat-line"><strong>Hit Points</strong> {{ statBlockData.hp || '—' }}</div>
+                <div class="pdf-stat-line"><strong>Speed</strong> {{ statBlockData.speed || '—' }}</div>
+              </div>
+
+              <div class="pdf-abilities">
+                <div v-for="ability in ['str', 'dex', 'con', 'int', 'wis', 'cha']" :key="ability" class="pdf-ability">
+                  <div class="pdf-ability-label">{{ ability.toUpperCase() }}</div>
+                  <div class="pdf-ability-value">
+                    {{ statBlockData[ability as keyof StatBlockData] || 10 }} 
+                    ({{ formatModifier(calculateModifier(Number(statBlockData[ability as keyof StatBlockData] || 10))) }})
+                  </div>
+                </div>
+              </div>
+
+              <div class="pdf-secondary-stats">
+                <div v-if="resistancesDisplay" class="pdf-stat-line"><strong>Damage Resistances</strong> {{ resistancesDisplay }}</div>
+                <div v-if="immunitiesDisplay" class="pdf-stat-line"><strong>Damage Immunities</strong> {{ immunitiesDisplay }}</div>
+                <div v-if="statBlockData.senses" class="pdf-stat-line"><strong>Senses</strong> {{ statBlockData.senses }}</div>
+                <div v-if="statBlockData.languages" class="pdf-stat-line"><strong>Languages</strong> {{ statBlockData.languages }}</div>
+                <div v-if="statBlockData.cr" class="pdf-stat-line"><strong>Challenge</strong> {{ statBlockData.cr }}</div>
+              </div>
+
+              <div v-if="statBlockData.traits && statBlockData.traits.length" class="pdf-section">
+                <div v-for="(trait, index) in statBlockData.traits" :key="index" class="pdf-feature">
+                  <strong>{{ trait.name }}.</strong> <span v-html="trait.description"></span>
+                </div>
+              </div>
+
+              <div v-if="statBlockData.actions && statBlockData.actions.length" class="pdf-section">
+                <h2 class="pdf-section-title">Actions</h2>
+                <div v-for="(action, index) in statBlockData.actions" :key="index" class="pdf-feature">
+                  <strong>{{ action.name }}.</strong> 
+                  <em v-if="action.actionType">({{ action.actionType }})</em>
+                  <div class="pdf-action-mechanics">
+                    <span v-if="action.toHit"><strong>To Hit:</strong> {{ action.toHit }}</span>
+                    <span v-if="action.roll"><strong>Damage:</strong> {{ action.roll }}</span>
+                    <span v-if="action.dc"><strong>DC:</strong> {{ action.dc }}</span>
+                  </div>
+                  <span v-html="action.description"></span>
+                </div>
+              </div>
+
+              <div v-if="statBlockData.spells && statBlockData.spells.length" class="pdf-section">
+                <h2 class="pdf-section-title">Spells</h2>
+                <div v-for="(spell, index) in statBlockData.spells" :key="index" class="pdf-feature">
+                  <strong>{{ spell.name }}.</strong> 
+                  <span v-if="spell.level !== undefined">Level {{ spell.level }}</span>
+                  <span v-html="spell.description"></span>
+                </div>
+              </div>
+
+              <div v-if="item.description" class="pdf-section">
+                <h2 class="pdf-section-title">Description</h2>
+                <div class="pdf-description">{{ item.description }}</div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -194,7 +290,7 @@ import SpellListDisplay from '../common/SpellListDisplay.vue'
 import AttachedFilesGrid from '@/components/items/common/AttachedFilesGrid.vue'
 import CustomCountersDisplay from '../common/CustomCountersDisplay.vue'
 import AbilityScoresDisplay from '../common/AbilityScoresDisplay.vue'
-import { calculateStatBlockProficiencyBonus } from '@/composables/useDnd5eCalculations'
+import { calculateStatBlockProficiencyBonus, calculateModifier, formatModifier } from '@/composables/useDnd5eCalculations'
 
 interface Props {
   item: LibraryItem
@@ -211,6 +307,7 @@ const toast = useToast()
 
 const statBlockData = computed<StatBlockData>(() => props.item.data as StatBlockData)
 const featuredImageUrl = ref<string>('')
+const showPrintDialog = ref(false)
 
 // Background image style
 const backgroundImageStyle = computed(() => {
@@ -316,6 +413,99 @@ async function updateSpells(spells: any[]) {
   }
 }
 
+function printStatBlock() {
+  const printContent = document.getElementById('stat-block-pdf-export')
+  if (!printContent) return
+  
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${props.item.name} - Stat Block</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: white; color: #000; padding: 10mm; }
+          
+          .pdf-export-container { width: 100%; max-width: 100mm; margin: 0 auto; height: 140mm; overflow: hidden; }
+          .pdf-stat-block { 
+            border: 1px solid #333; 
+            padding: 15px; 
+            border-top: 6px solid #E74C3C;
+            background: #fdfaf3;
+            color: #4a1d1d;
+            border-radius: 12px;
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+          }
+          
+          .pdf-image-wrapper { display: flex; justify-content: center; margin-bottom: 12px; z-index: 2; }
+          .pdf-image-container { width: 35mm; height: 35mm; overflow: hidden; border: 1px solid #9c2b1b; border-radius: 5px; }
+          .pdf-image { width: 100%; height: 100%; object-fit: cover; }
+          
+          .pdf-card-content { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; }
+          
+          .pdf-header { margin-bottom: 8px; border-bottom: 1px solid #9c2b1b; padding-bottom: 4px; }
+          .pdf-name { font-size: 22px; font-family: 'Georgia', serif; font-variant: small-caps; color: #9c2b1b; line-height: 1.1; }
+          .pdf-meta { font-size: 11px; font-style: italic; color: #000; }
+          
+          .pdf-stats-row { margin: 6px 0; border-top: 1px solid #9c2b1b; border-bottom: 1px solid #9c2b1b; padding: 4px 0; }
+          .pdf-stat-line { font-size: 11px; color: #9c2b1b; margin-bottom: 2px; }
+          .pdf-stat-line strong { color: #9c2b1b; }
+          
+          .pdf-abilities { 
+            display: flex; 
+            justify-content: space-around; 
+            margin: 8px 0; 
+            border-bottom: 1px solid #9c2b1b; 
+            padding-bottom: 6px; 
+          }
+          .pdf-ability { text-align: center; }
+          .pdf-ability-label { font-weight: bold; color: #9c2b1b; font-size: 10px; }
+          .pdf-ability-value { font-size: 11px; }
+          
+          .pdf-secondary-stats { margin-bottom: 10px; border-bottom: 1px solid #9c2b1b; padding-bottom: 8px; }
+          
+          .pdf-section { margin-bottom: 8px; flex-shrink: 1; overflow: hidden; }
+          .pdf-section-title { 
+            font-size: 16px; 
+            font-family: 'Georgia', serif;
+            border-bottom: 1px solid #9c2b1b; 
+            margin-bottom: 6px; 
+            color: #9c2b1b;
+          }
+          
+          .pdf-feature { margin-bottom: 4px; font-size: 10px; line-height: 1.3; color: #000; }
+          .pdf-feature strong { font-weight: bold; font-style: italic; color: #000; }
+          .pdf-action-mechanics { font-size: 9px; font-style: italic; color: #4a1d1d; margin: 1px 0; }
+          .pdf-action-mechanics strong { color: #9c2b1b; }
+          
+          .pdf-description { font-size: 10px; line-height: 1.4; color: #333; font-style: italic; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 6px; }
+          
+          @media print {
+            body { padding: 0; }
+            .pdf-stat-block { border: none; break-inside: avoid; border: 1px solid #000; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+  printWindow.focus()
+  
+  setTimeout(() => {
+    printWindow.print()
+    printWindow.close()
+  }, 250)
+}
 </script>
 
 <style scoped>

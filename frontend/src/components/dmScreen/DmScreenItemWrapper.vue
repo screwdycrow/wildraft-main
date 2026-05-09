@@ -1,16 +1,16 @@
 <template>
   <div class="dm-screen-item-wrapper" :class="{
-    'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode',
+    'scaled': isScaled && !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' && item.type !== 'quickNote' && item.type !== 'timer' && item.type !== 'counter',
     'is-background': item.data.isBackground,
     'is-token': item.type === 'TokenNode',
     'is-effect': item.type === 'EffectNode',
     'is-shape': item.type === 'ShapeNode',
     'is-terrain': item.type === 'TerrainNode',
-    'transparent': (item.type === 'TextNode' && !item.data.backgroundColor) || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode' || item.type === 'quickNote'
+    'transparent': (item.type === 'TextNode' && !item.data.backgroundColor) || item.type === 'ShapeNode' || item.type === 'EffectNode' || item.type === 'TerrainNode' || item.type === 'quickNote' || item.type === 'timer' || item.type === 'counter'
   }" :style="wrapperStyle">
     <!-- Selection handle / toolbar for regular items (not tokens, text/shape/effect nodes, or backgrounds) -->
     <div
-      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' && !item.data.isBackground"
+      v-if="item.type !== 'TokenNode' && item.type !== 'TextNode' && item.type !== 'ShapeNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' && item.type !== 'quickNote' && item.type !== 'timer' && item.type !== 'counter' && !item.data.isBackground"
       class="selection-handle" data-drag-handle>
       <div class="handle-grab">
         <v-icon size="x-small" color="rgba(255, 255, 255, 0.7)">mdi-drag</v-icon>
@@ -23,7 +23,7 @@
 
     <!-- Full View (all other types) -->
     <div v-else class="item-content"
-      :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' }"
+      :class="{ 'has-handle': !item.data.isBackground && item.type !== 'TokenNode' && item.type !== 'ShapeNode' && item.type !== 'TextNode' && item.type !== 'EffectNode' && item.type !== 'TerrainNode' && item.type !== 'DmScreenNode' && item.type !== 'quickNote' && item.type !== 'timer' && item.type !== 'counter' }"
       :style="shouldApplyContentScaling ? contentStyle : {}">
       <!-- LibraryItemId -->
       <div v-if="item.type === 'LibraryItemId' && libraryItem" class="item-content-wrapper library-item-content"
@@ -74,6 +74,12 @@
       <!-- ImageUrl -->
       <image-url-component v-else-if="item.type === 'ImageUrl'" :item="item" @update="handleItemUpdate" />
 
+      <!-- Timer Widget -->
+      <timer-node v-else-if="item.type === 'timer'" :item="item" @update="handleItemUpdate" />
+
+      <!-- Counter Widget -->
+      <counter-node v-else-if="item.type === 'counter'" :item="item" @update="handleItemUpdate" />
+
       <!-- TextNode -->
       <text-node v-else-if="item.type === 'TextNode'" :item="item" @update:text="handleTextUpdate" @update:data="handleTextDataUpdate" @open-settings="$emit('open-settings')" />
 
@@ -114,6 +120,8 @@ import TokenNodeDisplay from './TokenNodeDisplay.vue'
 import QuickNoteComponent from './QuickNoteComponent.vue'
 import WebLinkComponent from './WebLinkComponent.vue'
 import ImageUrlComponent from './ImageUrlComponent.vue'
+import TimerNode from './TimerNode.vue'
+import CounterNode from './CounterNode.vue'
 import TextNode from './TextNode.vue'
 import ShapeNode from './ShapeNode.vue'
 import EffectNodeDisplay from './EffectNodeDisplay.vue'
@@ -232,6 +240,10 @@ const itemTitle = computed(() => {
       return props.item.data.title || 'Web Link'
     case 'ImageUrl':
       return props.item.data.title || 'Image'
+    case 'timer':
+      return props.item.data.title || 'Timer'
+    case 'counter':
+      return props.item.data.title || 'Counter'
     case 'EffectNode':
       return props.item.data.effectConfig?.effectType || 'Effect'
     case 'TerrainNode':

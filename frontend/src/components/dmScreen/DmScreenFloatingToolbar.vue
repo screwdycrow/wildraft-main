@@ -72,6 +72,45 @@
             Add Shape
           </v-tooltip>
         </v-btn>
+
+        <!-- Widget Menu -->
+        <v-menu location="top center" :close-on-content-click="true">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              color="warning"
+              class="toolbar-btn"
+              v-bind="menuProps"
+            >
+              <v-icon size="20">mdi-widgets-outline</v-icon>
+              <v-tooltip activator="parent" location="top">
+                Add Widget
+              </v-tooltip>
+            </v-btn>
+          </template>
+          <v-list density="compact" class="widget-menu">
+            <v-list-item @click="$emit('add-timer-node')">
+              <template #prepend>
+                <v-icon size="small" color="success">mdi-timer-outline</v-icon>
+              </template>
+              <v-list-item-title>Timer Node</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="$emit('add-counter-node')">
+              <template #prepend>
+                <v-icon size="small" color="primary">mdi-numeric-plus-box-outline</v-icon>
+              </template>
+              <v-list-item-title>Counter Node</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="$emit('add-quick-note-node')">
+              <template #prepend>
+                <v-icon size="small" color="warning">mdi-note-plus-outline</v-icon>
+              </template>
+              <v-list-item-title>Quick Note Node</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
 
       <v-divider vertical class="toolbar-divider" />
@@ -326,6 +365,10 @@ const emit = defineEmits<{
   'edit-shape-style': []
   'delete-selected': []
   'move-to-layer': [layerId: string]
+  'add-widget': [type: string]
+  'add-timer-node': []
+  'add-counter-node': []
+  'add-quick-note-node': []
 }>()
 
 // Check if the selected item is in the given layer
@@ -398,7 +441,8 @@ function handleMoveToLayer(layerId: string) {
   font-size: 20px;
 }
 
-.layer-menu {
+.layer-menu,
+.widget-menu {
   background: rgba(22, 22, 32, 0.98) !important;
   backdrop-filter: blur(12px);
   min-width: 150px;

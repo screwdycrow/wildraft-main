@@ -42,6 +42,10 @@
             @edit-shape-style="handleEditShapeStyle"
             @delete-selected="handleDeleteSelected"
             @move-to-layer="handleMoveToLayer"
+            @add-widget="handleAddWidget"
+            @add-timer-node="handleAddTimerNode"
+            @add-counter-node="handleAddCounterNode"
+            @add-quick-note-node="handleAddQuickNoteNode"
           />
         </template>
       </dm-screen-wrapper>
@@ -203,6 +207,22 @@ function handleAddTextNode() {
 
 function handleAddShapeNode() {
   wrapperRef.value?.addShapeNode()
+}
+
+function handleAddWidget(type: any) {
+  wrapperRef.value?.addWidget(type)
+}
+
+function handleAddTimerNode() {
+  wrapperRef.value?.addTimerNode()
+}
+
+function handleAddCounterNode() {
+  wrapperRef.value?.addCounterNode()
+}
+
+function handleAddQuickNoteNode() {
+  wrapperRef.value?.addQuickNoteNode()
 }
 
 function handleDuplicateItem() {

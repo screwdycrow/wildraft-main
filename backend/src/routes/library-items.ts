@@ -78,6 +78,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           await incrementItemsVersion(libraryId, tx);
 
           return created;
+        }, {
+          timeout: 10000, // Increase timeout to 10s for potentially heavy operations
         });
 
         // Add download URLs to featuredImage and userFiles
@@ -218,19 +220,19 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
         const itemId = parseInt(request.params.itemId, 10);
         const { name, description, data, tagIds, userFileIds, featuredImageId } = request.body;
 
+        // Check existence outside transaction to reduce transaction duration
+        const existingItem = await prisma.libraryItem.findFirst({
+          where: { id: itemId, libraryId },
+          select: { id: true }, // Only fetch what we need for validation
+        });
+
+        if (!existingItem) {
+          reply.code(404);
+          return { error: 'Item not found' };
+        }
+
         // Use transaction to update item and increment version
         const item = await prisma.$transaction(async (tx) => {
-          // Check existence and update in single query using updateMany with count check
-          // Or use findFirst + update for cases where we need the result
-          const existingItem = await tx.libraryItem.findFirst({
-            where: { id: itemId, libraryId },
-            select: { id: true }, // Only fetch what we need for validation
-          });
-
-          if (!existingItem) {
-            return null; // Will handle 404 outside transaction
-          }
-
           const updated = await tx.libraryItem.update({
             where: { id: itemId },
             data: {
@@ -240,14 +242,12 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
               ...(featuredImageId !== undefined && { featuredImageId: featuredImageId ?? null }),
               ...(tagIds && {
                 tags: {
-                  set: [], // Clear existing
-                  connect: tagIds.map(id => ({ id })),
+                  set: tagIds.map(id => ({ id })),
                 },
               }),
               ...(userFileIds && {
                 userFiles: {
-                  set: [], // Clear existing
-                  connect: userFileIds.map(id => ({ id })),
+                  set: userFileIds.map(id => ({ id })),
                 },
               }),
             },
@@ -262,6 +262,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           await incrementItemsVersion(libraryId, tx);
 
           return updated;
+        }, {
+          timeout: 10000, // Increase timeout to 10s for potentially heavy updates
         });
 
         if (!item) {
@@ -322,6 +324,8 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
           await incrementItemsVersion(libraryId, tx);
 
           return true;
+        }, {
+          timeout: 10000,
         });
 
         if (!deleted) {

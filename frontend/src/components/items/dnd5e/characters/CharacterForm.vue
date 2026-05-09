@@ -644,7 +644,7 @@ function handleJsonImport(importData: CreateLibraryItemPayload, options?: { impo
       spellSlots: itemData.spellSlots || [],
       proficiencies: itemData.proficiencies || [],
       gold: itemData.gold || 0,
-      inventory: itemData.inventory || [],
+      inventory: itemData.inventory || itemData.inventoryItems || itemData.equipment || [],
       quickNotes: itemData.quickNotes || '',
       resistances: itemData.resistances || '',
       immunities: itemData.immunities || '',
@@ -709,7 +709,7 @@ watch(() => props.item, (newItem) => {
       spellSlots: itemData.spellSlots || [],
       proficiencies: itemData.proficiencies || [],
       gold: itemData.gold || 0,
-      inventory: itemData.inventory || [],
+      inventory: itemData.inventory || itemData.inventoryItems || itemData.equipment || [],
       quickNotes: itemData.quickNotes || '',
       resistances: itemData.resistances || '',
       immunities: itemData.immunities || '',
@@ -736,6 +736,102 @@ watch(() => props.item, (newItem) => {
     } else {
       formData.value.featuredImageId = null
     }
+  } else {
+    // Create Mode
+    if (props.initialData) {
+      formData.value.name = props.initialData.name || ''
+      formData.value.description = props.initialData.description || ''
+      
+      const itemData = props.initialData.data || props.initialData
+      if (typeof itemData === 'object' && itemData !== null) {
+        Object.assign(formData.value.data, {
+          level: itemData.level || 1,
+          class: itemData.class || '',
+          race: itemData.race || '',
+          subclass: itemData.subclass || '',
+          background: itemData.background || '',
+          alignment: itemData.alignment || '',
+          experience: itemData.experience || 0,
+          hp: itemData.hp || 10,
+          maxHp: itemData.maxHp || 10,
+          ac: itemData.ac || 10,
+          speed: itemData.speed || '30 ft',
+          initiative: itemData.initiative ?? 0,
+          str: itemData.str || 10,
+          dex: itemData.dex || 10,
+          con: itemData.con || 10,
+          int: itemData.int || 10,
+          wis: itemData.wis || 10,
+          cha: itemData.cha || 10,
+          strSavingThrow: itemData.strSavingThrow || false,
+          dexSavingThrow: itemData.dexSavingThrow || false,
+          conSavingThrow: itemData.conSavingThrow || false,
+          intSavingThrow: itemData.intSavingThrow || false,
+          wisSavingThrow: itemData.wisSavingThrow || false,
+          chaSavingThrow: itemData.chaSavingThrow || false,
+          skills: itemData.skills || initializeSkills(),
+          spells: itemData.spells || [],
+          traits: itemData.traits || [],
+          actions: itemData.actions || [],
+          spellSlots: itemData.spellSlots || [],
+          proficiencies: itemData.proficiencies || [],
+          gold: itemData.gold || 0,
+          inventory: itemData.inventory || itemData.inventoryItems || itemData.equipment || [],
+          quickNotes: itemData.quickNotes || '',
+          resistances: itemData.resistances || '',
+          immunities: itemData.immunities || '',
+          customCounters: itemData.customCounters || [],
+        })
+      }
+    } else {
+      formData.value.name = ''
+      formData.value.description = ''
+      // Reset data to defaults
+      Object.assign(formData.value.data, {
+        level: 1,
+        class: '',
+        race: '',
+        subclass: '',
+        background: '',
+        alignment: '',
+        experience: 0,
+        hp: 10,
+        maxHp: 10,
+        ac: 10,
+        speed: '30 ft',
+        initiative: 0,
+        str: 10,
+        dex: 10,
+        con: 10,
+        int: 10,
+        wis: 10,
+        cha: 10,
+        strSavingThrow: false,
+        dexSavingThrow: false,
+        conSavingThrow: false,
+        intSavingThrow: false,
+        wisSavingThrow: false,
+        chaSavingThrow: false,
+        skills: initializeSkills(),
+        spells: [],
+        traits: [],
+        actions: [],
+        spellSlots: [],
+        proficiencies: [],
+        gold: 0,
+        inventory: [],
+        quickNotes: '',
+        resistances: '',
+        immunities: '',
+        customCounters: [],
+      })
+    }
+    
+    if (!props.initialTagIds || props.initialTagIds.length === 0) {
+      formData.value.tagIds = []
+    }
+    formData.value.userFileIds = []
+    formData.value.featuredImageId = null
   }
 }, { immediate: true })
 

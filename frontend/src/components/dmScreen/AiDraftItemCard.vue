@@ -184,7 +184,7 @@ function transformLegacyData(item: any) {
       name: a.name,
       description: a.description || '',
       roll: a.roll || '',
-      range: a.range || (a.actionType === 'RANGED' ? '60 ft.' : '5 ft.'),
+      range: a.range !== undefined ? a.range : (a.actionType === 'RANGED' ? '60 ft.' : '5 ft.'),
       ...a
     }))
   }

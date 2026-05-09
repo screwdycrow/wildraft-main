@@ -472,6 +472,8 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
           await incrementTagsVersion(libraryId, tx);
 
           return true;
+        }, {
+          timeout: 10000,
         });
 
         if (!deleted) {

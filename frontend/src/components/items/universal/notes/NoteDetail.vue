@@ -61,6 +61,15 @@
                   <v-icon size="small" class="mr-1">mdi-pencil</v-icon>
                   <span>Edit</span>
                 </v-btn>
+                <v-btn 
+                  variant="text" 
+                  size="small"
+                  class="ml-2"
+                  @click="showPrintDialog = true"
+                > 
+                  <v-icon size="small" class="mr-1">mdi-printer</v-icon>
+                  <span>Print</span>
+                </v-btn>
               </div>
               <article
                 v-if="activeSection === 'main'"
@@ -110,6 +119,44 @@
       </v-col>
 
     </v-row>
+
+    <!-- Print Dialog -->
+    <v-dialog v-model="showPrintDialog" fullscreen>
+      <v-card>
+        <v-toolbar color="primary">
+          <v-toolbar-title>{{ item.name }} - Note Export</v-toolbar-title>
+          <v-spacer />
+          <v-btn icon="mdi-printer" @click="printNote" />
+          <v-btn icon="mdi-close" @click="showPrintDialog = false" />
+        </v-toolbar>
+        
+        <v-card-text class="pa-0">
+          <div id="note-pdf-export" class="pdf-export-container">
+            <div class="pdf-note-card">
+              <div v-if="featuredImageUrl" class="pdf-image-wrapper">
+                <div class="pdf-image-container">
+                  <img :src="featuredImageUrl" class="pdf-image" />
+                </div>
+              </div>
+              <div class="pdf-card-content">
+                <header class="pdf-main-header">
+                  <h1 class="pdf-main-title">{{ item.name }}</h1>
+                </header>
+
+            <div class="pdf-chapter pdf-main-content">
+              <div class="pdf-content prose" v-html="renderedMainContent"></div>
+            </div>
+
+            <div v-for="chapter in orderedChapters" :key="chapter.id" class="pdf-chapter">
+              <h2 class="pdf-chapter-title">{{ chapter.title || `Chapter ${chapter.order}` }}</h2>
+              <div class="pdf-content prose" v-html="getChapterContent(chapter)"></div>
+            </div>
+            </div>
+          </div>
+        </div>
+      </v-card-text>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -143,6 +190,7 @@ const noteData = computed<NoteData>(() => props.item.data as NoteData)
 // Initialize activeSection - if initialChapterId is provided, we'll set it in the watch
 const activeSection = ref<'main' | string>(props.initialChapterId || 'main')
 const featuredImageUrl = ref<string>('')
+const showPrintDialog = ref(false)
 const contentRef = ref<HTMLElement | null>(null)
 const contentOutline = ref<Heading[]>([])
 
@@ -322,6 +370,80 @@ function setActiveSection(sectionId: 'main' | string) {
   ) {
     activeSection.value = 'main'
   }
+}
+
+function getChapterContent(chapter: NoteChapter) {
+  if (!chapter.content) return '<p class="empty">No content.</p>'
+  if (props.item.userFiles?.length) {
+    return resolveImageUrlsInHtml(chapter.content, props.item.userFiles)
+  }
+  return chapter.content
+}
+
+function printNote() {
+  const printContent = document.getElementById('note-pdf-export')
+  if (!printContent) return
+  
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${props.item.name}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Crimson Text', 'Georgia', serif; background: white; color: #000; padding: 10mm; line-height: 1.5; }
+          
+          .pdf-export-container { width: 100%; max-width: 100mm; margin: 0 auto; height: 140mm; overflow: hidden; }
+          .pdf-note-card { 
+            border: 1px solid #333; 
+            padding: 20px; 
+            border-radius: 12px; 
+            position: relative; 
+            height: 100%; 
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+          }
+          
+          .pdf-image-wrapper { display: flex; justify-content: center; margin-bottom: 12px; z-index: 2; }
+          .pdf-image-container { width: 40mm; height: 40mm; overflow: hidden; border-radius: 8px; border: 1px solid #eee; }
+          .pdf-image { width: 100%; height: 100%; object-fit: cover; }
+          
+          .pdf-card-content { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; }
+          
+          .pdf-main-header { text-align: center; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+          .pdf-main-title { font-size: 22px; font-weight: bold; }
+          
+          .pdf-chapter { margin-bottom: 12px; flex-shrink: 1; overflow: hidden; }
+          .pdf-chapter-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+          .pdf-content { font-size: 11px; }
+          
+          .prose h1 { font-size: 14px; margin: 10px 0 5px; }
+          .prose h2 { font-size: 13px; margin: 8px 0 4px; }
+          .prose p { margin-bottom: 6px; }
+          
+          @media print {
+            body { padding: 0; }
+            .pdf-note-card { break-inside: avoid; border: 1px solid #000; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+  printWindow.focus()
+  
+  setTimeout(() => {
+    printWindow.print()
+    printWindow.close()
+  }, 250)
 }
 
 function handleEdit() {

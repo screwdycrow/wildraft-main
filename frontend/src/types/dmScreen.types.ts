@@ -13,6 +13,8 @@ export type DmScreenItemType =
   | 'EffectNode' // WebGL particle/lighting effects (fire, snow, fog, etc.)
   | 'TerrainNode' // Procedurally generated terrain elements (caves, buildings, trees, etc.)
   | 'DmScreenNode' // Embedded DM Screen reference
+  | 'timer' // Countdown timer widget
+  | 'counter' // Simple numeric counter widget
 
 
 // Effect types for EffectNode
