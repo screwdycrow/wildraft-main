@@ -36,12 +36,11 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
-# Copy startup script
-COPY scripts/start.sh ./start.sh
-RUN chmod +x ./start.sh
-
 # Expose port
 EXPOSE 3000
 
-# Start command - run migrations then start the app
-CMD ["./start.sh"]
+# Start command - run migrations then start the app.
+# Inlined (no external script) so it doesn't depend on build-context file resolution.
+# If the DB isn't ready yet, migrate fails, the container restarts, and Railway retries
+# until Postgres is up.
+CMD ["sh", "-c", "npx prisma migrate deploy --skip-generate && node dist/index.js"]
