@@ -10,7 +10,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "docs:export": "tsx scripts/export-openapi.ts"
+    "docs:export": "tsx scripts/export-openapi.ts",
+    "db:export": "tsx scripts/export-db.ts",
+    "db:import": "tsx scripts/import-db.ts"
   },
   "keywords": [],
   "author": "",

@@ -36,8 +36,12 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy built application
 COPY --from=builder /app/dist ./dist
 
+# Copy startup script
+COPY scripts/start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 # Expose port
 EXPOSE 3000
 
 # Start command - run migrations then start the app
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["./start.sh"]
