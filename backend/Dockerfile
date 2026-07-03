@@ -1,11 +1,14 @@
 # Build stage
+# NOTE: This Dockerfile is built with the REPO ROOT as the build context
+# (Railway builds the whole repo and points at backend/Dockerfile), so all
+# source COPY paths are prefixed with backend/.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 # Install dependencies
 RUN npm ci
@@ -14,7 +17,7 @@ RUN npm ci
 RUN npx prisma generate
 
 # Copy source code
-COPY . .
+COPY backend/ .
 
 # Build TypeScript
 RUN npm run build
@@ -25,7 +28,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 # Copy package files and install production dependencies only
-COPY package*.json ./
+COPY backend/package*.json ./
 RUN npm ci --only=production
 
 # Copy prisma schema and generated client

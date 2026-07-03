@@ -1,0 +1,11 @@
+# Build context is the repo root. Keep it small and avoid copying host-built
+# node_modules (native modules like bcrypt are platform-specific) or dist.
+**/node_modules
+**/dist
+.git
+.gitignore
+**/.env
+**/.env.*
+**/*.md
+# The backend image does not need the frontend sources
+frontend
