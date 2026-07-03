@@ -47,4 +47,4 @@ EXPOSE 3000
 # Start command - run migrations then start the app.
 # If the DB isn't ready yet, migrate fails, the container restarts, and Railway
 # retries until Postgres is up.
-CMD ["sh", "-c", "npx prisma migrate deploy --skip-generate && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
