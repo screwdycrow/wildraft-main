@@ -1,11 +1,12 @@
-# Build context is the repo root. Keep it small and avoid copying host-built
-# node_modules (native modules like bcrypt are platform-specific) or dist.
-**/node_modules
-**/dist
+# Build context is the repo root. Use explicit paths (no ** globs) so Railway's
+# context uploader can't misinterpret them. Keep the context small and never
+# ship host-built node_modules (native modules like bcrypt are platform-specific).
 .git
 .gitignore
-**/.env
-**/.env.*
-**/*.md
-# The backend image does not need the frontend sources
+node_modules
 frontend
+backend/node_modules
+backend/dist
+backend/wildraft-prisma-backend
+backend/.env
+backend/.env.docker
