@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
 import {
   createPortalViewSchema,
   getPortalViewsSchema,
@@ -130,9 +130,9 @@ export const portalViewRoutes = async (fastify: FastifyInstance) => {
   // Get all portal views in a library
   fastify.get<{ Params: { libraryId: string } }>(
     '/:libraryId/portal-views',
-    { 
+    {
       schema: getPortalViewsSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {
@@ -163,9 +163,9 @@ export const portalViewRoutes = async (fastify: FastifyInstance) => {
   // Get single portal view
   fastify.get<{ Params: { libraryId: string; portalViewId: string } }>(
     '/:libraryId/portal-views/:portalViewId',
-    { 
+    {
       schema: getPortalViewSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {

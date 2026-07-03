@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
 import {
   createCombatEncounterSchema,
   getCombatEncountersSchema,
@@ -82,9 +82,9 @@ export const combatEncounterRoutes = async (fastify: FastifyInstance) => {
   // Get all combat encounters in a library
   fastify.get<{ Params: { libraryId: string } }>(
     '/:libraryId/encounters',
-    { 
+    {
       schema: getCombatEncountersSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {
@@ -115,9 +115,9 @@ export const combatEncounterRoutes = async (fastify: FastifyInstance) => {
   // Get single combat encounter
   fastify.get<{ Params: { libraryId: string; encounterId: string } }>(
     '/:libraryId/encounters/:encounterId',
-    { 
+    {
       schema: getCombatEncounterSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {

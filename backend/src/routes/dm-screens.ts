@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
 import {
   createDMScreenSchema,
   getDMScreensSchema,
@@ -84,9 +84,9 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
   // Get all DM screens in a library
   fastify.get<{ Params: { libraryId: string } }>(
     '/:libraryId/dm-screens',
-    { 
+    {
       schema: getDMScreensSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {
@@ -114,9 +114,9 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
   // Get single DM screen
   fastify.get<{ Params: { libraryId: string; dmScreenId: string } }>(
     '/:libraryId/dm-screens/:dmScreenId',
-    { 
+    {
       schema: getDMScreenSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {

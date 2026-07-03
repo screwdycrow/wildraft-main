@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
 import { LibraryItemType, Prisma } from '@prisma/client';
 import { incrementItemsVersion } from '../utils/library-version';
 import {
@@ -108,9 +108,9 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
   // Get all items in a library
   fastify.get<{ Params: { libraryId: string } }>(
     '/:libraryId/items',
-    { 
+    {
       schema: getLibraryItemsSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {
@@ -152,9 +152,9 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
   // Get single item
   fastify.get<{ Params: { libraryId: string; itemId: string } }>(
     '/:libraryId/items/:itemId',
-    { 
+    {
       schema: getLibraryItemSchema,
-      preHandler: authenticateToken 
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {

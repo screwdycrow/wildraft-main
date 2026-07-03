@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
 import { incrementTagsVersion } from '../utils/library-version';
 import {
   createTagSchema,
@@ -152,7 +152,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     '/:libraryId/tags',
     {
       schema: getLibraryTagsSchema,
-      preHandler: authenticateToken
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {
@@ -219,7 +219,7 @@ export const tagRoutes = async (fastify: FastifyInstance) => {
     '/:libraryId/tags/:tagId',
     {
       schema: getTagSchema,
-      preHandler: authenticateToken
+      preHandler: [authenticateToken, requireViewerAccess]
     },
     async (request, reply) => {
       try {

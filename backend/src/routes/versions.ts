@@ -56,13 +56,27 @@ export const versionRoutes = async (fastify: FastifyInstance) => {
     },
     async (request, reply) => {
       try {
-        const { libraryIds } = request.body;
+        const { libraryIds: requestedIds } = request.body;
 
-        if (!Array.isArray(libraryIds) || libraryIds.length === 0) {
+        if (!Array.isArray(requestedIds) || requestedIds.length === 0) {
           return reply.code(400).send({
             error: 'Bad Request',
             message: 'libraryIds must be a non-empty array',
           });
+        }
+
+        // Only return versions for libraries the caller actually has access to
+        const accessible = await prisma.libraryAccess.findMany({
+          where: {
+            userId: request.user!.userId,
+            libraryId: { in: requestedIds },
+          },
+          select: { libraryId: true },
+        });
+        const libraryIds = accessible.map((a) => a.libraryId);
+
+        if (libraryIds.length === 0) {
+          return { versions: [] };
         }
 
         const versions = await prisma.libraryVersion.findMany({
