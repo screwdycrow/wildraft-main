@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
+import { AccessRole } from '@prisma/client';
+import { hasPortalAccess } from '../lib/player-access';
 import {
   createPortalViewSchema,
   getPortalViewsSchema,
@@ -160,17 +162,25 @@ export const portalViewRoutes = async (fastify: FastifyInstance) => {
     }
   );
 
-  // Get single portal view
+  // Get single portal view (members incl. players; players need a PortalViewAccess share)
   fastify.get<{ Params: { libraryId: string; portalViewId: string } }>(
     '/:libraryId/portal-views/:portalViewId',
     {
       schema: getPortalViewSchema,
-      preHandler: [authenticateToken, requireViewerAccess]
+      preHandler: [authenticateToken, requireMemberAccess]
     },
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const portalViewId = request.params.portalViewId;
+
+        if (request.libraryAccess!.role === AccessRole.PLAYER) {
+          const allowed = await hasPortalAccess(request.user!.userId, portalViewId);
+          if (!allowed) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'This portal has not been shared with you' };
+          }
+        }
 
         const portalView = await prisma.portalView.findFirst({
           where: {

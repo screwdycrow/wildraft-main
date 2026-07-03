@@ -24,7 +24,7 @@ export const getLibraryAccessSchema = {
             properties: {
               id: { type: 'number' },
               userId: { type: 'number' },
-              role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER'] },
+              role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER', 'PLAYER'] },
               createdAt: { type: 'string', format: 'date-time' },
               user: {
                 type: 'object',
@@ -69,7 +69,7 @@ export const grantLibraryAccessSchema = {
       },
       role: {
         type: 'string',
-        enum: ['EDITOR', 'VIEWER'],
+        enum: ['EDITOR', 'VIEWER', 'PLAYER'],
         description: 'Access role (EDITOR or VIEWER)',
         example: 'EDITOR',
       },
@@ -120,7 +120,7 @@ export const updateLibraryAccessSchema = {
     properties: {
       role: {
         type: 'string',
-        enum: ['EDITOR', 'VIEWER'],
+        enum: ['EDITOR', 'VIEWER', 'PLAYER'],
         description: 'New access role',
         example: 'VIEWER',
       },

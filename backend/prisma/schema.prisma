@@ -27,6 +27,9 @@ model User {
   openaiApiKey  String?
   aiSettings    Json?
   aiConversations AiConversation[]
+  itemAccess       ItemAccess[]
+  dmScreenAccess   DmScreenAccess[]
+  portalViewAccess PortalViewAccess[]
 }
 
 model Library {
@@ -47,6 +50,7 @@ model Library {
   userFileCategories UserFileCategory[] @relation("LibraryUserFileCategories")
   frontPageDmScreenId String?
   aiConversations AiConversation[]
+  invitations     PlayerInvitation[]
 }
 
 enum LibraryTemplate {
@@ -72,6 +76,12 @@ enum AccessRole {
   OWNER // Full control, can delete library, manage all access
   EDITOR // Can edit library and content, manage viewer access
   VIEWER // Read-only access
+  PLAYER // Invited player: sees ONLY content explicitly shared with them
+}
+
+enum ItemPermission {
+  VIEW
+  EDIT
 }
 
 model LibraryItem {
@@ -89,6 +99,7 @@ model LibraryItem {
   data            Json
   tags            Tag[]           @relation("LibraryItemTags")
   userFiles       UserFile[]      @relation("LibraryItemFiles")
+  itemAccess      ItemAccess[]
 
   @@index([libraryId])
   @@index([type])
@@ -192,6 +203,7 @@ model DMScreen {
   items     Json? //array of items, each item is a json object that contains the item data, and a type of the item. items can be images, stat blocks, notes, tokens, custom widgets, etc.
   library   Library  @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   settings  Json? //json object that contains the settings for the dm screen.
+  access    DmScreenAccess[]
   @@index([libraryId])
 }
 
@@ -212,6 +224,7 @@ model PortalView {
   library             Library          @relation(fields: [libraryId], references: [id], onDelete: Cascade)
   currentItem         Int?
   items               Json? //array of items, each item is a json object that contains the item data, and a type of the item.
+  access              PortalViewAccess[]
 
   @@index([libraryId])
 }
@@ -253,4 +266,70 @@ model AiMessage {
   createdAt      DateTime       @default(now())
 
   @@index([conversationId])
+}
+
+// Shareable invite link for a library. The DM copies the link; whoever opens
+// it (after registering/logging in) is granted `role` on the library.
+model PlayerInvitation {
+  id          String     @id @default(uuid())
+  token       String     @unique // url-safe random token, generated in the route
+  libraryId   Int
+  library     Library    @relation(fields: [libraryId], references: [id], onDelete: Cascade)
+  role        AccessRole @default(PLAYER)
+  email       String? // optional: restrict the invite to a single email
+  createdById Int
+  expiresAt   DateTime?
+  maxUses     Int? // null = unlimited (e.g. a whole-table link)
+  uses        Int        @default(0)
+  revokedAt   DateTime?
+  usedAt      DateTime? // last claim
+  usedById    Int? // last claimer
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([libraryId])
+}
+
+// Per-item sharing: which players can view/edit a specific library item.
+model ItemAccess {
+  id            Int            @id @default(autoincrement())
+  libraryItemId Int
+  libraryItem   LibraryItem    @relation(fields: [libraryItemId], references: [id], onDelete: Cascade)
+  userId        Int
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission    ItemPermission @default(VIEW)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([libraryItemId, userId])
+  @@index([userId])
+  @@index([libraryItemId])
+}
+
+// Per-DM-screen sharing: which players can open (and optionally edit) a screen.
+model DmScreenAccess {
+  id         Int      @id @default(autoincrement())
+  dmScreenId String
+  dmScreen   DMScreen @relation(fields: [dmScreenId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  canEdit    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([dmScreenId, userId])
+  @@index([userId])
+}
+
+// Per-portal sharing: which players can see a portal view.
+model PortalViewAccess {
+  id           Int        @id @default(autoincrement())
+  portalViewId String
+  portalView   PortalView @relation(fields: [portalViewId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([portalViewId, userId])
+  @@index([userId])
 }

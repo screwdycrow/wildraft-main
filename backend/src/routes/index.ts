@@ -14,6 +14,9 @@ import { portalViewRoutes } from './portal-views';
 import { dmScreenRoutes } from './dm-screens';
 import { versionRoutes } from './versions';
 import { aiRoutes } from './ai';
+import { libraryInvitationRoutes, invitationRoutes } from './invitations';
+import { shareRoutes } from './shares';
+import { playerRoutes } from './player';
 
 export const registerRoutes = (fastify: FastifyInstance) => {
   // Health check routes
@@ -60,5 +63,15 @@ export const registerRoutes = (fastify: FastifyInstance) => {
 
   // AI routes
   fastify.register(aiRoutes, { prefix: '/api/ai' });
+
+  // Invitation management (library-scoped) + public invite claim routes
+  fastify.register(libraryInvitationRoutes, { prefix: '/api/libraries' });
+  fastify.register(invitationRoutes, { prefix: '/api/invitations' });
+
+  // Player sharing (items / dm screens / portals)
+  fastify.register(shareRoutes, { prefix: '/api/libraries' });
+
+  // Player-scoped content
+  fastify.register(playerRoutes, { prefix: '/api/libraries' });
 };
 

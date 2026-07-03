@@ -1,12 +1,16 @@
 import { AccessRole } from '@prisma/client';
 
 /**
- * Permission levels for library operations
+ * Permission levels for library operations.
+ * PLAYER is level 0: players are library members but do NOT satisfy any
+ * VIEWER/EDITOR/OWNER gate — they only see content explicitly shared with
+ * them (ItemAccess / DmScreenAccess / PortalViewAccess).
  */
 export const PERMISSION_LEVELS = {
   OWNER: 3,
   EDITOR: 2,
   VIEWER: 1,
+  PLAYER: 0,
 } as const;
 
 /**
@@ -42,9 +46,9 @@ export const isOwner = (userRole: AccessRole): boolean => {
 
 /**
  * Check if user can manage access for a specific role
- * - OWNER can manage all roles (OWNER, EDITOR, VIEWER)
- * - EDITOR can manage VIEWER role only
- * - VIEWER cannot manage any access
+ * - OWNER can manage all roles (OWNER, EDITOR, VIEWER, PLAYER)
+ * - EDITOR can manage VIEWER and PLAYER roles only
+ * - VIEWER and PLAYER cannot manage any access
  */
 export const canManageRole = (
   userRole: AccessRole,
@@ -53,11 +57,14 @@ export const canManageRole = (
   if (userRole === AccessRole.OWNER) {
     return true; // Owner can manage all roles
   }
-  
-  if (userRole === AccessRole.EDITOR && targetRole === AccessRole.VIEWER) {
-    return true; // Editor can manage viewers
+
+  if (
+    userRole === AccessRole.EDITOR &&
+    (targetRole === AccessRole.VIEWER || targetRole === AccessRole.PLAYER)
+  ) {
+    return true; // Editor can manage viewers and players
   }
-  
+
   return false;
 };
 
@@ -78,10 +85,11 @@ export const canGrantRole = (
 export const getAllowedRolesToGrant = (userRole: AccessRole): AccessRole[] => {
   switch (userRole) {
     case AccessRole.OWNER:
-      return [AccessRole.OWNER, AccessRole.EDITOR, AccessRole.VIEWER];
+      return [AccessRole.OWNER, AccessRole.EDITOR, AccessRole.VIEWER, AccessRole.PLAYER];
     case AccessRole.EDITOR:
-      return [AccessRole.VIEWER];
+      return [AccessRole.VIEWER, AccessRole.PLAYER];
     case AccessRole.VIEWER:
+    case AccessRole.PLAYER:
       return [];
     default:
       return [];

@@ -18,7 +18,7 @@ export const getLibrariesSchema = {
               id: { type: 'number' },
               name: { type: 'string' },
               description: { type: 'string', nullable: true },
-              role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER'] },
+              role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER', 'PLAYER'] },
               template: {
                 type: 'string',
                 enum: ['DND_5E'],
@@ -131,7 +131,7 @@ export const getLibrarySchema = {
             id: { type: 'number' },
             name: { type: 'string' },
             description: { type: 'string', nullable: true },
-            role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER'] },
+            role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER', 'PLAYER'] },
             template: {
               type: 'string',
               enum: ['DND_5E'],
@@ -183,7 +183,7 @@ export const updateLibrarySchema = {
             id: { type: 'number' },
             name: { type: 'string' },
             description: { type: 'string', nullable: true },
-            role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER'], nullable: true },
+            role: { type: 'string', enum: ['OWNER', 'EDITOR', 'VIEWER', 'PLAYER'], nullable: true },
             template: {
               type: 'string',
               enum: ['DND_5E'],

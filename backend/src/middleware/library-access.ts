@@ -106,6 +106,13 @@ export const requireEditorAccess = checkLibraryAccess(AccessRole.EDITOR);
  */
 export const requireOwnerAccess = checkLibraryAccess(AccessRole.OWNER);
 
+/**
+ * Middleware for any library membership, including PLAYER.
+ * Routes using this must do their own fine-grained checks for players
+ * (ItemAccess / DmScreenAccess / PortalViewAccess).
+ */
+export const requireMemberAccess = checkLibraryAccess(AccessRole.PLAYER);
+
 
 
 

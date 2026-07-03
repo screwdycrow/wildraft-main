@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
+import { AccessRole } from '@prisma/client';
 import {
   createCombatEncounterSchema,
   getCombatEncountersSchema,
@@ -112,17 +113,31 @@ export const combatEncounterRoutes = async (fastify: FastifyInstance) => {
     }
   );
 
-  // Get single combat encounter
+  // Get single combat encounter (players: only if it backs a portal shared with them)
   fastify.get<{ Params: { libraryId: string; encounterId: string } }>(
     '/:libraryId/encounters/:encounterId',
     {
       schema: getCombatEncounterSchema,
-      preHandler: [authenticateToken, requireViewerAccess]
+      preHandler: [authenticateToken, requireMemberAccess]
     },
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const encounterId = parseInt(request.params.encounterId, 10);
+
+        if (request.libraryAccess!.role === AccessRole.PLAYER) {
+          const viaPortal = await prisma.portalView.findFirst({
+            where: {
+              combatEncounterId: encounterId,
+              access: { some: { userId: request.user!.userId } },
+            },
+            select: { id: true },
+          });
+          if (!viaPortal) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'This encounter has not been shared with you' };
+          }
+        }
 
         const encounter = await prisma.combatEncounter.findFirst({
           where: {

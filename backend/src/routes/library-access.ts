@@ -93,7 +93,7 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
         // Validate role
         if (!Object.values(AccessRole).includes(role)) {
           reply.code(400);
-          return { error: 'Invalid role. Must be OWNER, EDITOR, or VIEWER' };
+          return { error: 'Invalid role. Must be OWNER, EDITOR, VIEWER, or PLAYER' };
         }
 
         // Check if current user has permission to grant this role
@@ -209,7 +209,7 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
         // Validate role
         if (!Object.values(AccessRole).includes(role)) {
           reply.code(400);
-          return { error: 'Invalid role. Must be OWNER, EDITOR, or VIEWER' };
+          return { error: 'Invalid role. Must be OWNER, EDITOR, VIEWER, or PLAYER' };
         }
 
         // Get current user's role

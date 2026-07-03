@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
+import { AccessRole } from '@prisma/client';
+import { getDmScreenAccess } from '../lib/player-access';
 import {
   createDMScreenSchema,
   getDMScreensSchema,
@@ -111,17 +113,25 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
     }
   );
 
-  // Get single DM screen
+  // Get single DM screen (members incl. players; players need a DmScreenAccess share)
   fastify.get<{ Params: { libraryId: string; dmScreenId: string } }>(
     '/:libraryId/dm-screens/:dmScreenId',
     {
       schema: getDMScreenSchema,
-      preHandler: [authenticateToken, requireViewerAccess]
+      preHandler: [authenticateToken, requireMemberAccess]
     },
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const dmScreenId = request.params.dmScreenId;
+
+        if (request.libraryAccess!.role === AccessRole.PLAYER) {
+          const access = await getDmScreenAccess(request.user!.userId, dmScreenId);
+          if (!access) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'This DM screen has not been shared with you' };
+          }
+        }
 
         const dmScreen = await prisma.dMScreen.findFirst({
           where: {

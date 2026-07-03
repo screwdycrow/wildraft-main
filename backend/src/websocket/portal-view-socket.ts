@@ -8,7 +8,7 @@ interface SocketMetadata {
   userId: number;
   email: string;
   portalViewId: string;
-  role: 'controller' | 'viewer';
+  role: 'controller' | 'viewer' | 'player';
 }
 
 const socketMetadata = new Map<string, SocketMetadata>();
@@ -80,10 +80,22 @@ export const registerPortalViewSocket = (fastify: FastifyInstance) => {
       }
 
       const userAccess = portalView.library.access[0];
-      const role =
-        userAccess.role === 'OWNER' || userAccess.role === 'EDITOR'
-          ? 'controller'
-          : 'viewer';
+      let role: SocketMetadata['role'];
+      if (userAccess.role === 'OWNER' || userAccess.role === 'EDITOR') {
+        role = 'controller';
+      } else if (userAccess.role === 'PLAYER') {
+        // Players must have this specific portal shared with them
+        const portalAccess = await prisma.portalViewAccess.findUnique({
+          where: { portalViewId_userId: { portalViewId, userId: user.userId } },
+          select: { id: true },
+        });
+        if (!portalAccess) {
+          return next(new Error('Access denied to this portal view'));
+        }
+        role = 'player';
+      } else {
+        role = 'viewer';
+      }
 
       // Store metadata
       socketMetadata.set(socket.id, {
@@ -182,9 +194,9 @@ export const registerPortalViewSocket = (fastify: FastifyInstance) => {
       }, 'Item update broadcasted');
     });
 
-    // Handle sync requests from viewers
+    // Handle sync requests from viewers/players
     socket.on('request-sync', async () => {
-      if (role === 'viewer') {
+      if (role !== 'controller') {
         // Notify controllers
         socket.to(portalViewId).emit('sync-requested', {
           from: userId,

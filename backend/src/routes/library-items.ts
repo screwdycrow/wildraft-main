@@ -1,7 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
-import { requireEditorAccess, requireViewerAccess } from '../middleware/library-access';
+import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
+import { AccessRole, ItemPermission } from '@prisma/client';
+import { getItemPermission } from '../lib/player-access';
 import { LibraryItemType, Prisma } from '@prisma/client';
 import { incrementItemsVersion } from '../utils/library-version';
 import {
@@ -149,17 +151,25 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
     }
   );
 
-  // Get single item
+  // Get single item (members incl. players; players need an ItemAccess share)
   fastify.get<{ Params: { libraryId: string; itemId: string } }>(
     '/:libraryId/items/:itemId',
     {
       schema: getLibraryItemSchema,
-      preHandler: [authenticateToken, requireViewerAccess]
+      preHandler: [authenticateToken, requireMemberAccess]
     },
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const itemId = parseInt(request.params.itemId, 10);
+
+        if (request.libraryAccess!.role === AccessRole.PLAYER) {
+          const permission = await getItemPermission(request.user!.userId, itemId);
+          if (!permission) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'This item has not been shared with you' };
+          }
+        }
 
         const item = await prisma.libraryItem.findFirst({
           where: {
@@ -210,15 +220,28 @@ export const libraryItemRoutes = async (fastify: FastifyInstance) => {
     };
   }>(
     '/:libraryId/items/:itemId',
-    { 
+    {
       schema: updateLibraryItemSchema,
-      preHandler: [authenticateToken, requireEditorAccess] 
+      preHandler: [authenticateToken, requireMemberAccess]
     },
     async (request, reply) => {
       try {
         const libraryId = parseInt(request.params.libraryId, 10);
         const itemId = parseInt(request.params.itemId, 10);
         const { name, description, data, tagIds, userFileIds, featuredImageId } = request.body;
+
+        // EDITOR+ can always update; players need an EDIT share on this item.
+        const role = request.libraryAccess!.role;
+        if (role === AccessRole.PLAYER) {
+          const permission = await getItemPermission(request.user!.userId, itemId);
+          if (permission !== ItemPermission.EDIT) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'You do not have edit access to this item' };
+          }
+        } else if (role === AccessRole.VIEWER) {
+          reply.code(403);
+          return { error: 'Insufficient permissions', message: 'This operation requires EDITOR role or higher' };
+        }
 
         // Check existence outside transaction to reduce transaction duration
         const existingItem = await prisma.libraryItem.findFirst({
