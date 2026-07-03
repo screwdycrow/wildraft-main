@@ -25,14 +25,19 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine AS production
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Default port for local runs; Railway overrides PORT at runtime. The nginx
+# image's entrypoint runs envsubst on files in /etc/nginx/templates/*.template
+# (substituting only real env vars like ${PORT}, leaving $uri etc. intact) and
+# writes the result to /etc/nginx/conf.d/.
+ENV PORT=80
+
+# Copy nginx config as a template so ${PORT} is substituted at container start
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Expose port
 EXPOSE 80
 
-# Start nginx
+# Start nginx (entrypoint processes templates first)
 CMD ["nginx", "-g", "daemon off;"]

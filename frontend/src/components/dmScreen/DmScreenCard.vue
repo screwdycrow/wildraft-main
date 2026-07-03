@@ -77,6 +77,11 @@
             <template v-if="props.canEdit">
               <v-divider class="my-2" />
               <v-list-item
+                prepend-icon="mdi-share-variant"
+                title="Share with Players"
+                @click="showShareDialog = true"
+              />
+              <v-list-item
                 prepend-icon="mdi-pencil"
                 title="Edit"
                 @click="handleEdit"
@@ -95,15 +100,26 @@
 
     <!-- Hover Glow Effect -->
     <div class="card-glow" />
+
+    <share-players-dialog
+      v-model="showShareDialog"
+      mode="dmScreen"
+      :library-id="libraryId"
+      :target-id="dmScreen.id"
+      :target-name="dmScreen.name"
+    />
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { DmScreen } from '@/types/dmScreen.types'
 import { formatDistanceToNow } from 'date-fns'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import SharePlayersDialog from '@/components/library/SharePlayersDialog.vue'
+
+const showShareDialog = ref(false)
 
 const props = withDefaults(defineProps<{
   dmScreen: DmScreen

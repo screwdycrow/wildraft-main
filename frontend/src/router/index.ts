@@ -150,6 +150,41 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    // Invite landing page — no auth requirement: it offers login/register
+    // itself and claims the invite once authenticated.
+    path: '/invite/:token',
+    name: 'Invite',
+    component: () => import('@/views/InviteView.vue'),
+  },
+  {
+    path: '/player',
+    component: () => import('@/layouts/PlayerLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'PlayerHome',
+        component: () => import('@/views/player/PlayerHomeView.vue'),
+      },
+      {
+        path: ':id',
+        name: 'PlayerDashboard',
+        component: () => import('@/views/player/PlayerDashboardView.vue'),
+      },
+      {
+        // Same param names as the /portal route so PortalViewView is reused as-is
+        path: ':id/portal/:portalViewId',
+        name: 'PlayerPortal',
+        component: () => import('@/views/PortalViewView.vue'),
+      },
+      {
+        path: ':id/dm-screens/:dmScreenId',
+        name: 'PlayerDmScreen',
+        component: () => import('@/views/player/PlayerDmScreenView.vue'),
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
@@ -175,11 +210,36 @@ router.beforeEach(async (to, _from, next) => {
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
-  } else if (requiresGuest && authStore.isAuthenticated) {
-    next({ name: 'Dashboard' })
-  } else {
-    next()
+    return
   }
+  if (requiresGuest && authStore.isAuthenticated) {
+    next({ name: 'Dashboard' })
+    return
+  }
+
+  // Pure players land on the player dashboard instead of the DM dashboard.
+  if (to.name === 'Dashboard' && authStore.isAuthenticated) {
+    try {
+      const { useLibraryStore } = await import('@/stores/library')
+      const libraryStore = useLibraryStore()
+      if (libraryStore.libraries.length === 0) {
+        await libraryStore.fetchLibraries()
+      }
+      const libs = libraryStore.libraries
+      if (libs.length > 0 && libs.every((l) => l.role === 'PLAYER')) {
+        next(
+          libs.length === 1
+            ? { name: 'PlayerDashboard', params: { id: libs[0].id } }
+            : { name: 'PlayerHome' }
+        )
+        return
+      }
+    } catch {
+      // fall through to the normal dashboard on any error
+    }
+  }
+
+  next()
 })
 
 export default router

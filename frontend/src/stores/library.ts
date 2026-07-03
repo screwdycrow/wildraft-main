@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { librariesApi } from '@/api/libraries'
 import { getLibraryVersions } from '@/api/versions'
-import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess, LibraryTemplates } from '@/types/library.types'
+import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess, AccessRole, LibraryTemplates } from '@/types/library.types'
 import type { LibraryVersionsResponse } from '@/api/versions'
 
 export const useLibraryStore = defineStore('library', () => {
@@ -170,9 +170,9 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
-  async function grantLibraryAccess(libraryId: number, userId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<LibraryAccess> {
+  async function grantLibraryAccess(libraryId: number, email: string, role: AccessRole): Promise<LibraryAccess> {
     try {
-      const response = await librariesApi.grantAccess(libraryId, userId, role)
+      const response = await librariesApi.grantAccess(libraryId, email, role)
       return response.access
     } catch (err: any) {
       error.value = err.response?.data?.error || 'Failed to grant access'
@@ -180,7 +180,7 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }
 
-  async function updateLibraryAccess(libraryId: number, accessId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<LibraryAccess> {
+  async function updateLibraryAccess(libraryId: number, accessId: number, role: AccessRole): Promise<LibraryAccess> {
     try {
       const response = await librariesApi.updateAccess(libraryId, accessId, role)
       return response.access

@@ -94,7 +94,7 @@
           variant="text"
           color="primary"
           size="small"
-          :to="{ name: 'Login' }"
+          :to="{ name: 'Login', query: route.query }"
           class="ml-1"
         >
           Sign In
@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
 import GoogleAuthButton from './GoogleAuthButton.vue'
@@ -114,6 +114,7 @@ import PasswordStrengthMeter from './PasswordStrengthMeter.vue'
 import type { VForm } from 'vuetify/components'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToast()
 
@@ -165,7 +166,8 @@ async function handleSubmit() {
     })
 
     toast.success('Account created successfully! Welcome!')
-    router.push({ name: 'Dashboard' })
+    const redirect = route.query.redirect as string
+    router.push(redirect || { name: 'Dashboard' })
   } catch (err: any) {
     const errorMsg = err.response?.data?.error || 'Registration failed. Please try again.'
     error.value = errorMsg

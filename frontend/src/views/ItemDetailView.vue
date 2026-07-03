@@ -19,13 +19,32 @@
     </div>
 
     <!-- Dynamic Item Detail Component -->
-    <component
-      v-else-if="item && detailComponent"
-      :is="detailComponent"
-      :item="item"
-      @edit="handleEdit"
-      @delete="handleDelete"
-    />
+    <template v-else-if="item && detailComponent">
+      <div v-if="canShare" class="d-flex justify-end mb-2">
+        <v-btn
+          variant="tonal"
+          color="primary"
+          size="small"
+          prepend-icon="mdi-share-variant"
+          @click="showShareDialog = true"
+        >
+          Share with Players
+        </v-btn>
+      </div>
+      <component
+        :is="detailComponent"
+        :item="item"
+        @edit="handleEdit"
+        @delete="handleDelete"
+      />
+      <share-players-dialog
+        v-model="showShareDialog"
+        mode="item"
+        :library-id="item.libraryId"
+        :target-id="item.id"
+        :target-name="item.name"
+      />
+    </template>
   </div>
 </template>
 
@@ -33,14 +52,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useItemsStore } from '@/stores/items'
+import { useLibraryStore } from '@/stores/library'
 import { useItemComponents } from '@/composables/useItemComponents'
 import { useItemDialogs } from '@/composables/useItemDialogs'
 import { useToast } from 'vue-toastification'
+import SharePlayersDialog from '@/components/library/SharePlayersDialog.vue'
 import type { LibraryItem } from '@/types/item.types'
 
 const route = useRoute()
 const router = useRouter()
 const itemsStore = useItemsStore()
+const libraryStore = useLibraryStore()
 const { getItemComponent } = useItemComponents()
 const { openEditDialog, dialogState } = useItemDialogs()
 const toast = useToast()
@@ -48,6 +70,11 @@ const toast = useToast()
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 const item = ref<LibraryItem | null>(null)
+const showShareDialog = ref(false)
+
+const canShare = computed(() =>
+  ['OWNER', 'EDITOR'].includes(libraryStore.currentLibrary?.role || '')
+)
 
 const detailComponent = computed(() => {
   if (!item.value) return null

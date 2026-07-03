@@ -1,5 +1,5 @@
 import apiClient from './axios'
-import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess } from '@/types/library.types'
+import type { Library, CreateLibraryPayload, UpdateLibraryPayload, LibraryAccess, AccessRole } from '@/types/library.types'
 
 export const librariesApi = {
   async getAll(): Promise<{ libraries: Library[] }> {
@@ -31,12 +31,13 @@ export const librariesApi = {
     return response.data
   },
 
-  async grantAccess(libraryId: number, userId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<{ message: string; access: LibraryAccess }> {
-    const response = await apiClient.post<{ message: string; access: LibraryAccess }>(`/libraries/${libraryId}/access`, { userId, role })
+  // Backend expects { email, role } — grants access to an existing account by email.
+  async grantAccess(libraryId: number, email: string, role: AccessRole): Promise<{ message: string; access: LibraryAccess }> {
+    const response = await apiClient.post<{ message: string; access: LibraryAccess }>(`/libraries/${libraryId}/access`, { email, role })
     return response.data
   },
 
-  async updateAccess(libraryId: number, accessId: number, role: 'OWNER' | 'EDITOR' | 'VIEWER'): Promise<{ message: string; access: LibraryAccess }> {
+  async updateAccess(libraryId: number, accessId: number, role: AccessRole): Promise<{ message: string; access: LibraryAccess }> {
     const response = await apiClient.put<{ message: string; access: LibraryAccess }>(`/libraries/${libraryId}/access/${accessId}`, { role })
     return response.data
   },

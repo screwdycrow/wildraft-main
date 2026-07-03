@@ -132,6 +132,11 @@
                     title="Edit"
                     @click.stop="handleEdit(portalView)"
                   />
+                  <v-list-item
+                    prepend-icon="mdi-share-variant"
+                    title="Share with Players"
+                    @click.stop="openShareDialog(portalView)"
+                  />
                   <v-divider class="my-2" />
                   <v-list-item
                     prepend-icon="mdi-delete"
@@ -182,6 +187,16 @@
       @submit="handleCreateOrUpdate"
     />
 
+    <!-- Share with Players Dialog -->
+    <share-players-dialog
+      v-if="sharingPortalView && libraryId"
+      v-model="showShareDialog"
+      mode="portal"
+      :library-id="libraryId"
+      :target-id="sharingPortalView.id"
+      :target-name="sharingPortalView.name"
+    />
+
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="showDeleteDialog" max-width="500">
       <v-card class="glass-card" elevation="0">
@@ -228,6 +243,7 @@ import { usePortalViewsStore } from '@/stores/portalViews'
 import { useToast } from 'vue-toastification'
 import PageTopBar from '@/components/common/PageTopBar.vue'
 import PortalViewFormDialog from '@/components/portal/PortalViewFormDialog.vue'
+import SharePlayersDialog from '@/components/library/SharePlayersDialog.vue'
 import type { LibraryPortalView } from '@/types/portal.types'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 
@@ -239,9 +255,16 @@ const toast = useToast()
 
 const showPortalViewDialog = ref(false)
 const showDeleteDialog = ref(false)
+const showShareDialog = ref(false)
 const editingPortalView = ref<LibraryPortalView | null>(null)
 const deletingPortalView = ref<LibraryPortalView | null>(null)
+const sharingPortalView = ref<LibraryPortalView | null>(null)
 const isDeleting = ref(false)
+
+function openShareDialog(portalView: LibraryPortalView) {
+  sharingPortalView.value = portalView
+  showShareDialog.value = true
+}
 
 const libraryId = computed(() => {
   const id = route.params.id

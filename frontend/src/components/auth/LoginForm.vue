@@ -65,7 +65,7 @@
           variant="text"
           color="primary"
           size="small"
-          :to="{ name: 'Register' }"
+          :to="{ name: 'Register', query: route.query }"
           class="ml-1"
         >
           Sign Up

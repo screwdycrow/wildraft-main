@@ -168,6 +168,13 @@
       </v-col>
     </v-row>
 
+    <!-- Invite Links (Owner only) -->
+    <v-row v-if="isOwner && libraryId" class="mb-6">
+      <v-col cols="12">
+        <invite-links-panel :library-id="libraryId" />
+      </v-col>
+    </v-row>
+
     <!-- Members Section (Owner only) -->
     <v-row v-if="isOwner">
       <v-col cols="12">
@@ -221,6 +228,12 @@
                         />
                       </template>
                       <v-list class="glass-menu">
+                        <v-list-item
+                          v-if="access.role === 'PLAYER'"
+                          prepend-icon="mdi-eye-outline"
+                          title="View Shared Content"
+                          @click="openPlayerShares(access)"
+                        />
                         <v-list-item
                           v-if="access.role !== 'OWNER'"
                           prepend-icon="mdi-pencil"
@@ -357,7 +370,8 @@
             <v-alert type="info" variant="tonal" density="compact" icon="mdi-information">
               <strong>OWNER:</strong> Full control, can delete library<br>
               <strong>EDITOR:</strong> Can create and edit content<br>
-              <strong>VIEWER:</strong> Can only view content
+              <strong>VIEWER:</strong> Can only view content<br>
+              <strong>PLAYER:</strong> Sees only content you explicitly share with them
             </v-alert>
           </v-form>
         </v-card-text>
@@ -380,6 +394,70 @@
             Send Invitation
           </v-btn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Player Shared Content Dialog -->
+    <v-dialog v-model="showPlayerSharesDialog" max-width="560">
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="text-h5 font-weight-bold d-flex align-center pa-6">
+          <v-icon icon="mdi-eye-outline" color="primary" size="32" class="mr-3" />
+          Shared with {{ playerSharesUser?.user.name || playerSharesUser?.user.email }}
+        </v-card-title>
+        <v-card-text class="px-6 pb-6">
+          <div v-if="isLoadingPlayerShares" class="text-center py-6">
+            <v-progress-circular indeterminate color="primary" />
+          </div>
+          <template v-else-if="playerShares">
+            <v-alert
+              v-if="!playerShares.items.length && !playerShares.dmScreens.length && !playerShares.portalViews.length"
+              type="info"
+              variant="tonal"
+              density="compact"
+            >
+              Nothing shared with this player yet. Use the Share option on items, DM screens, and
+              portals to give them content.
+            </v-alert>
+            <template v-else>
+              <div v-if="playerShares.portalViews.length" class="mb-4">
+                <div class="text-subtitle-2 mb-1">Portals</div>
+                <v-chip
+                  v-for="p in playerShares.portalViews"
+                  :key="p.id"
+                  size="small"
+                  class="mr-1 mb-1"
+                  prepend-icon="mdi-monitor-eye"
+                >
+                  {{ p.name }}
+                </v-chip>
+              </div>
+              <div v-if="playerShares.dmScreens.length" class="mb-4">
+                <div class="text-subtitle-2 mb-1">DM Screens</div>
+                <v-chip
+                  v-for="s in playerShares.dmScreens"
+                  :key="s.id"
+                  size="small"
+                  class="mr-1 mb-1"
+                  :prepend-icon="s.canEdit ? 'mdi-pencil' : 'mdi-eye'"
+                >
+                  {{ s.name }}
+                </v-chip>
+              </div>
+              <div v-if="playerShares.items.length">
+                <div class="text-subtitle-2 mb-1">Items</div>
+                <v-chip
+                  v-for="i in playerShares.items"
+                  :key="i.id"
+                  size="small"
+                  class="mr-1 mb-1"
+                  :prepend-icon="i.permission === 'EDIT' ? 'mdi-pencil' : 'mdi-eye'"
+                >
+                  {{ i.name }}
+                </v-chip>
+              </div>
+            </template>
+          </template>
+        </v-card-text>
       </v-card>
     </v-dialog>
 
@@ -434,7 +512,10 @@ import { useAuthStore } from '@/stores/auth'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import { useToast } from 'vue-toastification'
 import PageTopBar from '@/components/common/PageTopBar.vue'
-import type { LibraryAccess } from '@/types/library.types'
+import InviteLinksPanel from '@/components/library/InviteLinksPanel.vue'
+import { sharesApi } from '@/api/shares'
+import type { PlayerSharesAggregate } from '@/api/shares'
+import type { LibraryAccess, AccessRole } from '@/types/library.types'
 import type { VForm } from 'vuetify/components'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
 
@@ -461,13 +542,33 @@ const showChangeRoleDialog = ref(false)
 const inviteFormRef = ref<VForm>()
 const libraryFormRef = ref<VForm>()
 const selectedAccess = ref<LibraryAccess | null>(null)
-const newRole = ref<'OWNER' | 'EDITOR' | 'VIEWER'>('EDITOR')
+const newRole = ref<AccessRole>('EDITOR')
 const isUpdating = ref(false)
 
 const inviteForm = ref({
   email: '',
-  role: 'EDITOR' as 'OWNER' | 'EDITOR' | 'VIEWER',
+  role: 'EDITOR' as AccessRole,
 })
+
+// Per-player shares viewer
+const showPlayerSharesDialog = ref(false)
+const playerSharesUser = ref<LibraryAccess | null>(null)
+const playerShares = ref<PlayerSharesAggregate | null>(null)
+const isLoadingPlayerShares = ref(false)
+
+async function openPlayerShares(access: LibraryAccess) {
+  playerSharesUser.value = access
+  playerShares.value = null
+  showPlayerSharesDialog.value = true
+  isLoadingPlayerShares.value = true
+  try {
+    playerShares.value = await sharesApi.getPlayerShares(libraryStore.currentLibrary!.id, access.userId)
+  } catch {
+    toast.error('Failed to load shared content for this player')
+  } finally {
+    isLoadingPlayerShares.value = false
+  }
+}
 
 const libraryForm = ref({
   name: '',
@@ -484,6 +585,7 @@ const roleOptions = [
   { title: 'Owner', value: 'OWNER' },
   { title: 'Editor', value: 'EDITOR' },
   { title: 'Viewer', value: 'VIEWER' },
+  { title: 'Player', value: 'PLAYER' },
 ]
 
 const themeOptions = [
@@ -525,6 +627,7 @@ function getRoleColor(role: string) {
     case 'OWNER': return 'primary'
     case 'EDITOR': return 'secondary'
     case 'VIEWER': return 'info'
+    case 'PLAYER': return 'success'
     default: return 'grey'
   }
 }
@@ -596,24 +699,7 @@ async function handleInvite() {
 
   isInviting.value = true
   try {
-    // Try to find user by email first
-    let userId: number
-    try {
-      const { usersApi } = await import('@/api/users')
-      const userResponse = await usersApi.findByEmail(inviteForm.value.email)
-      userId = userResponse.user.id
-    } catch (error: any) {
-      // If user lookup fails, try to grant access with email directly
-      // Some APIs might accept email in the grantAccess call
-      // For now, show error if user not found
-      if (error.response?.status === 404) {
-        toast.error('User not found. Please check the email address.')
-        return
-      }
-      throw error
-    }
-
-    await libraryStore.grantLibraryAccess(libraryStore.currentLibrary.id, userId, inviteForm.value.role)
+    await libraryStore.grantLibraryAccess(libraryStore.currentLibrary.id, inviteForm.value.email, inviteForm.value.role)
     toast.success('Member invited successfully')
     showInviteDialog.value = false
     inviteForm.value = { email: '', role: 'EDITOR' }

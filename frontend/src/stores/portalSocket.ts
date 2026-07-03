@@ -12,7 +12,7 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
   const socketInstance = ref<Socket | null>(null)
   const isConnected = ref(false)
   const isConnecting = ref(false)
-  const userRole = ref<'controller' | 'viewer' | null>(null)
+  const userRole = ref<'controller' | 'viewer' | 'player' | null>(null)
   const userId = ref<number | null>(null)
   const activePortalId = ref<string | null>(null)
   
@@ -195,9 +195,9 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     return true
   }
   
-  // Request sync (viewer only)
+  // Request sync (any non-controller: viewers and players)
   const requestSync = () => {
-    if (userRole.value !== 'viewer') return false
+    if (userRole.value === 'controller' || userRole.value === null) return false
     if (!socketInstance.value || !socketInstance.value.connected) return false
     socketInstance.value.emit('request-sync')
     return true
