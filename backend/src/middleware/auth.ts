@@ -134,7 +134,7 @@ export const optionalAuth = async (
     }
   } catch (error) {
     // Ignore errors for optional auth
-    request.log.debug('Optional auth failed:', error);
+    request.log.debug({ err: error }, 'Optional auth failed');
   }
 };
 

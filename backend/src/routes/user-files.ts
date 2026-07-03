@@ -103,10 +103,10 @@ export async function enrichUserFileWithDownloadUrl(
       downloadUrl,
     };
   } catch (error) {
-    // If URL generation fails, return the file without downloadUrl
+    // If URL generation fails, return the file with an empty downloadUrl
     return {
       ...userFile,
-      downloadUrl: null,
+      downloadUrl: '',
     };
   }
 }
@@ -120,9 +120,11 @@ export async function enrichUserFilesWithDownloadUrls(
   userFiles: Array<{ fileUrl: string; [key: string]: any }>,
   expiresIn: number = DEFAULT_CACHE_EXPIRES_IN
 ): Promise<Array<{ downloadUrl: string; [key: string]: any }>> {
+  // Input files are always non-null, so enrichUserFileWithDownloadUrl never
+  // returns null here; assert the non-null array type for the caller.
   return Promise.all(
     userFiles.map((file) => enrichUserFileWithDownloadUrl(file, expiresIn))
-  );
+  ) as Promise<Array<{ downloadUrl: string; [key: string]: any }>>;
 }
 
 /**
