@@ -16,8 +16,10 @@ RUN npm ci
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Copy source code
-COPY backend/ .
+# Copy source code (only what tsc needs — avoids the large nested
+# backend/wildraft-prisma-backend folder that broke `COPY backend/ .`)
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
 
 # Build TypeScript
 RUN npm run build
