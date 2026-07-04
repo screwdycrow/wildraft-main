@@ -45,18 +45,36 @@
       <router-view />
     </v-main>
 
+    <!-- Combat sidebar overlay (same behavior as the portal layout) -->
+    <div
+      v-if="isPortalRoute"
+      class="portal-combat-sidebar"
+      :class="{ 'sidebar-hidden': !combatSidebarVisible }"
+    >
+      <portal-combat-encounter
+        :portal-view="portalView"
+        :show-health="portalView?.showHealth || false"
+        :show-ac="portalView?.showAC || false"
+        :show-actions="portalView?.showActions || false"
+        :show-encounter="portalView?.showEncounter || false"
+      />
+    </div>
+
     <!-- 3D Dice Box -->
     <DiceBox3D />
   </v-app>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usePlayerContentStore } from '@/stores/playerContent'
+import { usePortalViewsStore } from '@/stores/portalViews'
+import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import { useDiceRollerStore } from '@/stores/diceRoller'
 import PlayerSidebar from '@/components/player/PlayerSidebar.vue'
+import PortalCombatEncounter from '@/components/portal/PortalCombatEncounter.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 import { useSharedDice } from '@/composables/useSharedDice'
 
@@ -66,14 +84,20 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const playerContent = usePlayerContentStore()
+const portalViewsStore = usePortalViewsStore()
+const combatEncountersStore = useCombatEncountersStore()
 const diceRollerStore = useDiceRollerStore()
 
 const drawerOpen = ref(true)
+const combatSidebarVisible = ref(true)
 
 const libraryId = computed(() => {
   const id = route.params.id
   return id ? Number(id) : null
 })
+
+const isPortalRoute = computed(() => route.name === 'PlayerPortal')
+const portalView = computed(() => portalViewsStore.currentPortalView)
 
 const userInitials = computed(() => {
   const source = authStore.user?.name || authStore.user?.email || '?'
@@ -100,6 +124,35 @@ watch(
   { immediate: true }
 )
 
+// Load the portal + encounter when viewing a portal (mirrors PortalLayout)
+async function loadPortalAndEncounter() {
+  if (!isPortalRoute.value || !libraryId.value) return
+  const portalViewId = route.params.portalViewId as string
+  if (!portalViewId) return
+  try {
+    await portalViewsStore.fetchPortalView(libraryId.value, portalViewId)
+    if (portalView.value?.combatEncounterId) {
+      await combatEncountersStore.fetchEncounter(libraryId.value, portalView.value.combatEncounterId)
+      combatEncountersStore.setActiveEncounter(portalView.value.combatEncounterId)
+      combatSidebarVisible.value = true
+    } else {
+      combatEncountersStore.setActiveEncounter(null)
+      combatSidebarVisible.value = false
+    }
+  } catch (error) {
+    console.error('[PlayerLayout] Failed to load portal view or encounter:', error)
+  }
+}
+
+watch([() => route.name, () => route.params.portalViewId], loadPortalAndEncounter, {
+  immediate: true,
+})
+
+// PortalViewView injects this to toggle the combat sidebar
+provide('toggleEncounterSidebar', () => {
+  combatSidebarVisible.value = !combatSidebarVisible.value
+})
+
 async function logout() {
   await authStore.logout()
   router.push({ name: 'Login' })
@@ -121,5 +174,23 @@ async function logout() {
 .player-main {
   height: 100vh;
   overflow: auto;
+}
+
+.portal-combat-sidebar {
+  position: fixed;
+  top: 48px;
+  right: 0;
+  width: 250px;
+  height: calc(100vh - 48px);
+  background: transparent !important;
+  z-index: 1000;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform 0.3s ease;
+  pointer-events: all;
+}
+
+.portal-combat-sidebar.sidebar-hidden {
+  transform: translateX(100%);
 }
 </style>

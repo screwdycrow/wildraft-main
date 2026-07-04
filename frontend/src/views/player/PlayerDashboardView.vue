@@ -1,6 +1,5 @@
 <template>
-  <!-- The dashboard's job: put the player IN the active portal. If one is
-       shared, we forward straight to it; otherwise show a cozy empty state. -->
+  <!-- Player picks a shared portal from the dashboard or the sidebar. -->
   <v-container class="fill-height" fluid>
     <v-row justify="center" align="center">
       <v-col cols="12" sm="8" md="6" class="text-center">
@@ -40,7 +39,6 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlayerContentStore } from '@/stores/playerContent'
 
@@ -55,20 +53,6 @@ function open(portalViewId: string) {
     params: { id: route.params.id, portalViewId },
   })
 }
-
-// Auto-enter the active (or only) portal once content arrives.
-watch(
-  () => [playerContent.isLoading, playerContent.activePortalViewId] as const,
-  ([loading, activeId]) => {
-    if (!loading && activeId && route.name === 'PlayerDashboard') {
-      router.replace({
-        name: 'PlayerPortal',
-        params: { id: route.params.id, portalViewId: activeId },
-      })
-    }
-  },
-  { immediate: true }
-)
 </script>
 
 <style scoped>

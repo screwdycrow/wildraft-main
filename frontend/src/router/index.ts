@@ -150,19 +150,6 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-  // Player portal viewer — same fullscreen PortalLayout + PortalViewView as the DM display
-  {
-    path: '/player/:id/portal/:portalViewId',
-    component: PortalLayout,
-    meta: { requiresAuth: true },
-    children: [
-      {
-        path: '',
-        name: 'PlayerPortal',
-        component: () => import('@/views/PortalViewView.vue'),
-      },
-    ],
-  },
   {
     // Invite landing page — no auth requirement: it offers login/register
     // itself and claims the invite once authenticated.
@@ -184,6 +171,11 @@ const routes: RouteRecordRaw[] = [
         path: ':id',
         name: 'PlayerDashboard',
         component: () => import('@/views/player/PlayerDashboardView.vue'),
+      },
+      {
+        path: ':id/portal/:portalViewId',
+        name: 'PlayerPortal',
+        component: () => import('@/views/PortalViewView.vue'),
       },
       {
         path: ':id/dm-screens/:dmScreenId',
