@@ -66,10 +66,10 @@ watch(
       players.value = access
         .filter((a) => a.role === 'PLAYER')
         .map((a) => ({
-          userId: a.userId,
+          userId: a.userId ?? a.user.id,
           email: a.user.email,
           name: a.user.name,
-          selected: controlled.has(a.userId),
+          selected: controlled.has(a.userId ?? a.user.id),
         }))
     } catch {
       toast.error('Failed to load players')

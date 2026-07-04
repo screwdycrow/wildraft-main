@@ -138,13 +138,14 @@ async function load() {
     }
 
     players.value = playerMembers.map((member) => {
-      const share = sharedMap.get(member.userId)
+      const userId = member.userId ?? member.user.id
+      const share = sharedMap.get(userId)
       return {
-        userId: member.userId,
+        userId,
         email: member.user.email,
         name: member.user.name,
         picture: member.user.picture ?? null,
-        shared: sharedMap.has(member.userId),
+        shared: sharedMap.has(userId),
         permission: share?.permission ?? 'VIEW',
         canEdit: share?.canEdit ?? true,
       }

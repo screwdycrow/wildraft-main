@@ -25,14 +25,6 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine AS production
 
-# Default port for local runs; Railway overrides PORT at runtime. The nginx
-# image's entrypoint runs envsubst on files in /etc/nginx/templates/*.template
-# (substituting only real env vars like ${PORT}, leaving $uri etc. intact) and
-# writes the result to /etc/nginx/conf.d/.
-# Must match the Railway public-domain target port (currently 80). nginx
-# listens on ${PORT}; if these differ the edge gets "connection refused".
-ENV PORT=80
-
 # Railway hosts expose many CPU cores, so nginx's default "worker_processes
 # auto" spawns dozens of workers. Each worker's io_setup() allocates a kernel
 # AIO context, and that many exhausts the host's fs.aio-max-nr limit:
@@ -41,13 +33,12 @@ ENV PORT=80
 # refused. Cap the worker count to keep AIO contexts well under the limit.
 RUN sed -i -E 's/^\s*worker_processes.*/worker_processes 2;/' /etc/nginx/nginx.conf
 
-# Copy nginx config as a template so ${PORT} is substituted at container start
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+# Copy nginx configuration (listen 80 hardcoded — see nginx.conf)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-# Start nginx (entrypoint processes templates first)
 CMD ["nginx", "-g", "daemon off;"]

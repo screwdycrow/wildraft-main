@@ -50,6 +50,8 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
         return {
           access: accessList.map((access) => ({
             id: access.id,
+            userId: access.userId,
+            libraryId: access.libraryId,
             user: access.user,
             role: access.role,
             createdAt: access.createdAt,
@@ -166,6 +168,8 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
           message: 'Access granted successfully',
           access: {
             id: newAccess.id,
+            userId: newAccess.userId,
+            libraryId: newAccess.libraryId,
             user: newAccess.user,
             role: newAccess.role,
             createdAt: newAccess.createdAt,
@@ -285,6 +289,8 @@ export const libraryAccessRoutes = async (fastify: FastifyInstance) => {
           message: 'Access updated successfully',
           access: {
             id: updatedAccess.id,
+            userId: updatedAccess.userId,
+            libraryId: updatedAccess.libraryId,
             user: updatedAccess.user,
             role: updatedAccess.role,
             updatedAt: updatedAccess.updatedAt,

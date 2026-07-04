@@ -80,7 +80,7 @@ watch(
       const { access } = await librariesApi.getAccess(props.libraryId)
       playerOptions.value = access
         .filter((a) => a.role === 'PLAYER')
-        .map((a) => ({ id: a.userId, label: a.user.name || a.user.email }))
+        .map((a) => ({ id: a.userId ?? a.user.id, label: a.user.name || a.user.email }))
     } catch {
       playerOptions.value = []
     }
