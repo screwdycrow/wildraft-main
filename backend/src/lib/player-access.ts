@@ -19,7 +19,7 @@ export const getItemPermission = async (
   return access?.permission ?? null;
 };
 
-/** DM screen access for a player, or null if unshared. */
+/** DM screen access for a player via an explicit DmScreenAccess share. */
 export const getDmScreenAccess = async (
   userId: number,
   dmScreenId: string
@@ -29,6 +29,43 @@ export const getDmScreenAccess = async (
     select: { canEdit: true },
   });
   return access ?? null;
+};
+
+/** Whether a DM screen is embedded in a portal view shared with this player. */
+export const hasDmScreenInSharedPortal = async (
+  userId: number,
+  dmScreenId: string
+): Promise<boolean> => {
+  const portalShares = await prisma.portalViewAccess.findMany({
+    where: { userId },
+    include: { portalView: { select: { items: true } } },
+  });
+
+  return portalShares.some((share) => {
+    const items = share.portalView.items;
+    if (!Array.isArray(items)) return false;
+    return (items as { type?: string; dmScreenId?: string }[]).some(
+      (item) => item?.type === 'DmScreenViewer' && item?.dmScreenId === dmScreenId
+    );
+  });
+};
+
+/**
+ * DM screen access for a PLAYER: explicit share, or view-only when the screen
+ * is shown inside a portal they can open (same experience as the portal viewer).
+ */
+export const getPlayerDmScreenAccess = async (
+  userId: number,
+  dmScreenId: string
+): Promise<{ canEdit: boolean } | null> => {
+  const direct = await getDmScreenAccess(userId, dmScreenId);
+  if (direct) return direct;
+
+  if (await hasDmScreenInSharedPortal(userId, dmScreenId)) {
+    return { canEdit: false };
+  }
+
+  return null;
 };
 
 /** Whether a player can see a specific portal view. */

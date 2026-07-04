@@ -4,7 +4,7 @@ import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
 import { AccessRole } from '@prisma/client';
 import crypto from 'crypto';
-import { getDmScreenAccess, getViewableItemIds } from '../lib/player-access';
+import { getDmScreenAccess, getPlayerDmScreenAccess, getViewableItemIds } from '../lib/player-access';
 import { broadcastDmScreenUpdate } from '../websocket/dm-screen-socket';
 
 // Node types a player may create on a shared DM screen
@@ -129,7 +129,7 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
     }
   );
 
-  // Get single DM screen (members incl. players; players need a DmScreenAccess share)
+  // Get single DM screen (players: explicit share OR embedded in a shared portal)
   fastify.get<{ Params: { libraryId: string; dmScreenId: string } }>(
     '/:libraryId/dm-screens/:dmScreenId',
     {
@@ -143,7 +143,7 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
 
         const isPlayer = request.libraryAccess!.role === AccessRole.PLAYER;
         if (isPlayer) {
-          const access = await getDmScreenAccess(request.user!.userId, dmScreenId);
+          const access = await getPlayerDmScreenAccess(request.user!.userId, dmScreenId);
           if (!access) {
             reply.code(403);
             return { error: 'Access denied', message: 'This DM screen has not been shared with you' };

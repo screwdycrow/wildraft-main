@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { verifyAccessToken } from '../lib/jwt';
 import { prisma } from '../lib/prisma';
+import { getPlayerDmScreenAccess } from '../lib/player-access';
 
 interface SocketMetadata {
   userId: number;
@@ -47,10 +48,7 @@ export const registerDmScreenSocket = (fastify: FastifyInstance) => {
       if (access.role === 'OWNER' || access.role === 'EDITOR') {
         role = 'dm';
       } else if (access.role === 'PLAYER') {
-        const share = await prisma.dmScreenAccess.findUnique({
-          where: { dmScreenId_userId: { dmScreenId, userId } },
-          select: { id: true },
-        });
+        const share = await getPlayerDmScreenAccess(userId, dmScreenId);
         if (!share) return next(new Error('Access denied'));
         role = 'player';
       } else {

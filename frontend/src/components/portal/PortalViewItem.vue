@@ -4,9 +4,9 @@
     :class="[`item-type-${item.type}`, { 'fullscreen-mode': fullscreen }]"
   >
     <!-- Loading State -->
-    <div v-if="isLoadingUrl" class="loading-state">
+    <div v-if="isLoading" class="loading-state">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <p class="text-body-1 mt-4">Loading file...</p>
+      <p class="text-body-1 mt-4">{{ loadingMessage }}</p>
     </div>
 
     <!-- Image Viewer -->
@@ -52,13 +52,13 @@
     <div v-else class="item-placeholder">
       <v-icon icon="mdi-file" size="48" color="grey" />
       <p class="text-body-2 mt-2">Item type: {{ item.type }}</p>
-      <p class="text-caption text-grey">{{ downloadUrl ? 'Viewer not yet implemented' : 'No file URL available' }}</p>
+      <p class="text-caption text-grey">{{ placeholderMessage }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import ImageViewer from '@/components/files/viewers/ImageViewer.vue'
 import VideoViewer from '@/components/files/viewers/VideoViewer.vue'
 import PdfViewer from '@/components/files/viewers/PdfViewer.vue'
@@ -71,22 +71,46 @@ import type { DmScreen } from '@/types/dmScreen.types'
 interface Props {
   item: PortalViewItem
   index: number
+  /** Library from the route — used when the portal item JSON omits libraryId */
+  libraryId?: number | null
   viewerState?: ViewerState | null
   fullscreen?: boolean
   shouldRestoreState?: boolean | number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  fullscreen: false
+  fullscreen: false,
+  libraryId: null,
 })
 
 const filesStore = useFilesStore()
 const dmScreensStore = useDmScreensStore()
 const downloadUrl = ref<string | null>(null)
 const isLoadingUrl = ref(false)
+const isLoadingDmScreen = ref(false)
+const dmScreenLoadError = ref<string | null>(null)
 const imageViewerRef = ref<InstanceType<typeof ImageViewer> | null>(null)
 const dmScreen = ref<DmScreen | null>(null)
 const dmScreenWrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null)
+
+const isLoading = computed(() => isLoadingUrl.value || isLoadingDmScreen.value)
+
+const loadingMessage = computed(() =>
+  props.item.type === 'DmScreenViewer' ? 'Loading DM screen…' : 'Loading file…'
+)
+
+const placeholderMessage = computed(() => {
+  if (props.item.type === 'DmScreenViewer') {
+    if (dmScreenLoadError.value) return dmScreenLoadError.value
+    if (!props.item.dmScreenId) return 'DM screen reference is missing from this portal item'
+    if (!resolvedLibraryId.value) return 'Library context is missing for this portal item'
+    return 'Could not load DM screen'
+  }
+  if (downloadUrl.value) return 'Viewer not yet implemented'
+  return 'No file URL available'
+})
+
+const resolvedLibraryId = computed(() => props.item.libraryId ?? props.libraryId ?? null)
 
 // Fetch download URL if item has a UserFile object
 const fetchDownloadUrl = async () => {
@@ -128,24 +152,31 @@ const fetchDownloadUrl = async () => {
 const fetchDmScreen = async () => {
   if (props.item.type !== 'DmScreenViewer') {
     dmScreen.value = null
+    dmScreenLoadError.value = null
     return
   }
-  
+
   const dmScreenId = props.item.dmScreenId
-  const libraryId = props.item.libraryId
-  
+  const libraryId = resolvedLibraryId.value
+
   if (!dmScreenId || !libraryId) {
-    console.warn('[PortalViewItem] DmScreenViewer item missing dmScreenId or libraryId')
+    console.warn('[PortalViewItem] DmScreenViewer item missing dmScreenId or libraryId', props.item)
     dmScreen.value = null
     return
   }
-  
+
+  isLoadingDmScreen.value = true
+  dmScreenLoadError.value = null
   try {
-    const screen = await dmScreensStore.fetchDmScreen(libraryId, dmScreenId)
+    const screen = await dmScreensStore.fetchDmScreen(libraryId, dmScreenId, true)
     dmScreen.value = screen
-  } catch (error) {
+  } catch (error: any) {
     console.error('[PortalViewItem] Failed to fetch DM screen:', error)
     dmScreen.value = null
+    dmScreenLoadError.value =
+      error.response?.data?.message || error.response?.data?.error || 'Failed to load DM screen'
+  } finally {
+    isLoadingDmScreen.value = false
   }
 }
 

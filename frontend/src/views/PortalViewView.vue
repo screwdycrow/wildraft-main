@@ -23,6 +23,7 @@
           :ref="index === currentItemIndex ? (el: any) => { if (el && typeof el !== 'string') currentItemRef = el } : undefined"
           :item="item"
           :index="index"
+          :library-id="libraryId"
           :viewer-state="index === currentItemIndex ? currentViewerState : null"
           :should-restore-state="index === currentItemIndex ? shouldRestoreState : 0"
           v-show="index === currentItemIndex"
@@ -63,6 +64,7 @@
             v-if="showOnTopItem"
             :item="showOnTopItem"
             :index="0"
+            :library-id="libraryId"
             :fullscreen="true"
           />
         </v-card-text>
