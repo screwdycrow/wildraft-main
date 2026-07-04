@@ -29,7 +29,11 @@ FROM nginx:alpine AS production
 # image's entrypoint runs envsubst on files in /etc/nginx/templates/*.template
 # (substituting only real env vars like ${PORT}, leaving $uri etc. intact) and
 # writes the result to /etc/nginx/conf.d/.
-ENV PORT=80
+# Railway routes its generated domain to port 8080 by default and injects a
+# matching PORT variable; if PORT is ever absent this default keeps nginx and
+# the edge on the same port. Listening on 80 while the edge dials 8080 is what
+# produced the "connection refused" 502s.
+ENV PORT=8080
 
 # Railway hosts expose many CPU cores, so nginx's default "worker_processes
 # auto" spawns dozens of workers. Each worker's io_setup() allocates a kernel
@@ -45,7 +49,7 @@ COPY nginx.conf /etc/nginx/templates/default.conf.template
 # Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 8080
 
 # Start nginx (entrypoint processes templates first)
 CMD ["nginx", "-g", "daemon off;"]
