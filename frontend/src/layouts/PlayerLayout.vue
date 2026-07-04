@@ -76,6 +76,9 @@ import { useDiceRollerStore } from '@/stores/diceRoller'
 import PlayerSidebar from '@/components/player/PlayerSidebar.vue'
 import PortalCombatEncounter from '@/components/portal/PortalCombatEncounter.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
+import { useSharedDice } from '@/composables/useSharedDice'
+
+useSharedDice()
 
 const route = useRoute()
 const router = useRouter()

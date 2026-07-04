@@ -82,7 +82,51 @@ export const useDiceRollerStore = defineStore('diceRoller', () => {
       })
     }
 
+    // Broadcast to everyone watching the same portal (no-op when not connected)
+    try {
+      const { usePortalSocketStore } = await import('@/stores/portalSocket')
+      usePortalSocketStore().sendDiceRoll({
+        rolls: results,
+        userName: currentUsername.value,
+      })
+    } catch {
+      // socket unavailable — local roll only
+    }
+
     return results
+  }
+
+  /**
+   * Handle a roll broadcast by someone else in the portal room:
+   * log it to history/chat and replay the 3D dice with the same values.
+   */
+  async function receiveRemoteRoll(data: {
+    rolls: DiceRollResult[]
+    userName: string
+    userId?: number
+  }) {
+    const results = data.rolls || []
+    if (results.length === 0) return
+
+    rollHistory.value.unshift(...results)
+    if (rollHistory.value.length > 100) {
+      rollHistory.value = rollHistory.value.slice(0, 100)
+    }
+
+    for (const result of results) {
+      chat.addMessage({
+        username: data.userName || 'Someone',
+        message: formatRollResult(result),
+      })
+    }
+
+    if (enable3dDice.value) {
+      try {
+        await dice.throwPredetermined(results)
+      } catch {
+        // chat-only fallback
+      }
+    }
   }
 
   /**
@@ -172,6 +216,7 @@ export const useDiceRollerStore = defineStore('diceRoller', () => {
     
     // Actions
     rollFromText,
+    receiveRemoteRoll,
     quickRoll,
     clearHistory,
     toggle3dDice,

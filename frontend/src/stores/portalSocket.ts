@@ -134,6 +134,10 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
       emitEvent('sync-response', data)
     })
     
+    socketInstance.value.on('dice-roll', (data: any) => {
+      emitEvent('dice-roll', data)
+    })
+
     socketInstance.value.on('pong', (data: any) => {
       emitEvent('pong', data)
     })
@@ -195,6 +199,13 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     return true
   }
   
+  // Broadcast a dice roll to everyone in the portal room (any role)
+  const sendDiceRoll = (payload: { rolls: any[]; userName: string }) => {
+    if (!socketInstance.value || !socketInstance.value.connected) return false
+    socketInstance.value.emit('dice-roll', payload)
+    return true
+  }
+
   // Request sync (any non-controller: viewers and players)
   const requestSync = () => {
     if (userRole.value === 'controller' || userRole.value === null) return false
@@ -246,6 +257,7 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     sendItemUpdate,
     requestSync,
     sendSyncResponse,
+    sendDiceRoll,
     
     // Event listeners
     on,

@@ -274,6 +274,29 @@ export function useDice() {
   }
 
   /**
+   * Replay someone else's roll in 3D with forced values so everyone sees the
+   * same dice. Uses dice-box's predetermined notation: NdX@v1,v2,...
+   */
+  async function throwPredetermined(results: DiceRollResult[]): Promise<void> {
+    if (!diceBoxInitialized || !diceBox) return
+
+    const notations: string[] = []
+    for (const result of results) {
+      const parsed = parseDiceNotation(result.roll)
+      if (!parsed || result.results.length === 0) continue
+      notations.push(`${result.results.length}d${parsed.sides}@${result.results.join(',')}`)
+    }
+    if (notations.length === 0) return
+
+    isRolling.value = true
+    try {
+      await diceBox.roll(notations)
+    } finally {
+      isRolling.value = false
+    }
+  }
+
+  /**
    * Hide/clear the 3D dice
    */
   async function hide3dDice() {
@@ -308,6 +331,7 @@ export function useDice() {
     rollSingleDie,
     show3dDiceBox,
     throw3dDice,
+    throwPredetermined,
     hide3dDice,
     updateTheme
   }

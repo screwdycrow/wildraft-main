@@ -34,6 +34,9 @@ import { usePortalViewsStore } from '@/stores/portalViews'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
 import PortalCombatEncounter from '@/components/portal/PortalCombatEncounter.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
+import { useSharedDice } from '@/composables/useSharedDice'
+
+useSharedDice()
 
 const route = useRoute()
 const portalViewsStore = usePortalViewsStore()

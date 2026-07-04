@@ -194,6 +194,27 @@ export const registerPortalViewSocket = (fastify: FastifyInstance) => {
       }, 'Item update broadcasted');
     });
 
+    // Shared dice: any role may roll; broadcast to the room (sender excluded —
+    // the sender already animated locally). Payload is sanitized server-side.
+    socket.on('dice-roll', (payload: any) => {
+      const rolls = Array.isArray(payload?.rolls) ? payload.rolls.slice(0, 20) : [];
+      const sanitized = {
+        rolls: rolls.map((r: any) => ({
+          roll: String(r?.roll ?? '').slice(0, 50),
+          results: Array.isArray(r?.results) ? r.results.slice(0, 100).map(Number) : [],
+          modifier: Number(r?.modifier) || 0,
+          total: Number(r?.total) || 0,
+          text: r?.text ? String(r.text).slice(0, 200) : undefined,
+        })),
+        userName: String(payload?.userName ?? 'Someone').slice(0, 60),
+        userId,
+        role,
+        timestamp: Date.now(),
+      };
+      if (sanitized.rolls.length === 0) return;
+      socket.to(portalViewId).emit('dice-roll', sanitized);
+    });
+
     // Handle sync requests from viewers/players
     socket.on('request-sync', async () => {
       if (role !== 'controller') {
