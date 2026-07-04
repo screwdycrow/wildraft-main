@@ -1,6 +1,7 @@
 import { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { authenticateToken } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
+import { canPlayerAccessFile } from '../lib/player-access';
 import {
   uploadToS3,
   deleteFromS3,
@@ -412,12 +413,15 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        // Check if user owns the file
+        // Owner, or a player viewing content shared via portal / library item
         if (file.userId !== userId) {
-          return reply.code(403).send({
-            error: 'Forbidden',
-            message: 'You do not have permission to access this file',
-          });
+          const allowed = await canPlayerAccessFile(userId, file.id);
+          if (!allowed) {
+            return reply.code(403).send({
+              error: 'Forbidden',
+              message: 'You do not have permission to access this file',
+            });
+          }
         }
 
         // Parse expiration from query param or use default (6 hours)
@@ -577,12 +581,15 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        // Check if user owns the file
+        // Owner, or a player viewing content shared via portal / library item
         if (file.userId !== userId) {
-          return reply.code(403).send({
-            error: 'Forbidden',
-            message: 'You do not have permission to access this file',
-          });
+          const allowed = await canPlayerAccessFile(userId, file.id);
+          if (!allowed) {
+            return reply.code(403).send({
+              error: 'Forbidden',
+              message: 'You do not have permission to access this file',
+            });
+          }
         }
 
         // Add download URL to response

@@ -91,3 +91,58 @@ export const getViewableItemIds = async (
   });
   return new Set(rows.map((r) => r.libraryItemId));
 };
+
+const PORTAL_FILE_VIEWER_TYPES = new Set(['ImageViewer', 'VideoViewer', 'PDFViewer']);
+
+/** Whether a file is shown inside a portal view shared with this player. */
+export const hasFileInSharedPortal = async (
+  userId: number,
+  fileId: number
+): Promise<boolean> => {
+  const portalShares = await prisma.portalViewAccess.findMany({
+    where: { userId },
+    include: { portalView: { select: { items: true } } },
+  });
+
+  return portalShares.some((share) => {
+    const items = share.portalView.items;
+    if (!Array.isArray(items)) return false;
+    return (items as { type?: string; object?: { id?: number } }[]).some((item) => {
+      if (!item?.type || !PORTAL_FILE_VIEWER_TYPES.has(item.type)) return false;
+      return item.object?.id === fileId;
+    });
+  });
+};
+
+/** Whether a file is attached to a library item shared with this player. */
+export const hasFileOnSharedItem = async (
+  userId: number,
+  fileId: number
+): Promise<boolean> => {
+  const row = await prisma.itemAccess.findFirst({
+    where: {
+      userId,
+      libraryItem: {
+        OR: [
+          { featuredImageId: fileId },
+          { userFiles: { some: { id: fileId } } },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  return row !== null;
+};
+
+/**
+ * Whether a PLAYER may fetch a file they do not own (portal viewer content
+ * or attachments on shared library items).
+ */
+export const canPlayerAccessFile = async (
+  userId: number,
+  fileId: number
+): Promise<boolean> => {
+  if (await hasFileInSharedPortal(userId, fileId)) return true;
+  if (await hasFileOnSharedItem(userId, fileId)) return true;
+  return false;
+};
