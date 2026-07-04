@@ -31,6 +31,14 @@ FROM nginx:alpine AS production
 # writes the result to /etc/nginx/conf.d/.
 ENV PORT=80
 
+# Railway hosts expose many CPU cores, so nginx's default "worker_processes
+# auto" spawns dozens of workers. Each worker's io_setup() allocates a kernel
+# AIO context, and that many exhausts the host's fs.aio-max-nr limit:
+#   [emerg] io_setup() failed (11: Resource temporarily unavailable)
+# Every worker then dies at startup and nginx can't serve -> connection
+# refused. Cap the worker count to keep AIO contexts well under the limit.
+RUN sed -i 's/worker_processes auto;/worker_processes 2;/' /etc/nginx/nginx.conf
+
 # Copy nginx config as a template so ${PORT} is substituted at container start
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 
