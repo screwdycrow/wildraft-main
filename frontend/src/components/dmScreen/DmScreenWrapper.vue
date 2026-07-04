@@ -712,6 +712,13 @@ function playerCanTouch(item: DmScreenItem): boolean {
   )
 }
 
+/** Portal canvas is view-only for the DM; players only touch items they control. */
+function canInteractWithItem(item: DmScreenItem): boolean {
+  if (!playerCanTouch(item)) return false
+  if (props.isPortalMode && !props.isPlayerMode) return false
+  return true
+}
+
 // =====================================================
 // STORES & COMPOSABLES
 // =====================================================
@@ -1089,9 +1096,10 @@ const nodes = computed<Node[]>(() => {
           layerId,
           layerLocked,
           isPortalMode: props.isPortalMode, // Pass portal mode to hide controls
+          playerCanEdit: canInteractWithItem(item),
         },
-        draggable: !isLocked && playerCanTouch(item),
-        selectable: !isLocked && playerCanTouch(item),
+        draggable: !isLocked && canInteractWithItem(item),
+        selectable: !isLocked && canInteractWithItem(item),
         width,
         height,
         style: {
@@ -1449,6 +1457,9 @@ function onNodeDragStop(event: NodeDragEvent) {
   const nodesToUpdate = selectedNodes.length > 1 ? selectedNodes : [primaryNode]
 
   for (const node of nodesToUpdate) {
+    const item = props.dmScreen.items?.find((i) => i.id === node.id)
+    if (item && !canInteractWithItem(item)) continue
+
     let x = node.position.x
     let y = node.position.y
 
@@ -1980,6 +1991,7 @@ function handleMeasurementEnd(result: { feet: number; squares: number; lines: Me
 // =====================================================
 
 function handleItemUpdate(updatedItem: DmScreenItem) {
+  if (!canInteractWithItem(updatedItem)) return
   dmScreensStore.updateItem(
     props.dmScreen.id,
     props.dmScreen.libraryId,
@@ -1989,6 +2001,8 @@ function handleItemUpdate(updatedItem: DmScreenItem) {
 }
 
 function handleItemDelete(itemId: string) {
+  const item = props.dmScreen.items?.find((i) => i.id === itemId)
+  if (item && !canInteractWithItem(item)) return
   dmScreensStore.deleteItem(
     props.dmScreen.id,
     props.dmScreen.libraryId,
@@ -1998,6 +2012,8 @@ function handleItemDelete(itemId: string) {
 }
 
 function handleItemResize(itemId: string, width: number, height: number, x?: number, y?: number) {
+  const item = props.dmScreen.items?.find((i) => i.id === itemId)
+  if (item && !canInteractWithItem(item)) return
   dmScreensStore.updateItemDimensions(
     props.dmScreen.id,
     props.dmScreen.libraryId,

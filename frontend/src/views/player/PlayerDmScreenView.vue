@@ -22,7 +22,7 @@
       <dm-screen-wrapper
         :dm-screen="dmScreen"
         :is-portal-mode="!canEdit"
-        :is-player-mode="canEdit"
+        :is-player-mode="true"
         :current-user-id="authStore.user?.id"
       />
     </div>

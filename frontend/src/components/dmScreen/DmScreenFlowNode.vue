@@ -200,6 +200,7 @@ interface Props {
     backgroundOpacity?: number
     rotation?: number
     isPortalMode?: boolean // Hide controls in portal view
+    playerCanEdit?: boolean // False when player may not touch this item
   }
   selected?: boolean
   dragging?: boolean
@@ -509,6 +510,7 @@ const renderedTooltipMarkdown = computed(() => {
 })
 
 function toggleMinimize() {
+  if (props.data.playerCanEdit === false) return
   const item = props.data.item
   const newMinimized = !item.isMinimized
 
@@ -585,6 +587,7 @@ function toggleMinimize() {
 // =====================================================
 
 function handleItemUpdate(updatedItem: DmScreenItem) {
+  if (props.data.playerCanEdit === false) return
   dmScreensStore.updateItem(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -598,6 +601,7 @@ function handleItemUpdate(updatedItem: DmScreenItem) {
 // =====================================================
 
 function handleDelete() {
+  if (props.data.playerCanEdit === false) return
   dmScreensStore.deleteItem(
     props.data.dmScreenId,
     props.data.libraryId,
@@ -811,6 +815,7 @@ function handleResizeMove(event: MouseEvent) {
 
 function handleResizeEnd() {
   if (!isResizing.value) return
+  if (props.data.playerCanEdit === false) return
 
   const width = currentDimensions.value.width
   const height = currentDimensions.value.height
@@ -922,6 +927,7 @@ function handleRotationMove(event: MouseEvent) {
 
 function handleRotationEnd() {
   if (!isRotating.value) return
+  if (props.data.playerCanEdit === false) return
 
   isRotating.value = false
 

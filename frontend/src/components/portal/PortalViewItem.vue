@@ -45,6 +45,8 @@
       ref="dmScreenWrapperRef"
       :dm-screen="dmScreen"
       :is-portal-mode="true"
+      :is-player-mode="isPlayerViewer"
+      :current-user-id="authStore.user?.id"
       class="portal-dm-screen-wrapper"
     />
     
@@ -58,13 +60,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import ImageViewer from '@/components/files/viewers/ImageViewer.vue'
 import VideoViewer from '@/components/files/viewers/VideoViewer.vue'
 import PdfViewer from '@/components/files/viewers/PdfViewer.vue'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import { useFilesStore } from '@/stores/files'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { useAuthStore } from '@/stores/auth'
+import { usePlayerContentStore } from '@/stores/playerContent'
 import type { PortalViewItem, ViewerState } from '@/types/portal.types'
 import type { DmScreen } from '@/types/dmScreen.types'
 
@@ -85,6 +90,13 @@ const props = withDefaults(defineProps<Props>(), {
 
 const filesStore = useFilesStore()
 const dmScreensStore = useDmScreensStore()
+const authStore = useAuthStore()
+const playerContent = usePlayerContentStore()
+const route = useRoute()
+
+const isPlayerViewer = computed(
+  () => route.name === 'PlayerPortal' || playerContent.role === 'PLAYER'
+)
 const downloadUrl = ref<string | null>(null)
 const isLoadingUrl = ref(false)
 const isLoadingDmScreen = ref(false)
@@ -191,10 +203,15 @@ watch(() => props.item, () => {
 
 onMounted(() => {
   if (props.item.type === 'DmScreenViewer') {
+    if (isPlayerViewer.value) dmScreensStore.setPlayerMode(true)
     fetchDmScreen()
   } else {
     fetchDownloadUrl()
   }
+})
+
+onUnmounted(() => {
+  if (isPlayerViewer.value) dmScreensStore.setPlayerMode(false)
 })
 
 // Expose method to save state if this is an ImageViewer
