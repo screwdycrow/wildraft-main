@@ -401,6 +401,7 @@ export interface DmScreenItem {
   type: DmScreenItemType
   layer?: string // Layer ID this item belongs to (default: 'screen')
   order?: number // Order within the layer (higher = on top within layer)
+  controlledBy?: number[] // User ids of players allowed to move this item
   data: {
     // For LibraryItemId: just the id number
     id?: number

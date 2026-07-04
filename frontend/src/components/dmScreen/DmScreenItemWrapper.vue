@@ -18,8 +18,14 @@
       </div>
     </div>
 
+    <!-- Locked placeholder: a library item not shared with this player -->
+    <div v-if="item.data?.locked" class="locked-item-placeholder">
+      <v-icon icon="mdi-lock" size="28" class="mb-1" />
+      <span class="text-caption">Hidden by the DM</span>
+    </div>
+
     <!-- TokenNode Display (compact circular token) -->
-    <token-node-display v-if="item.type === 'TokenNode'" :item="item" :library-id="libraryId" />
+    <token-node-display v-else-if="item.type === 'TokenNode'" :item="item" :library-id="libraryId" />
 
     <!-- Full View (all other types) -->
     <div v-else class="item-content"
@@ -480,6 +486,21 @@ watch(() => dialogsStore.itemEditorOpen, (isOpen, wasOpen) => {
 </script>
 
 <style scoped>
+.locked-item-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
 .dm-screen-item-wrapper {
   width: 100%;
   height: 100%;

@@ -696,7 +696,21 @@ import { useToast } from 'vue-toastification'
 const props = defineProps<{
   dmScreen: DmScreen
   isPortalMode?: boolean
+  /** Player editing mode: only items the player created or controls are interactive */
+  isPlayerMode?: boolean
+  currentUserId?: number
 }>()
+
+// Can the current player move/edit this item?
+function playerCanTouch(item: DmScreenItem): boolean {
+  if (!props.isPlayerMode) return true
+  const me = props.currentUserId
+  if (me == null) return false
+  return (
+    (item as any).data?.createdBy === me ||
+    (Array.isArray((item as any).controlledBy) && (item as any).controlledBy.includes(me))
+  )
+}
 
 // =====================================================
 // STORES & COMPOSABLES
@@ -1076,8 +1090,8 @@ const nodes = computed<Node[]>(() => {
           layerLocked,
           isPortalMode: props.isPortalMode, // Pass portal mode to hide controls
         },
-        draggable: !isLocked,
-        selectable: !isLocked,
+        draggable: !isLocked && playerCanTouch(item),
+        selectable: !isLocked && playerCanTouch(item),
         width,
         height,
         style: {

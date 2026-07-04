@@ -199,6 +199,43 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
   // Pending updates map: dmScreenId -> payload
   const pendingUpdates = new Map<string, UpdateDmScreenPayload>()
 
+  // =====================================================
+  // PLAYER MODE
+  // When on, item saves go through the player-items PATCH (diffed against the
+  // last server state) instead of the whole-document PUT that players lack
+  // permission for. Set by PlayerDmScreenView.
+  // =====================================================
+  const playerMode = ref(false)
+  // Last server-acknowledged items per screen: dmScreenId -> (itemId -> JSON)
+  const serverItemsSnapshot = new Map<string, Map<string, string>>()
+
+  function snapshotServerItems(dmScreen: DmScreen) {
+    const map = new Map<string, string>()
+    for (const item of dmScreen.items || []) {
+      if (item?.id) map.set(item.id, JSON.stringify(item))
+    }
+    serverItemsSnapshot.set(dmScreen.id, map)
+  }
+
+  function setPlayerMode(on: boolean) {
+    playerMode.value = on
+  }
+
+  /** Diff local items vs the server snapshot into a player-items PATCH payload. */
+  function buildPlayerItemsDiff(dmScreenId: string, items: any[]) {
+    const snapshot = serverItemsSnapshot.get(dmScreenId) ?? new Map<string, string>()
+    const upserts: any[] = []
+    const seen = new Set<string>()
+    for (const item of items) {
+      if (!item?.id) continue
+      seen.add(item.id)
+      const serialized = JSON.stringify(item)
+      if (snapshot.get(item.id) !== serialized) upserts.push(item)
+    }
+    const deleteIds = [...snapshot.keys()].filter((id) => !seen.has(id))
+    return { upserts, deleteIds }
+  }
+
   /**
    * Queue a debounced API update for a DM screen.
    * This is the ONLY place where API updates are debounced.
@@ -234,7 +271,17 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
       if (!finalPayload) return
 
       try {
-        const response = await dmScreensApi.update(libraryId, dmScreenId, finalPayload)
+        let response: { dmScreen: DmScreen }
+        if (playerMode.value) {
+          // Players can only send item diffs they're allowed to touch
+          if (finalPayload.items === undefined) return
+          const diff = buildPlayerItemsDiff(dmScreenId, finalPayload.items as any[])
+          if (diff.upserts.length === 0 && diff.deleteIds.length === 0) return
+          response = await dmScreensApi.updatePlayerItems(libraryId, dmScreenId, diff)
+        } else {
+          response = await dmScreensApi.update(libraryId, dmScreenId, finalPayload)
+        }
+        snapshotServerItems(response.dmScreen)
 
         // Update cache with server response
         const index = dmScreens.value.findIndex((ds) => ds.id === dmScreenId)
@@ -1149,6 +1196,7 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     try {
       const response = await dmScreensApi.getById(libraryId, dmScreenId)
       currentDmScreen.value = response.dmScreen
+      snapshotServerItems(response.dmScreen)
 
       const index = dmScreens.value.findIndex((ds) => ds.id === dmScreenId)
       if (index !== -1) {
@@ -1751,6 +1799,8 @@ export const useDmScreensStore = defineStore('dmScreens', () => {
     // API Actions
     fetchDmScreens,
     fetchDmScreen,
+    playerMode,
+    setPlayerMode,
     createDmScreen,
     updateDmScreen,
     deleteDmScreen,

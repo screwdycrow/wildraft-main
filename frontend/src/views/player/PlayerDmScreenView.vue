@@ -16,24 +16,40 @@
       <v-btn color="primary" variant="tonal" @click="goBack">Back to your dashboard</v-btn>
     </div>
 
-    <!-- DM Screen Content (read-only for now; player editing lands in a later phase) -->
+    <!-- DM Screen Content: players with canEdit move their own items and add
+         notes/shapes; everything else is view-only -->
     <div v-else-if="dmScreen" class="dm-screen-container">
-      <dm-screen-wrapper :dm-screen="dmScreen" :is-portal-mode="true" />
+      <dm-screen-wrapper
+        :dm-screen="dmScreen"
+        :is-portal-mode="!canEdit"
+        :is-player-mode="canEdit"
+        :current-user-id="authStore.user?.id"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { useDmScreenSocketStore } from '@/stores/dmScreenSocket'
+import { useAuthStore } from '@/stores/auth'
+import { usePlayerContentStore } from '@/stores/playerContent'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 
 const route = useRoute()
 const router = useRouter()
 const dmScreensStore = useDmScreensStore()
+const dmScreenSocket = useDmScreenSocketStore()
+const authStore = useAuthStore()
+const playerContent = usePlayerContentStore()
 
 const loadError = ref<string | null>(null)
+
+const canEdit = computed(
+  () => playerContent.dmScreens.find((s) => s.id === dmScreenId.value)?.canEdit ?? false
+)
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -49,6 +65,7 @@ async function loadDmScreen() {
   loadError.value = null
   try {
     await dmScreensStore.fetchDmScreen(libraryId.value, dmScreenId.value, true)
+    dmScreenSocket.connect(libraryId.value, dmScreenId.value)
   } catch (err: any) {
     loadError.value =
       err.response?.data?.message || 'This DM screen has not been shared with you.'
@@ -59,7 +76,14 @@ function goBack() {
   router.push({ name: 'PlayerDashboard', params: { id: libraryId.value } })
 }
 
-onMounted(loadDmScreen)
+onMounted(() => {
+  dmScreensStore.setPlayerMode(true)
+  loadDmScreen()
+})
+onUnmounted(() => {
+  dmScreensStore.setPlayerMode(false)
+  dmScreenSocket.disconnect()
+})
 watch(() => route.params.dmScreenId, loadDmScreen)
 </script>
 

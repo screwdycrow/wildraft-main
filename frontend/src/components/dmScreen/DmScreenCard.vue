@@ -82,6 +82,11 @@
                 @click="showShareDialog = true"
               />
               <v-list-item
+                prepend-icon="mdi-content-copy"
+                title="Copy Player Items Here"
+                @click="showCopyDialog = true"
+              />
+              <v-list-item
                 prepend-icon="mdi-pencil"
                 title="Edit"
                 @click="handleEdit"
@@ -108,6 +113,12 @@
       :target-id="dmScreen.id"
       :target-name="dmScreen.name"
     />
+    <copy-player-items-dialog
+      v-model="showCopyDialog"
+      :library-id="libraryId"
+      :target-id="dmScreen.id"
+      :target-name="dmScreen.name"
+    />
   </v-card>
 </template>
 
@@ -118,8 +129,10 @@ import type { DmScreen } from '@/types/dmScreen.types'
 import { formatDistanceToNow } from 'date-fns'
 import { useDmScreensStore } from '@/stores/dmScreens'
 import SharePlayersDialog from '@/components/library/SharePlayersDialog.vue'
+import CopyPlayerItemsDialog from '@/components/dmScreen/CopyPlayerItemsDialog.vue'
 
 const showShareDialog = ref(false)
+const showCopyDialog = ref(false)
 
 const props = withDefaults(defineProps<{
   dmScreen: DmScreen

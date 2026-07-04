@@ -291,6 +291,20 @@
           </v-tooltip>
         </v-btn>
 
+        <!-- Assign player control -->
+        <v-btn
+          icon
+          size="small"
+          variant="text"
+          class="toolbar-btn"
+          @click="$emit('assign-control')"
+        >
+          <v-icon size="20">mdi-account-key</v-icon>
+          <v-tooltip activator="parent" location="top">
+            Assign Player Control
+          </v-tooltip>
+        </v-btn>
+
         <!-- Delete button -->
         <v-btn
           icon
@@ -364,6 +378,7 @@ const emit = defineEmits<{
   'edit-text': []
   'edit-shape-style': []
   'delete-selected': []
+  'assign-control': []
   'move-to-layer': [layerId: string]
   'add-widget': [type: string]
   'add-timer-node': []

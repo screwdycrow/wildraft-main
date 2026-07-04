@@ -36,5 +36,31 @@ export const dmScreensApi = {
   async delete(libraryId: number, dmScreenId: string): Promise<void> {
     await apiClient.delete(`/libraries/${libraryId}/dm-screens/${dmScreenId}`)
   },
+
+  // Player-scoped item merge (players may only touch items they created/control)
+  async updatePlayerItems(
+    libraryId: number,
+    dmScreenId: string,
+    payload: { upserts: any[]; deleteIds: string[] }
+  ): Promise<DmScreenResponse & { message: string }> {
+    const response = await apiClient.patch<DmScreenResponse & { message: string }>(
+      `/libraries/${libraryId}/dm-screens/${dmScreenId}/player-items`,
+      payload
+    )
+    return response.data
+  },
+
+  // Copy player-controlled items from another screen onto this one
+  async copyPlayerItems(
+    libraryId: number,
+    dmScreenId: string,
+    payload: { sourceDmScreenId: string; userId?: number }
+  ): Promise<DmScreenResponse & { message: string; copiedCount: number }> {
+    const response = await apiClient.post<DmScreenResponse & { message: string; copiedCount: number }>(
+      `/libraries/${libraryId}/dm-screens/${dmScreenId}/copy-player-items`,
+      payload
+    )
+    return response.data
+  },
 }
 

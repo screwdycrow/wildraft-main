@@ -11,6 +11,7 @@ import fastifySocketIO from 'fastify-socket.io';
 import { prisma } from './lib/prisma';
 import { registerRoutes } from './routes';
 import { registerPortalViewSocket } from './websocket/portal-view-socket';
+import { registerDmScreenSocket } from './websocket/dm-screen-socket';
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -112,6 +113,7 @@ fastify.register(fastifySocketIO, {
 // Socket.IO setup must happen after fastify.ready()
 fastify.ready().then(() => {
   registerPortalViewSocket(fastify);
+  registerDmScreenSocket(fastify);
 });
 
 // Register routes

@@ -3,7 +3,23 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken } from '../middleware/auth';
 import { requireEditorAccess, requireViewerAccess, requireMemberAccess } from '../middleware/library-access';
 import { AccessRole } from '@prisma/client';
-import { getDmScreenAccess } from '../lib/player-access';
+import crypto from 'crypto';
+import { getDmScreenAccess, getViewableItemIds } from '../lib/player-access';
+import { broadcastDmScreenUpdate } from '../websocket/dm-screen-socket';
+
+// Node types a player may create on a shared DM screen
+const PLAYER_CREATABLE_TYPES = new Set([
+  'quickNote',
+  'TextNode',
+  'ShapeNode',
+  'timer',
+  'counter',
+  'LibraryItemId',
+]);
+
+const canPlayerTouchItem = (item: any, userId: number): boolean =>
+  item?.data?.createdBy === userId ||
+  (Array.isArray(item?.controlledBy) && item.controlledBy.includes(userId));
 import {
   createDMScreenSchema,
   getDMScreensSchema,
@@ -125,7 +141,8 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
         const libraryId = parseInt(request.params.libraryId, 10);
         const dmScreenId = request.params.dmScreenId;
 
-        if (request.libraryAccess!.role === AccessRole.PLAYER) {
+        const isPlayer = request.libraryAccess!.role === AccessRole.PLAYER;
+        if (isPlayer) {
           const access = await getDmScreenAccess(request.user!.userId, dmScreenId);
           if (!access) {
             reply.code(403);
@@ -143,6 +160,23 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
         if (!dmScreen) {
           reply.code(404);
           return { error: 'DM screen not found' };
+        }
+
+        // Players: redact LibraryItemId nodes they can't view (the node data
+        // itself can leak names/stats). Keep position so layout is preserved.
+        if (isPlayer && Array.isArray(dmScreen.items)) {
+          const viewable = await getViewableItemIds(request.user!.userId, libraryId);
+          const redactedItems = (dmScreen.items as any[]).map((item) => {
+            const refId = item?.data?.id ?? item?.data?.libraryItemId;
+            if (item?.type === 'LibraryItemId' && !viewable.has(Number(refId))) {
+              return {
+                ...item,
+                data: { libraryItemId: Number(refId) || null, locked: true },
+              };
+            }
+            return item;
+          });
+          return { dmScreen: { ...dmScreen, items: redactedItems } };
         }
 
         return { dmScreen };
@@ -217,6 +251,8 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
           data: updateData,
         });
 
+        broadcastDmScreenUpdate(fastify, dmScreenId, { sourceUserId: request.user!.userId });
+
         return {
           message: 'DM screen updated successfully',
           dmScreen,
@@ -226,6 +262,193 @@ export const dmScreenRoutes = async (fastify: FastifyInstance) => {
         reply.code(500);
         return {
           error: 'Failed to update DM screen',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    }
+  );
+
+  // Player-scoped item merge: players (with canEdit) upsert/delete ONLY items
+  // they created or control. EDITOR+ passes through the same validation-free path.
+  fastify.patch<{
+    Params: { libraryId: string; dmScreenId: string };
+    Body: { upserts?: any[]; deleteIds?: string[] };
+  }>(
+    '/:libraryId/dm-screens/:dmScreenId/player-items',
+    { preHandler: [authenticateToken, requireMemberAccess] },
+    async (request, reply) => {
+      try {
+        const libraryId = parseInt(request.params.libraryId, 10);
+        const dmScreenId = request.params.dmScreenId;
+        const userId = request.user!.userId;
+        const role = request.libraryAccess!.role;
+        const isPlayer = role === AccessRole.PLAYER;
+
+        const upserts = Array.isArray(request.body?.upserts) ? request.body.upserts : [];
+        const deleteIds = Array.isArray(request.body?.deleteIds) ? request.body.deleteIds : [];
+        if (upserts.length === 0 && deleteIds.length === 0) {
+          reply.code(400);
+          return { error: 'Nothing to update' };
+        }
+
+        if (isPlayer) {
+          const access = await getDmScreenAccess(userId, dmScreenId);
+          if (!access?.canEdit) {
+            reply.code(403);
+            return { error: 'Access denied', message: 'You cannot edit this DM screen' };
+          }
+        } else if (role === AccessRole.VIEWER) {
+          reply.code(403);
+          return { error: 'Insufficient permissions' };
+        }
+
+        const viewable = isPlayer ? await getViewableItemIds(userId, libraryId) : null;
+
+        const dmScreen = await prisma.$transaction(async (tx) => {
+          const current = await tx.dMScreen.findFirst({ where: { id: dmScreenId, libraryId } });
+          if (!current) return null;
+
+          const items: any[] = Array.isArray(current.items) ? [...(current.items as any[])] : [];
+          const byId = new Map(items.map((item, index) => [item?.id, index]));
+
+          // Deletes: players may only remove their own/controlled items
+          for (const id of deleteIds) {
+            const index = byId.get(id);
+            if (index === undefined) continue;
+            if (isPlayer && !canPlayerTouchItem(items[index], userId)) {
+              throw Object.assign(new Error('You cannot delete this item'), { statusCode: 403 });
+            }
+            items[index] = null;
+          }
+
+          for (const incoming of upserts) {
+            if (!incoming?.id || typeof incoming.id !== 'string') continue;
+            const index = byId.get(incoming.id);
+
+            if (index !== undefined && items[index]) {
+              // Update existing
+              const existing = items[index];
+              if (isPlayer && !canPlayerTouchItem(existing, userId)) {
+                throw Object.assign(new Error('You cannot modify this item'), { statusCode: 403 });
+              }
+              items[index] = isPlayer
+                ? {
+                    ...incoming,
+                    id: existing.id,
+                    type: existing.type, // players cannot change type
+                    controlledBy: existing.controlledBy, // or grant themselves control
+                    data: { ...incoming.data, createdBy: existing.data?.createdBy },
+                  }
+                : incoming;
+            } else {
+              // Create new
+              if (isPlayer) {
+                if (!PLAYER_CREATABLE_TYPES.has(incoming.type)) {
+                  throw Object.assign(new Error(`Players cannot add ${incoming.type} items`), {
+                    statusCode: 403,
+                  });
+                }
+                if (incoming.type === 'LibraryItemId') {
+                  const refId = Number(incoming?.data?.id ?? incoming?.data?.libraryItemId);
+                  if (!viewable!.has(refId)) {
+                    throw Object.assign(new Error('You cannot add an item that is not shared with you'), {
+                      statusCode: 403,
+                    });
+                  }
+                }
+                delete incoming.controlledBy;
+                incoming.data = { ...incoming.data, createdBy: userId };
+              }
+              items.push(incoming);
+            }
+          }
+
+          return tx.dMScreen.update({
+            where: { id: dmScreenId },
+            data: { items: items.filter((item) => item !== null) },
+          });
+        });
+
+        if (!dmScreen) {
+          reply.code(404);
+          return { error: 'DM screen not found' };
+        }
+
+        broadcastDmScreenUpdate(fastify, dmScreenId, { sourceUserId: userId });
+        return { message: 'Items updated', dmScreen };
+      } catch (error: any) {
+        if (error?.statusCode === 403) {
+          reply.code(403);
+          return { error: 'Access denied', message: error.message };
+        }
+        console.error('Player items update error:', error);
+        reply.code(500);
+        return {
+          error: 'Failed to update items',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        };
+      }
+    }
+  );
+
+  // Copy the DM-screen items assigned to a player (or all players) from a
+  // source screen onto this one, with fresh ids.
+  fastify.post<{
+    Params: { libraryId: string; dmScreenId: string };
+    Body: { sourceDmScreenId: string; userId?: number };
+  }>(
+    '/:libraryId/dm-screens/:dmScreenId/copy-player-items',
+    { preHandler: [authenticateToken, requireEditorAccess] },
+    async (request, reply) => {
+      try {
+        const libraryId = parseInt(request.params.libraryId, 10);
+        const dmScreenId = request.params.dmScreenId;
+        const { sourceDmScreenId, userId: targetUserId } = request.body ?? {};
+
+        if (!sourceDmScreenId) {
+          reply.code(400);
+          return { error: 'sourceDmScreenId is required' };
+        }
+
+        const [source, target] = await Promise.all([
+          prisma.dMScreen.findFirst({ where: { id: sourceDmScreenId, libraryId } }),
+          prisma.dMScreen.findFirst({ where: { id: dmScreenId, libraryId } }),
+        ]);
+        if (!source || !target) {
+          reply.code(404);
+          return { error: 'DM screen not found' };
+        }
+
+        const sourceItems: any[] = Array.isArray(source.items) ? (source.items as any[]) : [];
+        const toCopy = sourceItems.filter(
+          (item) =>
+            Array.isArray(item?.controlledBy) &&
+            item.controlledBy.length > 0 &&
+            (targetUserId == null || item.controlledBy.includes(targetUserId))
+        );
+
+        if (toCopy.length === 0) {
+          return { message: 'No player-controlled items to copy', copiedCount: 0, dmScreen: target };
+        }
+
+        const copies = toCopy.map((item) => ({
+          ...JSON.parse(JSON.stringify(item)),
+          id: crypto.randomUUID(),
+        }));
+
+        const targetItems: any[] = Array.isArray(target.items) ? (target.items as any[]) : [];
+        const dmScreen = await prisma.dMScreen.update({
+          where: { id: dmScreenId },
+          data: { items: [...targetItems, ...copies] },
+        });
+
+        broadcastDmScreenUpdate(fastify, dmScreenId, { sourceUserId: request.user!.userId });
+        return { message: 'Player items copied', copiedCount: copies.length, dmScreen };
+      } catch (error) {
+        console.error('Copy player items error:', error);
+        reply.code(500);
+        return {
+          error: 'Failed to copy player items',
           message: error instanceof Error ? error.message : 'Unknown error',
         };
       }

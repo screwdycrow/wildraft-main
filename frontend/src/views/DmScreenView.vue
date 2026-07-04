@@ -46,9 +46,18 @@
             @add-timer-node="handleAddTimerNode"
             @add-counter-node="handleAddCounterNode"
             @add-quick-note-node="handleAddQuickNoteNode"
+            @assign-control="showAssignControl = true"
           />
         </template>
       </dm-screen-wrapper>
+
+      <assign-control-dialog
+        v-if="libraryId"
+        v-model="showAssignControl"
+        :library-id="libraryId"
+        :dm-screen-id="dmScreenId"
+        :item="selectedItem"
+      />
     </div>
 
     <!-- File Manager Dialog -->
@@ -66,9 +75,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDmScreensStore } from '@/stores/dmScreens'
+import { useDmScreenSocketStore } from '@/stores/dmScreenSocket'
 import { useToast } from 'vue-toastification'
 import DmScreenWrapper from '@/components/dmScreen/DmScreenWrapper.vue'
 import DmScreenFloatingToolbar from '@/components/dmScreen/DmScreenFloatingToolbar.vue'
+import AssignControlDialog from '@/components/dmScreen/AssignControlDialog.vue'
 import FileManager from '@/components/files/FileManager.vue'
 import type { DmScreenItem } from '@/types/dmScreen.types'
 
@@ -78,6 +89,7 @@ import type { DmScreenItem } from '@/types/dmScreen.types'
 
 const route = useRoute()
 const dmScreensStore = useDmScreensStore()
+const dmScreenSocket = useDmScreenSocketStore()
 const toast = useToast()
 
 // =====================================================
@@ -86,6 +98,7 @@ const toast = useToast()
 
 const wrapperRef = ref<InstanceType<typeof DmScreenWrapper> | null>(null)
 const showFileManager = ref(false)
+const showAssignControl = ref(false)
 
 // =====================================================
 // COMPUTED - Derived from route params
@@ -136,6 +149,7 @@ onMounted(async () => {
 onUnmounted(() => {
   // Clear selection when leaving the view
   dmScreensStore.selectItem(null)
+  dmScreenSocket.disconnect()
 })
 
 // Watch for route changes (navigating between DM screens)
@@ -167,6 +181,8 @@ async function loadDmScreen() {
   try {
     // Force refresh to ensure we get fresh data
     await dmScreensStore.fetchDmScreen(libraryId.value, dmScreenId.value, true)
+    // Live sync: refetch when players edit their items
+    dmScreenSocket.connect(libraryId.value, dmScreenId.value)
   } catch (error) {
     toast.error('Failed to load DM screen')
   }
