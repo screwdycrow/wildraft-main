@@ -413,7 +413,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        // Owner, or a player viewing content shared via portal / library item
+        // Owner, or a player in a library where this file is used
         if (file.userId !== userId) {
           const allowed = await canPlayerAccessFile(userId, file.id);
           if (!allowed) {
@@ -581,7 +581,7 @@ export const userFileRoutes = async (fastify: FastifyInstance) => {
           });
         }
 
-        // Owner, or a player viewing content shared via portal / library item
+        // Owner, or a player in a library where this file is used
         if (file.userId !== userId) {
           const allowed = await canPlayerAccessFile(userId, file.id);
           if (!allowed) {

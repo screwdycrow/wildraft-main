@@ -1,4 +1,4 @@
-import { ItemPermission } from '@prisma/client';
+import { AccessRole, ItemPermission } from '@prisma/client';
 import { prisma } from './prisma';
 
 /**
@@ -94,6 +94,103 @@ export const getViewableItemIds = async (
 
 const PORTAL_FILE_VIEWER_TYPES = new Set(['ImageViewer', 'VideoViewer', 'PDFViewer']);
 
+const fileIdMatches = (value: unknown, fileId: number): boolean =>
+  typeof value === 'number' && value === fileId;
+
+/** Library ids where the user is a PLAYER member. */
+const getPlayerLibraryIds = async (userId: number): Promise<number[]> => {
+  const rows = await prisma.libraryAccess.findMany({
+    where: { userId, role: AccessRole.PLAYER },
+    select: { libraryId: true },
+  });
+  return rows.map((r) => r.libraryId);
+};
+
+/** File is in the library media pool, or linked to any item/tag in the library. */
+const isFileInLibraryCatalog = async (
+  fileId: number,
+  libraryId: number
+): Promise<boolean> => {
+  const row = await prisma.userFile.findFirst({
+    where: {
+      id: fileId,
+      OR: [
+        { category: { libraryId } },
+        { libraryItems: { some: { libraryId } } },
+        { featuredInItems: { some: { libraryId } } },
+        { featuredInTags: { some: { libraryId } } },
+      ],
+    },
+    select: { id: true },
+  });
+  return row !== null;
+};
+
+/** File appears in any portal view item in the library. */
+const isFileInLibraryPortals = async (
+  fileId: number,
+  libraryId: number
+): Promise<boolean> => {
+  const portals = await prisma.portalView.findMany({
+    where: { libraryId },
+    select: { items: true },
+  });
+
+  return portals.some((portal) => {
+    if (!Array.isArray(portal.items)) return false;
+    return (portal.items as { type?: string; object?: { id?: unknown } }[]).some(
+      (item) =>
+        !!item?.type &&
+        PORTAL_FILE_VIEWER_TYPES.has(item.type) &&
+        fileIdMatches(item.object?.id, fileId)
+    );
+  });
+};
+
+/** File is referenced on a DM screen in the library (settings or nodes). */
+const isFileInLibraryDmScreens = async (
+  fileId: number,
+  libraryId: number
+): Promise<boolean> => {
+  const screens = await prisma.dMScreen.findMany({
+    where: { libraryId },
+    select: { items: true, settings: true },
+  });
+
+  return screens.some((screen) => {
+    const settings = screen.settings as {
+      backgroundImageId?: number;
+      canvasBackgroundImageId?: number;
+    } | null;
+    if (
+      settings?.backgroundImageId === fileId ||
+      settings?.canvasBackgroundImageId === fileId
+    ) {
+      return true;
+    }
+
+    if (!Array.isArray(screen.items)) return false;
+    return (screen.items as { type?: string; data?: { id?: unknown; userFileId?: unknown } }[]).some(
+      (item) => {
+        if (item?.type === 'UserFileId' && fileIdMatches(item.data?.id, fileId)) return true;
+        if (item?.type === 'TokenNode' && fileIdMatches(item.data?.userFileId, fileId)) return true;
+        return false;
+      }
+    );
+  });
+};
+
+/** Whether a file is used anywhere in a library (media, items, portals, DM screens). */
+export const isFileUsedInLibrary = async (
+  fileId: number,
+  libraryId: number
+): Promise<boolean> => {
+  if (await isFileInLibraryCatalog(fileId, libraryId)) return true;
+  if (await isFileInLibraryPortals(fileId, libraryId)) return true;
+  if (await isFileInLibraryDmScreens(fileId, libraryId)) return true;
+  return false;
+};
+
 /** Whether a file is shown inside a portal view shared with this player. */
 export const hasFileInSharedPortal = async (
   userId: number,
@@ -135,14 +232,17 @@ export const hasFileOnSharedItem = async (
 };
 
 /**
- * Whether a PLAYER may fetch a file they do not own (portal viewer content
- * or attachments on shared library items).
+ * Whether a PLAYER may fetch a file they do not own.
+ * Any player in a library can read files used anywhere in that library
+ * (media pool, items, portals, DM screens) so portal/DM content always loads.
  */
 export const canPlayerAccessFile = async (
   userId: number,
   fileId: number
 ): Promise<boolean> => {
-  if (await hasFileInSharedPortal(userId, fileId)) return true;
-  if (await hasFileOnSharedItem(userId, fileId)) return true;
+  const libraryIds = await getPlayerLibraryIds(userId);
+  for (const libraryId of libraryIds) {
+    if (await isFileUsedInLibrary(fileId, libraryId)) return true;
+  }
   return false;
 };

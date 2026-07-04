@@ -1,5 +1,17 @@
 <template>
   <v-app>
+    <!-- Player exit control (fullscreen portal has no sidebar) -->
+    <v-btn
+      v-if="isPlayerPortal"
+      class="player-portal-back"
+      icon="mdi-arrow-left"
+      variant="flat"
+      color="surface"
+      size="small"
+      title="Back to your table"
+      @click="exitPlayerPortal"
+    />
+
     <!-- Main Content Area -->
     <v-main class="portal-main">
       <router-view />
@@ -29,9 +41,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, provide } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useCombatEncountersStore } from '@/stores/combatEncounters'
+import { usePlayerContentStore } from '@/stores/playerContent'
 import PortalCombatEncounter from '@/components/portal/PortalCombatEncounter.vue'
 import DiceBox3D from '@/components/dice/DiceBox3D.vue'
 import { useSharedDice } from '@/composables/useSharedDice'
@@ -39,10 +52,14 @@ import { useSharedDice } from '@/composables/useSharedDice'
 useSharedDice()
 
 const route = useRoute()
+const router = useRouter()
 const portalViewsStore = usePortalViewsStore()
 const combatEncountersStore = useCombatEncountersStore()
+const playerContent = usePlayerContentStore()
 
 const sidebarVisible = ref(true)
+
+const isPlayerPortal = computed(() => route.name === 'PlayerPortal')
 
 // NOTE: Socket is initialized in PortalViewView, not here
 // This layout just provides the toggle function
@@ -111,6 +128,29 @@ async function loadPortalViewAndEncounter() {
 onMounted(() => {
   loadPortalViewAndEncounter()
 })
+
+// Ensure player membership + shared content is loaded for player portal routes
+watch(
+  [libraryId, isPlayerPortal],
+  async ([id, playerPortal]) => {
+    if (!playerPortal || !id) return
+    try {
+      await playerContent.fetchSharedContent(id)
+    } catch {
+      router.replace({ name: 'PlayerHome' })
+    }
+  },
+  { immediate: true }
+)
+
+function exitPlayerPortal() {
+  const id = route.params.id
+  if (id) {
+    router.push({ name: 'PlayerDashboard', params: { id } })
+  } else {
+    router.push({ name: 'PlayerHome' })
+  }
+}
 
 // Watch for route changes
 watch([() => route.params.id, () => route.params.portalViewId], () => {
@@ -189,6 +229,17 @@ provide('toggleEncounterSidebar', toggleEncounterSidebar)
 
 .portal-sidebar-toggle:not(.sidebar-hidden) {
   right: 266px; /* 350px sidebar width + 16px margin */
+}
+
+.player-portal-back {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1002;
+  opacity: 0.85;
+}
+.player-portal-back:hover {
+  opacity: 1;
 }
 </style>
 
