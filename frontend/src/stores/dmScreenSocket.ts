@@ -3,9 +3,7 @@ import { ref } from 'vue'
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '@/stores/auth'
 import { useDmScreensStore } from '@/stores/dmScreens'
-
-// @ts-ignore - Vite env variable
-const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
+import { SOCKET_BASE_URL, SOCKET_IO_OPTIONS } from '@/config/api'
 
 /**
  * Notification socket for live DM screen sync: when anyone else saves the
@@ -31,12 +29,10 @@ export const useDmScreenSocketStore = defineStore('dmScreenSocket', () => {
     currentLibraryId = libraryId
     connectedScreenId.value = dmScreenId
 
-    socketInstance.value = io(`${BASE_URL}/dm-screen/${dmScreenId}`, {
+    const socketUrl = `${SOCKET_BASE_URL}/dm-screen/${dmScreenId}`
+    socketInstance.value = io(socketUrl, {
+      ...SOCKET_IO_OPTIONS,
       auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
     })
 
     socketInstance.value.on('connect', () => {

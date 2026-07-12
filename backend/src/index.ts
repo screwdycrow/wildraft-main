@@ -19,6 +19,8 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Initialize Fastify
 const fastify = Fastify({
   logger: true,
+  // Railway terminates TLS at the edge; Socket.IO needs correct client IPs / proto
+  trustProxy: process.env.NODE_ENV === 'production',
   // Increase body limit for file uploads (base64 encoded files are ~33% larger)
   // 50MB should handle most use cases
   bodyLimit: 50 * 1024 * 1024, // 50MB
@@ -34,17 +36,39 @@ const fastify = Fastify({
 });
 
 // Register CORS
-// Supports multiple origins via CORS_ORIGINS (comma-separated). Falls back to common dev ports.
-const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:5173')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
+// CORS_ORIGINS = comma-separated browser origins (frontend Railway URL, custom domain, etc.)
+// FRONTEND_URL = shorthand for a single production frontend origin
+const allowedOrigins = [
+  ...new Set(
+    [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_URL?.trim(),
+      ...(process.env.CORS_ORIGINS || '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ].filter(Boolean) as string[]
+  ),
+];
+
+const isOriginAllowed = (origin: string | undefined): boolean => {
+  if (!origin) return true; // curl, Socket.IO polling without Origin, etc.
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow www / non-www variant when one is configured
+  try {
+    const url = new URL(origin);
+    const alt = `${url.protocol}//${url.hostname.startsWith('www.') ? url.hostname.slice(4) : `www.${url.hostname}`}${url.port ? `:${url.port}` : ''}`;
+    return allowedOrigins.includes(alt);
+  } catch {
+    return false;
+  }
+};
 
 fastify.register(cors, {
   origin: (origin, cb) => {
-    // Allow non-browser clients (curl, server-to-server) with no origin
-    if (!origin) return cb(null, true);
-    if (allowedOrigins.includes(origin)) return cb(null, true);
+    if (isOriginAllowed(origin)) return cb(null, true);
+    fastify.log.warn({ origin, allowedOrigins }, 'CORS: Origin not allowed');
     cb(new Error('CORS: Origin not allowed'), false);
   },
   credentials: true,
@@ -102,12 +126,16 @@ fastify.register(swaggerUi, {
   transformStaticCSP: (header) => header,
 });
 
-// Register Socket.IO
+// Register Socket.IO (same CORS rules as REST — required for browser clients on Railway)
 fastify.register(fastifySocketIO, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) return callback(null, true);
+      callback(new Error('CORS: Origin not allowed'), false);
+    },
     credentials: true,
   },
+  transports: ['websocket', 'polling'],
 });
 
 // Socket.IO setup must happen after fastify.ready()

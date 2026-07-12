@@ -131,6 +131,10 @@ async function loadPortalAndEncounter() {
   if (!portalViewId) return
   try {
     await portalViewsStore.fetchPortalView(libraryId.value, portalViewId)
+    // Wire Socket.IO (portalSocket store watches activePortal)
+    if (portalView.value) {
+      portalViewsStore.setActivePortal(portalView.value)
+    }
     if (portalView.value?.combatEncounterId) {
       await combatEncountersStore.fetchEncounter(libraryId.value, portalView.value.combatEncounterId)
       combatEncountersStore.setActiveEncounter(portalView.value.combatEncounterId)

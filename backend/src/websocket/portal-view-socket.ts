@@ -176,6 +176,17 @@ export const registerPortalViewSocket = (fastify: FastifyInstance) => {
       }, 'Portal view update broadcasted');
     });
 
+    // VTT / DM-screen-in-portal relay: any connected client may broadcast; viewers
+    // apply these in PortalViewView / DmScreenWrapper (measurements, pings, etc.)
+    socket.on('collaborative-update', (payload) => {
+      socket.to(portalViewId).emit('collaborative-update', payload);
+      fastify.log.info({
+        userId,
+        portalViewId,
+        action: 'collaborative-update',
+      }, 'Collaborative update broadcasted');
+    });
+
     // Handle item updates
     socket.on('item-update', async (payload) => {
       if (role !== 'controller') {

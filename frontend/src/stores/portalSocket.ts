@@ -3,9 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { io, Socket } from 'socket.io-client'
 import { usePortalViewsStore } from '@/stores/portalViews'
 import { useAuthStore } from '@/stores/auth'
-
-// @ts-ignore - Vite env variable
-const BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
+import { SOCKET_BASE_URL, SOCKET_IO_OPTIONS } from '@/config/api'
 
 export const usePortalSocketStore = defineStore('portalSocket', () => {
   // State
@@ -76,18 +74,12 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     isConnecting.value = true
     activePortalId.value = activePortal.value.portalViewId
     
-    // Create Socket.IO connection
-    const socketUrl = `${BASE_URL}/portal-view/${activePortal.value.portalViewId}`
-    
+    const socketUrl = `${SOCKET_BASE_URL}/portal-view/${activePortal.value.portalViewId}`
+    console.log('[PortalSocket] Connecting to', socketUrl)
+
     socketInstance.value = io(socketUrl, {
-      auth: {
-        token
-      },
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 10,
+      ...SOCKET_IO_OPTIONS,
+      auth: { token },
     })
     
     // Connection events
@@ -104,6 +96,7 @@ export const usePortalSocketStore = defineStore('portalSocket', () => {
     
     socketInstance.value.on('connect_error', (error) => {
       isConnecting.value = false
+      console.error('[PortalSocket] connect_error:', error.message, '→', socketUrl)
       emitEvent('error', error.message)
     })
     
