@@ -75,6 +75,13 @@ const componentRegistry: Partial<Record<ItemType, Record<ComponentType, () => Pr
     quickView: () => import('@/components/items/universal/notes/NoteCard.vue'),
     combatantListItem: () => import('@/components/combat/combatants/GenericCombatantItem.vue'),
   },
+  MINDMAP: {
+    card: () => import('@/components/items/universal/mindmap/MindmapCard.vue'),
+    detail: () => import('@/components/items/universal/mindmap/MindmapCanvas.vue'),
+    form: () => import('@/components/items/universal/mindmap/MindmapForm.vue'),
+    quickView: () => import('@/components/items/universal/mindmap/MindmapCard.vue'),
+    combatantListItem: () => import('@/components/combat/combatants/GenericCombatantItem.vue'),
+  },
 }
 
 // Fallback components for unknown types
@@ -117,10 +124,16 @@ const itemTypeMetadata: Record<ItemType, ItemTypeInfo> = {
   },
 
   // Universal
-  NOTE: { 
-    icon: 'mdi-note-text', 
-    color: '#95A5A6', 
+  NOTE: {
+    icon: 'mdi-note-text',
+    color: '#95A5A6',
     label: 'Note',
+    // No template - works everywhere
+  },
+  MINDMAP: {
+    icon: 'mdi-sitemap-outline',
+    color: '#8E44AD',
+    label: 'Mindmap',
     // No template - works everywhere
   },
 }

@@ -1,10 +1,11 @@
 // Template-specific item types
 
-export type ItemType = 
-  | 'STAT_BLOCK_DND_5E' 
-  | 'ITEM_DND_5E' 
+export type ItemType =
+  | 'STAT_BLOCK_DND_5E'
+  | 'ITEM_DND_5E'
   | 'CHARACTER_DND_5E'
   | 'NOTE' // Universal - not template specific
+  | 'MINDMAP' // Universal - vue-flow canvas of connected note/reference nodes
 
 //DICTIONARY OF ITEM TYPES WITH LABELS AND DESCRIPTIONS
 
@@ -96,6 +97,42 @@ export interface NoteData {
   content: string
   chapters?: NoteChapter[]
   isPinned?: boolean
+  [key: string]: any
+}
+
+// Mindmap data types (universal - not template-specific)
+
+export type MindmapNodeType = 'note' | 'reference'
+
+export interface MindmapNode {
+  id: string
+  type: MindmapNodeType
+  position: { x: number; y: number }
+  width?: number
+  height?: number
+  data: {
+    // note node
+    title?: string
+    html?: string
+    color?: string
+    // reference node
+    libraryItemId?: number
+    [key: string]: any
+  }
+}
+
+export interface MindmapEdge {
+  id: string
+  source: string
+  target: string
+  label?: string
+  [key: string]: any
+}
+
+export interface MindmapData {
+  nodes: MindmapNode[]
+  edges: MindmapEdge[]
+  version?: string
   [key: string]: any
 }
 

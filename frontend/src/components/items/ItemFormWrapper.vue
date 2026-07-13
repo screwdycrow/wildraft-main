@@ -29,6 +29,7 @@ import CharacterForm from './dnd5e/characters/CharacterForm.vue'
 import MagicItemForm from './dnd5e/items/MagicItemForm.vue'
 import StatBlockForm from './dnd5e/stat-blocks/StatBlockForm.vue'
 import NoteForm from './universal/notes/NoteForm.vue'
+import MindmapForm from './universal/mindmap/MindmapForm.vue'
 
 interface Props {
   item?: LibraryItem | null
@@ -50,6 +51,7 @@ const componentMap: Record<ItemType, any> = {
   'ITEM_DND_5E': MagicItemForm,
   'STAT_BLOCK_DND_5E': StatBlockForm,
   'NOTE': NoteForm,
+  'MINDMAP': MindmapForm,
 }
 
 const formComponent = computed(() => {

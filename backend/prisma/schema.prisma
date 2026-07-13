@@ -125,8 +125,9 @@ model UserFile {
 
 enum LibraryItemType {
   NOTE //a note is a text note, it is a json object that contains the note data, and a type of the note.
+  MINDMAP //a mindmap is a vue-flow canvas of connected note/reference nodes, stored as { nodes, edges } in the data json. Treated as a flavor of note in the UI.
 
-  //DND 5E 
+  //DND 5E
   STAT_BLOCK_DND_5E //a stat block is a dnd stat block, it is a json object that contains the stat block data, and a type of the stat block.
   ITEM_DND_5E //an item is a dnd item, it is a json object that contains the item data, and a type of the item.
   CHARACTER_DND_5E //a character is a dnd character, it is a json object that contains the character data, and a type of the character.

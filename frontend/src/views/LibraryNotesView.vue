@@ -52,15 +52,32 @@
       </template>
 
       <template #actions>
-        <!-- Create Button -->
-        <v-btn
-          v-if="canEdit"
-          color="primary"
-          prepend-icon="mdi-plus"
-          @click="openCreateDialog"
-        >
-          Create Note
-        </v-btn>
+        <!-- Create Button (Note / Mindmap) -->
+        <v-menu v-if="canEdit" location="bottom end">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-plus"
+              append-icon="mdi-menu-down"
+              v-bind="menuProps"
+            >
+              Create
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item
+              prepend-icon="mdi-note-text"
+              title="Note"
+              @click="openCreateDialog('NOTE')"
+            />
+            <v-list-item
+              prepend-icon="mdi-sitemap-outline"
+              title="Mindmap"
+              subtitle="Connected notes on a canvas"
+              @click="openCreateDialog('MINDMAP')"
+            />
+          </v-list>
+        </v-menu>
       </template>
     </page-top-bar>
 
@@ -80,7 +97,7 @@
       empty-title="No Notes Yet"
       empty-message="Create your first note to capture ideas, plans, and important information."
       create-button-text="Create Your First Note"
-      @create="openCreateDialog"
+      @create="openCreateDialog('NOTE')"
       @view="viewItem"
       @edit="editItem"
       @delete="deleteItemConfirmed"
@@ -94,7 +111,7 @@
       v-model="showFormDialog"
       :library-id="libraryId!"
       :item="editingItem"
-      :item-type="ITEM_TYPE"
+      :item-type="createType"
       @created="handleItemCreated"
       @updated="handleItemUpdated"
     />
@@ -114,7 +131,7 @@ import TagSelector from '@/components/tags/TagSelector.vue'
 import ViewControls from '@/components/common/ViewControls.vue'
 import { ItemGridList, ItemDialog } from '@/components/items'
 import type { Breadcrumb } from '@/components/common/PageTopBar.vue'
-import type { LibraryItem } from '@/types/item.types'
+import type { LibraryItem, ItemType } from '@/types/item.types'
 
 const route = useRoute()
 const router = useRouter()
@@ -125,13 +142,15 @@ const toast = useToast()
 // View preferences with localStorage persistence (global for all library views)
 const { viewMode, groupBy, collapsedGroups } = useViewPreferences('library-notes')
 
-const ITEM_TYPE = 'NOTE' as const
+// Types shown in this view - mindmaps are treated as a flavor of note
+const NOTE_TYPES: ItemType[] = ['NOTE', 'MINDMAP']
 
 const searchQuery = ref('')
 const filterTags = ref<number[]>([])
 const selectedCategory = ref<string | null>(null)
 const showFormDialog = ref(false)
 const editingItem = ref<LibraryItem | null>(null)
+const createType = ref<ItemType>('NOTE')
 
 const libraryId = computed(() => {
   const id = route.params.id
@@ -151,9 +170,9 @@ const canEdit = computed(() =>
   ['OWNER', 'EDITOR'].includes(libraryStore.currentLibrary?.role || '')
 )
 
-// Get all notes
-const allNotes = computed(() => 
-  itemsStore.items.filter(item => item.type === ITEM_TYPE)
+// Get all notes (includes mindmaps, which are treated as notes here)
+const allNotes = computed(() =>
+  itemsStore.items.filter(item => NOTE_TYPES.includes(item.type))
 )
 
 // Get available categories from existing notes
@@ -236,8 +255,9 @@ watch(libraryId, async (newId) => {
 })
 
 // Item actions
-function openCreateDialog() {
+function openCreateDialog(type: ItemType = 'NOTE') {
   editingItem.value = null
+  createType.value = type
   showFormDialog.value = true
 }
 
@@ -257,8 +277,14 @@ function editItem(item: LibraryItem) {
 }
 
 function handleItemCreated(item: LibraryItem) {
-  // Item already added to store by ItemDialog
-  console.log('Note created:', item.name)
+  // Item already added to store by ItemDialog.
+  // Mindmaps are edited on their canvas, so jump straight there.
+  if (item.type === 'MINDMAP') {
+    router.push({
+      name: 'ItemDetail',
+      params: { libraryId: libraryId.value, itemId: item.id },
+    })
+  }
 }
 
 function handleItemUpdated(item: LibraryItem) {

@@ -162,10 +162,23 @@ export const characterSchema = {
 
 
 
+// MINDMAP: Vue-flow canvas of connected note/reference nodes
+export const mindmapSchema = {
+  type: 'object',
+  properties: {
+    ...baseProperties,
+    nodes: { type: 'array', items: { type: 'object', additionalProperties: true }, nullable: true },
+    edges: { type: 'array', items: { type: 'object', additionalProperties: true }, nullable: true },
+  },
+  // No strictly required fields - a mindmap can start empty
+  additionalProperties: true, // ✅ Allow custom fields!
+} as const;
+
 // Schema map by type
 export const itemSchemas = {
   STAT_BLOCK_DND_5E: statBlockSchema,
   NOTE: noteSchema,
+  MINDMAP: mindmapSchema,
   ITEM_DND_5E: itemSchema,
   CHARACTER_DND_5E: characterSchema,
 } as const;
@@ -230,11 +243,19 @@ export type CharacterData = {
   [key: string]: any;
 };
 
+export type MindmapData = {
+  nodes?: any[];
+  edges?: any[];
+  version?: string;
+  [key: string]: any;
+};
 
 
-export type LibraryItemData = 
-  | StatBlockData 
-  | NoteData 
-  | ItemData 
-  | CharacterData 
+
+export type LibraryItemData =
+  | StatBlockData
+  | NoteData
+  | MindmapData
+  | ItemData
+  | CharacterData
 

@@ -29,7 +29,7 @@ All types support custom fields beyond the required ones.`,
     properties: {
       type: {
         type: 'string',
-        enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'ITEM_DND_5E', 'CHARACTER_DND_5E'],
+        enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'MINDMAP', 'ITEM_DND_5E', 'CHARACTER_DND_5E'],
         description: 'Item type - determines validation rules for data field',
         example: 'STAT_BLOCK_DND_5E'
       },
@@ -207,7 +207,7 @@ Additional custom fields are always allowed.`,
             libraryId: { type: 'number', example: 1 },
             type: { 
               type: 'string', 
-              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'ITEM_DND_5E', 'CHARACTER_DND_5E'],
+              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'MINDMAP', 'ITEM_DND_5E', 'CHARACTER_DND_5E'],
               example: 'STAT_BLOCK_DND_5E'
             },
             name: { type: 'string', example: 'Goblin Warrior' },
@@ -332,7 +332,7 @@ export const getLibraryItemsSchema = {
               libraryId: { type: 'number' },
               type: { 
                 type: 'string', 
-                enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
+                enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'MINDMAP', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
               },
               name: { type: 'string' },
               description: { type: 'string', nullable: true },
@@ -512,7 +512,7 @@ export const getLibraryItemSchema = {
             libraryId: { type: 'number' },
             type: { 
               type: 'string', 
-              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
+              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'MINDMAP', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
             },
             name: { type: 'string' },
             description: { type: 'string', nullable: true },
@@ -767,7 +767,7 @@ If updating the data field, it must still conform to the item's type schema. Req
             libraryId: { type: 'number' },
             type: { 
               type: 'string', 
-              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
+              enum: ['STAT_BLOCK_DND_5E', 'NOTE', 'MINDMAP', 'ITEM_DND_5E', 'CHARACTER_DND_5E']
             },
             name: { type: 'string' },
             description: { type: 'string', nullable: true },

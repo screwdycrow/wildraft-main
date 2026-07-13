@@ -98,7 +98,7 @@
           :disabled="!selectedItem"
           @click="confirmSelection"
         >
-          Add to DM Screen
+          {{ confirmLabel }}
         </v-btn>
 
         <v-divider vertical class="mx-2" />
@@ -136,10 +136,12 @@ import type { LibraryItem, ItemType } from '@/types/item.types'
 interface Props {
   libraryId: number
   modelValue?: boolean
+  confirmLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
+  confirmLabel: 'Add to DM Screen',
 })
 
 const emit = defineEmits<{
