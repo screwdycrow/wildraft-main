@@ -1,5 +1,6 @@
 <template>
-  <div ref="wrapperRef" class="mindmap-canvas-wrapper">
+  <div class="mindmap-canvas-wrapper">
+    <div ref="wrapperRef" class="flow-area">
     <VueFlow
       :id="flowId"
       :nodes="initialNodes"
@@ -23,7 +24,7 @@
       <Controls />
       <MiniMap pannable zoomable />
 
-      <Panel position="top-left" class="mindmap-toolbar" :class="{ shifted: !!selectedNode }">
+      <Panel position="top-left" class="mindmap-toolbar">
         <div class="toolbar-group">
           <template v-if="!readonly">
             <v-menu location="bottom start">
@@ -74,10 +75,10 @@
         {{ readonly ? 'This mindmap is empty.' : 'Add a note or reference to start mapping your ideas.' }}
       </Panel>
     </VueFlow>
+    </div>
 
-    <!-- Node settings sidebar -->
-    <transition name="mm-sidebar">
-      <aside v-if="selectedNode" class="mindmap-sidebar" @mousedown.stop @wheel.stop>
+    <!-- Node settings sidebar (pushes the canvas, does not overlay it) -->
+    <aside v-if="selectedNode" class="mindmap-sidebar" @mousedown.stop @wheel.stop>
         <div class="sidebar-header">
           <v-icon :icon="sidebarIcon" :color="sidebarColor" size="18" class="mr-2" />
           <span class="sidebar-title">{{ sidebarTitle }}</span>
@@ -97,6 +98,18 @@
               placeholder="Node title…"
             />
 
+            <div class="field-label">Content</div>
+            <tip-tap-editor
+              :key="selectedNode.id"
+              v-model="noteHtml"
+              compact
+              :library-id="libraryId ?? undefined"
+              :library-item-id="item.id"
+              min-height="300px"
+              placeholder="Write your idea…"
+              class="sidebar-editor"
+            />
+
             <div class="field-label">Type</div>
             <div class="category-grid">
               <button
@@ -111,18 +124,6 @@
                 <span>{{ cat.label }}</span>
               </button>
             </div>
-
-            <div class="field-label">Content</div>
-            <tip-tap-editor
-              :key="selectedNode.id"
-              v-model="noteHtml"
-              compact
-              :library-id="libraryId ?? undefined"
-              :library-item-id="item.id"
-              min-height="300px"
-              placeholder="Write your idea…"
-              class="sidebar-editor"
-            />
 
             <div class="field-label">Color</div>
             <div class="swatch-row">
@@ -199,7 +200,6 @@
           </v-btn>
         </div>
       </aside>
-    </transition>
 
     <library-item-selector
       v-if="libraryId != null"
@@ -541,6 +541,7 @@ onMounted(async () => {
 <style scoped>
 .mindmap-canvas-wrapper {
   position: relative;
+  display: flex;
   width: 100%;
   height: calc(100vh - 170px);
   min-height: 520px;
@@ -549,6 +550,13 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: radial-gradient(circle at 30% 20%, rgba(142, 68, 173, 0.08), transparent 60%),
     rgb(16, 16, 22);
+}
+
+.flow-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
 }
 
 .mindmap-flow {
@@ -565,11 +573,6 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 6px 10px;
-  transition: transform 0.22s ease;
-}
-
-.mindmap-toolbar.shifted {
-  transform: translateX(320px);
 }
 
 .toolbar-group {
@@ -598,17 +601,15 @@ onMounted(async () => {
   pointer-events: none;
 }
 
-/* ---- Sidebar ---- */
+/* ---- Sidebar (static flex child on the left; pushes the canvas) ---- */
 .mindmap-sidebar {
-  position: absolute;
-  top: 0;
-  left: 0;
+  order: -1;
+  flex-shrink: 0;
   width: 320px;
   height: 100%;
   background: rgba(18, 18, 26, 0.97);
-  backdrop-filter: blur(14px);
   border-right: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 8px 0 26px rgba(0, 0, 0, 0.35);
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.3);
   z-index: 6;
   display: flex;
   flex-direction: column;
@@ -745,16 +746,6 @@ onMounted(async () => {
   color: rgba(255, 255, 255, 0.9);
 }
 .rich-content :deep(img) { max-width: 100%; border-radius: 6px; }
-
-.mm-sidebar-enter-active,
-.mm-sidebar-leave-active {
-  transition: transform 0.22s ease, opacity 0.22s ease;
-}
-.mm-sidebar-enter-from,
-.mm-sidebar-leave-to {
-  transform: translateX(-100%);
-  opacity: 0.4;
-}
 
 :deep(.mdi-spin) {
   animation: mm-spin 0.9s linear infinite;

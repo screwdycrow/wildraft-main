@@ -30,27 +30,31 @@
       />
     </template>
 
-    <!-- Category bar -->
-    <div class="note-category-bar" :style="{ background: accent }">
-      <v-icon :icon="category.icon" size="12" color="white" class="mr-1" />
-      <span class="category-label">{{ category.label }}</span>
-      <span class="spacer" />
-      <button
-        v-if="!readonly"
-        class="mm-del nodrag"
-        title="Delete"
-        @mousedown.stop
-        @click.stop="onDelete"
-      >
-        <v-icon size="13">mdi-close</v-icon>
-      </button>
-    </div>
+    <!-- Inner wrapper clips content for rounded corners WITHOUT clipping the
+         resize handles that the NodeResizer renders on the outer element. -->
+    <div class="note-inner">
+      <!-- Category bar -->
+      <div class="note-category-bar" :style="{ background: accent }">
+        <v-icon :icon="category.icon" size="12" color="white" class="mr-1" />
+        <span class="category-label">{{ category.label }}</span>
+        <span class="spacer" />
+        <button
+          v-if="!readonly"
+          class="mm-del nodrag"
+          title="Delete"
+          @mousedown.stop
+          @click.stop="onDelete"
+        >
+          <v-icon size="13">mdi-close</v-icon>
+        </button>
+      </div>
 
-    <!-- Body -->
-    <div class="note-body">
-      <div v-if="data.title" class="note-title">{{ data.title }}</div>
-      <div v-if="data.html" class="rich-content" v-html="data.html" />
-      <div v-else class="placeholder">{{ readonly ? 'Empty note' : 'Click to edit…' }}</div>
+      <!-- Body -->
+      <div class="note-body">
+        <div v-if="data.title" class="note-title">{{ data.title }}</div>
+        <div v-if="data.html" class="rich-content" v-html="data.html" />
+        <div v-else class="placeholder">{{ readonly ? 'Empty note' : 'Click to edit…' }}</div>
+      </div>
     </div>
   </div>
 </template>
@@ -92,7 +96,6 @@ const handlePositions = [
 
 const nodeStyle = computed(() => ({
   '--mm-accent': accent.value,
-  borderColor: props.selected ? accent.value : 'rgba(255,255,255,0.12)',
 }))
 
 function onDelete() {
@@ -107,6 +110,21 @@ function onDelete() {
   height: 100%;
   min-width: 150px;
   min-height: 80px;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mindmap-note-node:active {
+  cursor: grabbing;
+}
+
+/* Inner wrapper carries the visuals + clipping; outer stays unclipped so the
+   NodeResizer handles remain grabbable. */
+.note-inner {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: rgba(24, 24, 32, 0.94);
@@ -115,13 +133,17 @@ function onDelete() {
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  cursor: grab;
-  user-select: none;
-  -webkit-user-select: none;
 }
 
-.mindmap-note-node:active {
-  cursor: grabbing;
+.mindmap-note-node.selected .note-inner {
+  border-color: var(--mm-accent);
+  box-shadow: 0 0 0 2px var(--mm-accent), 0 8px 26px rgba(0, 0, 0, 0.5);
+}
+
+/* Keep the resize handles above the connection handles so corners resize
+   instead of starting a connection. */
+:deep(.vue-flow__resize-control) {
+  z-index: 12;
 }
 
 .mindmap-note-node.selected {
