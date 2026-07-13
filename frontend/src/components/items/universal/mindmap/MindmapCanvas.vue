@@ -88,6 +88,15 @@
         <!-- NOTE settings -->
         <div v-if="selectedNode.type === 'note'" class="sidebar-body">
           <template v-if="!readonly">
+            <div class="field-label">Title</div>
+            <v-text-field
+              v-model="noteTitle"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Node title…"
+            />
+
             <div class="field-label">Type</div>
             <div class="category-grid">
               <button
@@ -103,22 +112,14 @@
               </button>
             </div>
 
-            <div class="field-label">Title</div>
-            <v-text-field
-              v-model="noteTitle"
-              density="compact"
-              variant="outlined"
-              hide-details
-              placeholder="Node title…"
-            />
-
             <div class="field-label">Content</div>
             <tip-tap-editor
               :key="selectedNode.id"
               v-model="noteHtml"
+              compact
               :library-id="libraryId ?? undefined"
               :library-item-id="item.id"
-              min-height="200px"
+              min-height="300px"
               placeholder="Write your idea…"
               class="sidebar-editor"
             />
@@ -416,7 +417,9 @@ const noteHtml = computed({
 })
 
 function setCategory(id: string) {
-  patchSelected({ category: id })
+  // Changing the type also resets the color to that type's default
+  // (a custom color can still be picked afterwards).
+  patchSelected({ category: id, color: undefined })
 }
 function setColor(c: string) {
   patchSelected({ color: c })

@@ -1,7 +1,41 @@
 <template>
-  <div class="tiptap-editor-wrapper">
-    <!-- First Row Toolbar -->
-    <div v-if="editor" class="editor-toolbar glass-card mb-2 pa-2">
+  <div class="tiptap-editor-wrapper" :class="{ 'is-compact': compact }">
+    <!-- Compact single-line toolbar (basic controls, small icons) -->
+    <div v-if="editor && compact" class="tt-compact-toolbar">
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('bold') }" title="Bold" @click="editor.chain().focus().toggleBold().run()">
+        <v-icon size="15">mdi-format-bold</v-icon>
+      </button>
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('italic') }" title="Italic" @click="editor.chain().focus().toggleItalic().run()">
+        <v-icon size="15">mdi-format-italic</v-icon>
+      </button>
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('strike') }" title="Strikethrough" @click="editor.chain().focus().toggleStrike().run()">
+        <v-icon size="15">mdi-format-strikethrough</v-icon>
+      </button>
+      <span class="tt-sep" />
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('heading', { level: 2 }) }" title="Heading" @click="editor.chain().focus().toggleHeading({ level: 2 }).run()">
+        <v-icon size="15">mdi-format-header-2</v-icon>
+      </button>
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('heading', { level: 3 }) }" title="Subheading" @click="editor.chain().focus().toggleHeading({ level: 3 }).run()">
+        <v-icon size="15">mdi-format-header-3</v-icon>
+      </button>
+      <span class="tt-sep" />
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('bulletList') }" title="Bullet list" @click="editor.chain().focus().toggleBulletList().run()">
+        <v-icon size="15">mdi-format-list-bulleted</v-icon>
+      </button>
+      <button type="button" class="tt-btn" :class="{ active: editor.isActive('orderedList') }" title="Numbered list" @click="editor.chain().focus().toggleOrderedList().run()">
+        <v-icon size="15">mdi-format-list-numbered</v-icon>
+      </button>
+      <span class="tt-sep" />
+      <button type="button" class="tt-btn" :disabled="!editor.can().undo()" title="Undo" @click="editor.chain().focus().undo().run()">
+        <v-icon size="15">mdi-undo</v-icon>
+      </button>
+      <button type="button" class="tt-btn" :disabled="!editor.can().redo()" title="Redo" @click="editor.chain().focus().redo().run()">
+        <v-icon size="15">mdi-redo</v-icon>
+      </button>
+    </div>
+
+    <!-- First Row Toolbar (full) -->
+    <div v-if="editor && !compact" class="editor-toolbar glass-card mb-2 pa-2">
       <v-btn-toggle density="compact" variant="outlined" divided>
         <v-btn
           size="small"
@@ -133,7 +167,7 @@
     </div>
 
     <!-- Second Row - Table Actions (Only shown when table is active) -->
-    <div v-if="editor && editor.isActive('table')" class="editor-toolbar glass-card mb-2 pa-2">
+    <div v-if="editor && !compact && editor.isActive('table')" class="editor-toolbar glass-card mb-2 pa-2">
       <v-btn-toggle density="compact" variant="outlined" divided>
         <v-btn
           size="small"
@@ -253,6 +287,7 @@ interface Props {
   libraryItemId?: number | null
   userFileIds?: number[]
   userFiles?: Array<{ id: number; downloadUrl?: string; fileUrl?: string }>
+  compact?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -262,6 +297,7 @@ const props = withDefaults(defineProps<Props>(), {
   libraryItemId: null,
   userFileIds: () => [],
   userFiles: () => [],
+  compact: false,
 })
 
 const emit = defineEmits<{
@@ -532,6 +568,67 @@ onBeforeUnmount(() => {
   gap: 8px;
   align-items: center;
   border-radius: 8px;
+}
+
+/* Compact single-line toolbar */
+.tt-compact-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 3px 5px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  scrollbar-width: none;
+}
+.tt-compact-toolbar::-webkit-scrollbar {
+  display: none;
+}
+.tt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.tt-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.tt-btn.active {
+  background: rgba(142, 68, 173, 0.4);
+  color: #fff;
+}
+.tt-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.tt-sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.is-compact .editor-content {
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+.is-compact .editor-content:focus-within {
+  border-color: rgba(142, 68, 173, 0.5);
 }
 
 .editor-content {

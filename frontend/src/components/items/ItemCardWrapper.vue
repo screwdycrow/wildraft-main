@@ -113,15 +113,15 @@
           </v-tooltip>
         </v-btn>
         <v-btn
-          icon="mdi-eye"
+          :icon="opensDetailPage ? 'mdi-open-in-app' : 'mdi-eye'"
           size="x-small"
           color="info"
           variant="flat"
-          @click.stop="dialogsStore.openItemViewer(props.item, props.libraryId!)"
+          @click.stop="handlePreviewClick"
         >
           <v-icon />
           <v-tooltip activator="parent" location="bottom">
-            Preview
+            {{ opensDetailPage ? 'Open' : 'Preview' }}
           </v-tooltip>
         </v-btn>
         <v-btn
@@ -144,6 +144,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { LibraryItem } from '@/types/item.types'
 import { useItemComponents } from '@/composables/useItemComponents'
 import { useCombat } from '@/composables/useCombat'
@@ -183,7 +184,13 @@ const showActions = ref(false)
 const isDragOver = ref(false)
 const isDragging = ref(false)
 
+const router = useRouter()
 const { getItemComponent } = useItemComponents()
+
+// Item types that are edited on their own full page (e.g. the mindmap canvas)
+// rather than in the quick-view modal.
+const DETAIL_PAGE_TYPES = ['MINDMAP']
+const opensDetailPage = computed(() => DETAIL_PAGE_TYPES.includes(props.item.type))
 const { addToActiveEncounter, activeEncounter } = useCombat()
 const itemsStore = useItemsStore()
 const portalViewsStore = usePortalViewsStore()
@@ -303,19 +310,42 @@ async function handlePinToDmScreen() {
   }
 }
 
+// Navigate to the item's full detail page (used for canvas-style items)
+function openDetailPage() {
+  if (props.libraryId) {
+    router.push({
+      name: 'ItemDetail',
+      params: { libraryId: props.libraryId, itemId: props.item.id },
+    })
+  } else {
+    emit('view', props.item)
+  }
+}
+
 // Handle click - support selection mode
 function handleClick(event: MouseEvent) {
   if (props.selectionMode || event.ctrlKey || event.metaKey) {
     // In selection mode or with Ctrl/Cmd key, emit select event
     emit('select', props.item, event.ctrlKey, event.metaKey)
   } else if (!props.disableClick) {
-    // Normal click - open global item viewer dialog
-    if (props.libraryId) {
+    // Canvas-style items open their full page; everything else uses the quick-view modal
+    if (opensDetailPage.value) {
+      openDetailPage()
+    } else if (props.libraryId) {
       dialogsStore.openItemViewer(props.item, props.libraryId)
     } else {
       // Fallback to emitting view event if no libraryId
       emit('view', props.item)
     }
+  }
+}
+
+// Preview / open button in the hover actions
+function handlePreviewClick() {
+  if (opensDetailPage.value) {
+    openDetailPage()
+  } else {
+    dialogsStore.openItemViewer(props.item, props.libraryId!)
   }
 }
 
