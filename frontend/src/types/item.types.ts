@@ -102,7 +102,7 @@ export interface NoteData {
 
 // Mindmap data types (universal - not template-specific)
 
-export type MindmapNodeType = 'note' | 'reference'
+export type MindmapNodeType = 'note' | 'reference' | 'text' | 'group' | 'junction'
 
 export interface MindmapNode {
   id: string
@@ -125,7 +125,16 @@ export interface MindmapEdge {
   id: string
   source: string
   target: string
+  sourceHandle?: string | null
+  targetHandle?: string | null
+  type?: string
   label?: string
+  data?: {
+    label?: string
+    color?: string
+    style?: 'solid' | 'dashed' | 'animated'
+    [key: string]: any
+  }
   [key: string]: any
 }
 

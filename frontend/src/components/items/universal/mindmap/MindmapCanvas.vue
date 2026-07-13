@@ -1,11 +1,13 @@
 <template>
-  <div class="mindmap-canvas-wrapper">
+  <div ref="rootRef" class="mindmap-canvas-wrapper">
     <div ref="wrapperRef" class="flow-area">
     <VueFlow
       :id="flowId"
       :nodes="initialNodes"
       :edges="initialEdges"
       :node-types="nodeTypes"
+      :edge-types="edgeTypes"
+      :default-edge-options="{ type: 'mindmap' }"
       :min-zoom="0.2"
       :max-zoom="4"
       :default-viewport="{ zoom: 1, x: 0, y: 0 }"
@@ -16,6 +18,7 @@
       :zoom-on-double-click="false"
       class="mindmap-flow"
       @node-click="onNodeClick"
+      @edge-click="onEdgeClick"
       @pane-click="onPaneClick"
       @nodes-change="onNodesChange"
       @edges-change="onEdgesChange"
@@ -47,9 +50,9 @@
               </v-list>
             </v-menu>
 
-            <v-btn size="small" variant="tonal" prepend-icon="mdi-link-variant-plus" @click="openAddReference">
-              Reference
-            </v-btn>
+            <v-btn size="small" variant="tonal" icon="mdi-format-text" title="Add text" @click="addTextNode" />
+            <v-btn size="small" variant="tonal" icon="mdi-link-variant-plus" title="Add reference" @click="openAddReference" />
+            <v-btn size="small" variant="tonal" icon="mdi-shape-rectangle-plus" title="Add group" @click="addGroupNode" />
             <v-divider vertical class="mx-1" />
           </template>
 
@@ -63,6 +66,13 @@
         </div>
 
         <div class="toolbar-group">
+          <v-btn
+            size="small"
+            variant="text"
+            :icon="isFullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+            :title="isFullscreen ? 'Exit full screen' : 'Full screen'"
+            @click="toggleFullscreen"
+          />
           <v-btn v-if="!readonly" size="small" variant="text" prepend-icon="mdi-cog-outline" @click="$emit('edit', item)">
             Details
           </v-btn>
@@ -77,8 +87,8 @@
     </VueFlow>
     </div>
 
-    <!-- Node settings sidebar (pushes the canvas, does not overlay it) -->
-    <aside v-if="selectedNode" class="mindmap-sidebar" @mousedown.stop @wheel.stop>
+    <!-- Node/edge settings sidebar (pushes the canvas, does not overlay it) -->
+    <aside v-if="selectedNode || selectedEdge" class="mindmap-sidebar" @mousedown.stop @wheel.stop>
         <div class="sidebar-header">
           <v-icon :icon="sidebarIcon" :color="sidebarColor" size="18" class="mr-2" />
           <span class="sidebar-title">{{ sidebarTitle }}</span>
@@ -87,7 +97,7 @@
         </div>
 
         <!-- NOTE settings -->
-        <div v-if="selectedNode.type === 'note'" class="sidebar-body">
+        <div v-if="selectedNode?.type === 'note'" class="sidebar-body">
           <template v-if="!readonly">
             <div class="field-label">Title</div>
             <v-text-field
@@ -154,7 +164,7 @@
         </div>
 
         <!-- REFERENCE settings -->
-        <div v-else-if="selectedNode.type === 'reference'" class="sidebar-body">
+        <div v-else-if="selectedNode?.type === 'reference'" class="sidebar-body">
           <div class="ref-card">
             <v-avatar size="52" :color="refTypeInfo.color">
               <v-img v-if="refImageUrl" :src="refImageUrl" cover />
@@ -199,6 +209,129 @@
             Delete node
           </v-btn>
         </div>
+
+        <!-- TEXT settings -->
+        <div v-else-if="selectedNode?.type === 'text'" class="sidebar-body">
+          <template v-if="!readonly">
+            <div class="field-label">Text</div>
+            <tip-tap-editor
+              :key="selectedNode.id"
+              v-model="noteHtml"
+              compact
+              :library-id="libraryId ?? undefined"
+              :library-item-id="item.id"
+              min-height="260px"
+              placeholder="Write text…"
+              class="sidebar-editor"
+            />
+            <div class="field-label">Color</div>
+            <div class="swatch-row">
+              <button
+                v-for="c in swatches"
+                :key="c"
+                class="swatch"
+                :class="{ active: (selectedNodeColor || '').toLowerCase() === c.toLowerCase() }"
+                :style="{ background: c }"
+                @click="setColor(c)"
+              />
+            </div>
+            <v-btn block variant="tonal" color="error" prepend-icon="mdi-delete-outline" class="mt-4" @click="deleteSelected">
+              Delete node
+            </v-btn>
+          </template>
+          <template v-else>
+            <div v-if="noteHtml" class="rich-content" v-html="noteHtml" />
+            <div v-else class="ro-empty">Empty text</div>
+          </template>
+        </div>
+
+        <!-- GROUP settings -->
+        <div v-else-if="selectedNode?.type === 'group'" class="sidebar-body">
+          <template v-if="!readonly">
+            <div class="field-label">Label</div>
+            <v-text-field
+              v-model="groupLabel"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Group label…"
+            />
+            <div class="field-label">Color</div>
+            <div class="swatch-row">
+              <button
+                v-for="c in swatches"
+                :key="c"
+                class="swatch"
+                :class="{ active: (selectedNodeColor || '').toLowerCase() === c.toLowerCase() }"
+                :style="{ background: c }"
+                @click="setColor(c)"
+              />
+            </div>
+            <v-btn block variant="tonal" color="error" prepend-icon="mdi-delete-outline" class="mt-4" @click="deleteSelected">
+              Delete group
+            </v-btn>
+          </template>
+        </div>
+
+        <!-- JUNCTION settings -->
+        <div v-else-if="selectedNode?.type === 'junction'" class="sidebar-body">
+          <p class="sidebar-hint">
+            A connection point. Drag a link from any node onto it (or from it to a node) to join them here.
+          </p>
+          <v-btn v-if="!readonly" block variant="tonal" color="error" prepend-icon="mdi-delete-outline" @click="deleteSelected">
+            Delete connection point
+          </v-btn>
+        </div>
+
+        <!-- EDGE settings -->
+        <div v-else-if="selectedEdge" class="sidebar-body">
+          <template v-if="!readonly">
+            <div class="field-label">Label</div>
+            <v-text-field
+              v-model="edgeLabel"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Connection label…"
+            />
+
+            <div class="field-label">Style</div>
+            <div class="style-row">
+              <button
+                v-for="s in edgeStyleOptions"
+                :key="s.id"
+                class="style-btn"
+                :class="{ active: edgeStyle === s.id }"
+                @click="setEdgeStyle(s.id)"
+              >
+                <v-icon :icon="s.icon" size="16" />
+                <span>{{ s.label }}</span>
+              </button>
+            </div>
+
+            <div class="field-label">Color</div>
+            <div class="swatch-row">
+              <button
+                v-for="c in edgeSwatches"
+                :key="c"
+                class="swatch"
+                :class="{ active: edgeColor.toLowerCase() === c.toLowerCase() }"
+                :style="{ background: c }"
+                @click="setEdgeColor(c)"
+              />
+            </div>
+
+            <v-btn block variant="tonal" prepend-icon="mdi-source-branch" class="mt-3" @click="insertJunctionOnSelectedEdge">
+              Insert connection point
+            </v-btn>
+            <v-btn block variant="tonal" color="error" prepend-icon="mdi-delete-outline" class="mt-2" @click="deleteSelectedEdge">
+              Delete connection
+            </v-btn>
+          </template>
+          <template v-else>
+            <p class="ro-empty">Connection{{ selectedEdge.data?.label ? `: ${selectedEdge.data.label}` : '' }}</p>
+          </template>
+        </div>
       </aside>
 
     <library-item-selector
@@ -212,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, markRaw, provide, onMounted } from 'vue'
+import { ref, computed, markRaw, provide, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { VueFlow, useVueFlow, Panel, type Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -226,6 +359,10 @@ import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import LibraryItemSelector from '@/components/dmScreen/LibraryItemSelector.vue'
 import MindmapNoteNode from './MindmapNoteNode.vue'
 import MindmapReferenceNode from './MindmapReferenceNode.vue'
+import MindmapTextNode from './MindmapTextNode.vue'
+import MindmapGroupNode from './MindmapGroupNode.vue'
+import MindmapJunctionNode from './MindmapJunctionNode.vue'
+import MindmapEdge from './MindmapEdge.vue'
 import { MINDMAP_NOTE_CATEGORIES, DEFAULT_MINDMAP_CATEGORY, getMindmapCategory } from './mindmapCategories'
 import type { LibraryItem, MindmapData, MindmapNode, ItemType } from '@/types/item.types'
 
@@ -242,12 +379,25 @@ const readonly = computed(() => !['OWNER', 'EDITOR'].includes(libraryStore.curre
 
 const flowId = `mindmap-${props.item.id}`
 const wrapperRef = ref<HTMLElement | null>(null)
+const rootRef = ref<HTMLElement | null>(null)
 const categories = MINDMAP_NOTE_CATEGORIES
 const swatches = ['#8E44AD', '#3498DB', '#27AE60', '#F39C12', '#E67E22', '#E74C3C', '#16A085', '#95A5A6']
+const edgeSwatches = ['#8E9BB5', '#8E44AD', '#3498DB', '#27AE60', '#F39C12', '#E74C3C', '#FFFFFF', '#5D6D7E']
+const edgeStyleOptions = [
+  { id: 'solid', label: 'Solid', icon: 'mdi-minus' },
+  { id: 'dashed', label: 'Dashed', icon: 'mdi-dots-horizontal' },
+  { id: 'animated', label: 'Flow', icon: 'mdi-transfer-right' },
+]
 
 const nodeTypes: any = {
   note: markRaw(MindmapNoteNode),
   reference: markRaw(MindmapReferenceNode),
+  text: markRaw(MindmapTextNode),
+  group: markRaw(MindmapGroupNode),
+  junction: markRaw(MindmapJunctionNode),
+}
+const edgeTypes: any = {
+  mindmap: markRaw(MindmapEdge),
 }
 
 // Seed initial state from the item's data (once).
@@ -270,8 +420,9 @@ const initialEdges = ref(
     target: e.target,
     sourceHandle: (e as any).sourceHandle,
     targetHandle: (e as any).targetHandle,
-    label: e.label,
-    animated: true,
+    type: 'mindmap',
+    // Migrate legacy top-level label into edge data.
+    data: (e as any).data || (e.label ? { label: e.label } : {}),
   }))
 )
 
@@ -280,8 +431,11 @@ const {
   addEdges,
   addNodes,
   removeNodes,
+  removeEdges,
   updateNodeData,
+  updateEdgeData,
   findNode,
+  findEdge,
   screenToFlowCoordinate,
   fitView,
   getNodes,
@@ -292,9 +446,13 @@ const isEmpty = ref((seed.nodes || []).length === 0)
 const showSelector = ref(false)
 const saveState = ref<'' | 'saving' | 'saved'>('')
 const selectedNodeId = ref<string | null>(null)
+const selectedEdgeId = ref<string | null>(null)
 const replaceMode = ref(false)
+const isFullscreen = ref(false)
 
 const selectedNode = computed(() => (selectedNodeId.value ? findNode(selectedNodeId.value) || null : null))
+const selectedEdge = computed(() => (selectedEdgeId.value ? findEdge(selectedEdgeId.value) || null : null))
+const selectedNodeColor = computed(() => selectedNode.value?.data?.color || '')
 
 function genId(prefix: string) {
   const rand =
@@ -336,7 +494,8 @@ function serialize(): MindmapData {
     target: e.target,
     sourceHandle: e.sourceHandle,
     targetHandle: e.targetHandle,
-    label: e.label,
+    type: 'mindmap',
+    data: { ...(e.data || {}) },
   }))
   return { nodes, edges, version: '1' }
 }
@@ -363,10 +522,11 @@ async function persist() {
 provide('mindmapReadonly', readonly.value)
 provide('mindmapLibraryId', props.item.libraryId)
 provide('mindmapRequestSave', requestSave)
+provide('mindmapInsertJunction', (edgeId: string, x?: number, y?: number) => insertJunction(edgeId, x, y))
 
 // ---- Vue Flow events ----
 registerConnect((connection: Connection) => {
-  addEdges([{ ...connection, id: genId('edge'), animated: true }])
+  addEdges([{ ...connection, id: genId('edge'), type: 'mindmap', data: {} }])
   requestSave()
 })
 
@@ -384,15 +544,23 @@ function onEdgesChange(changes: any[]) {
 }
 
 function onNodeClick({ node }: any) {
+  selectedEdgeId.value = null
   selectedNodeId.value = node.id
+}
+
+function onEdgeClick({ edge }: any) {
+  selectedNodeId.value = null
+  selectedEdgeId.value = edge.id
 }
 
 function onPaneClick() {
   selectedNodeId.value = null
+  selectedEdgeId.value = null
 }
 
 function clearSelection() {
   selectedNodeId.value = null
+  selectedEdgeId.value = null
 }
 
 // ---- Note node editing (via sidebar) ----
@@ -452,17 +620,104 @@ function startReplaceReference() {
   showSelector.value = true
 }
 
+// ---- Group node ----
+const groupLabel = computed({
+  get: () => selectedNode.value?.data?.label || '',
+  set: (v: string) => patchSelected({ label: v }),
+})
+
+// ---- Edge editing ----
+function patchEdge(patch: Record<string, any>) {
+  if (!selectedEdgeId.value) return
+  const current = selectedEdge.value?.data || {}
+  updateEdgeData(selectedEdgeId.value, { ...current, ...patch })
+  requestSave()
+}
+const edgeLabel = computed({
+  get: () => selectedEdge.value?.data?.label || '',
+  set: (v: string) => patchEdge({ label: v }),
+})
+const edgeStyle = computed(() => selectedEdge.value?.data?.style || 'solid')
+const edgeColor = computed(() => selectedEdge.value?.data?.color || '#8E9BB5')
+function setEdgeStyle(id: string) {
+  patchEdge({ style: id })
+}
+function setEdgeColor(c: string) {
+  patchEdge({ color: c })
+}
+function deleteSelectedEdge() {
+  if (!selectedEdgeId.value) return
+  removeEdges([selectedEdgeId.value])
+  selectedEdgeId.value = null
+  requestSave()
+}
+
+// Split an edge with a junction node so a third node can connect "in the middle".
+function insertJunction(edgeId: string, x?: number, y?: number) {
+  if (readonly.value) return
+  const edge = findEdge(edgeId)
+  if (!edge) return
+
+  let px = x
+  let py = y
+  if (px == null || py == null) {
+    const s = findNode(edge.source)
+    const t = findNode(edge.target)
+    const center = (n: any) => ({
+      x: n.position.x + (n.dimensions?.width || 120) / 2,
+      y: n.position.y + (n.dimensions?.height || 60) / 2,
+    })
+    if (s && t) {
+      const a = center(s)
+      const b = center(t)
+      px = (a.x + b.x) / 2
+      py = (a.y + b.y) / 2
+    } else {
+      px = 0
+      py = 0
+    }
+  }
+
+  const jid = genId('junction')
+  const data = { ...(edge.data || {}) }
+  addNodes([{ id: jid, type: 'junction', position: { x: px - 8, y: py - 8 }, data: {} }])
+  addEdges([
+    { id: genId('edge'), source: edge.source, target: jid, sourceHandle: edge.sourceHandle, type: 'mindmap', data: { ...data } },
+    { id: genId('edge'), source: jid, target: edge.target, targetHandle: edge.targetHandle, type: 'mindmap', data: { ...data } },
+  ])
+  removeEdges([edgeId])
+  selectedEdgeId.value = null
+  requestSave()
+}
+function insertJunctionOnSelectedEdge() {
+  if (selectedEdgeId.value) insertJunction(selectedEdgeId.value)
+}
+
 // ---- Sidebar meta ----
 const sidebarIcon = computed(() => {
-  if (selectedNode.value?.type === 'reference') return refTypeInfo.value.icon
+  if (selectedEdge.value) return 'mdi-vector-line'
+  const t = selectedNode.value?.type
+  if (t === 'reference') return refTypeInfo.value.icon
+  if (t === 'text') return 'mdi-format-text'
+  if (t === 'group') return 'mdi-group'
+  if (t === 'junction') return 'mdi-source-branch'
   return getMindmapCategory(selectedNode.value?.data?.category).icon
 })
 const sidebarColor = computed(() => {
-  if (selectedNode.value?.type === 'reference') return refTypeInfo.value.color
+  if (selectedEdge.value) return edgeColor.value
+  const t = selectedNode.value?.type
+  if (t === 'reference') return refTypeInfo.value.color
+  if (t === 'text' || t === 'group') return selectedNodeColor.value || '#8E44AD'
+  if (t === 'junction') return '#8E44AD'
   return effectiveColor.value
 })
 const sidebarTitle = computed(() => {
-  if (selectedNode.value?.type === 'reference') return 'Reference'
+  if (selectedEdge.value) return 'Connection'
+  const t = selectedNode.value?.type
+  if (t === 'reference') return 'Reference'
+  if (t === 'text') return 'Text'
+  if (t === 'group') return 'Group'
+  if (t === 'junction') return 'Connection point'
   return `${getMindmapCategory(selectedNode.value?.data?.category).label} note`
 })
 
@@ -480,6 +735,41 @@ function addNoteNode(categoryId: string = DEFAULT_MINDMAP_CATEGORY) {
       style: { width: '220px', height: '150px' },
     },
   ])
+  selectedEdgeId.value = null
+  selectedNodeId.value = id
+  requestSave()
+}
+
+function addTextNode() {
+  if (readonly.value) return
+  const id = genId('text')
+  addNodes([
+    {
+      id,
+      type: 'text',
+      position: centerFlowPos(),
+      data: { html: '', color: '#ffffff' },
+      style: { width: '160px', height: '48px' },
+    },
+  ])
+  selectedEdgeId.value = null
+  selectedNodeId.value = id
+  requestSave()
+}
+
+function addGroupNode() {
+  if (readonly.value) return
+  const id = genId('group')
+  addNodes([
+    {
+      id,
+      type: 'group',
+      position: centerFlowPos(),
+      data: { label: 'Group', color: '#5D6D7E' },
+      style: { width: '280px', height: '200px' },
+    },
+  ])
+  selectedEdgeId.value = null
   selectedNodeId.value = id
   requestSave()
 }
@@ -526,7 +816,24 @@ function fitAll() {
   fitView({ padding: 0.2 })
 }
 
+// ---- Fullscreen ----
+function onFullscreenChange() {
+  isFullscreen.value = document.fullscreenElement === rootRef.value
+}
+async function toggleFullscreen() {
+  try {
+    if (!document.fullscreenElement) {
+      await rootRef.value?.requestFullscreen()
+    } else {
+      await document.exitFullscreen()
+    }
+  } catch (e) {
+    console.warn('[Mindmap] fullscreen toggle failed', e)
+  }
+}
+
 onMounted(async () => {
+  document.addEventListener('fullscreenchange', onFullscreenChange)
   // Ensure the library's items are loaded so reference nodes resolve names/images.
   if (!itemsStore.isAlreadyLoaded(props.item.libraryId)) {
     try {
@@ -535,6 +842,10 @@ onMounted(async () => {
       console.warn('[Mindmap] could not preload items for references', e)
     }
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', onFullscreenChange)
 })
 </script>
 
@@ -550,6 +861,13 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: radial-gradient(circle at 30% 20%, rgba(142, 68, 173, 0.08), transparent 60%),
     rgb(16, 16, 22);
+}
+
+.mindmap-canvas-wrapper:fullscreen {
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 0;
+  border: none;
 }
 
 .flow-area {
@@ -702,6 +1020,42 @@ onMounted(async () => {
 }
 .swatch.reset {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.style-row {
+  display: flex;
+  gap: 6px;
+}
+.style-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.62rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.style-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.style-btn.active {
+  border-color: #8e44ad;
+  background: rgba(142, 68, 173, 0.22);
+  color: #fff;
+}
+
+.sidebar-hint {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  margin-bottom: 14px;
 }
 
 .sidebar-editor :deep(.editor-toolbar) {
