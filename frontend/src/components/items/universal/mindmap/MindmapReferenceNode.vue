@@ -22,12 +22,12 @@
       class="mm-delete nodrag"
       title="Delete"
       @mousedown.stop
-      @click="onDelete"
+      @click.stop="onDelete"
     >
       <v-icon size="14">mdi-close</v-icon>
     </button>
 
-    <div class="ref-body nodrag" @mousedown.stop @click="openItem">
+    <div class="ref-body">
       <v-avatar size="40" class="ref-avatar" :color="typeInfo.color">
         <v-img v-if="imageUrl" :src="imageUrl" cover />
         <v-icon v-else :icon="typeInfo.icon" color="white" size="20" />
@@ -39,7 +39,15 @@
           {{ typeInfo.label }}
         </div>
       </div>
-      <v-icon v-if="target" class="ref-open" size="16">mdi-open-in-new</v-icon>
+      <button
+        v-if="target"
+        class="ref-open nodrag"
+        title="Open item"
+        @mousedown.stop
+        @click.stop="openItem"
+      >
+        <v-icon size="16">mdi-open-in-new</v-icon>
+      </button>
     </div>
   </div>
 </template>
@@ -124,6 +132,13 @@ function onDelete() {
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mindmap-ref-node:active {
+  cursor: grabbing;
 }
 
 .ref-body {
@@ -131,7 +146,6 @@ function onDelete() {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  cursor: pointer;
 }
 
 .ref-avatar {
@@ -163,8 +177,21 @@ function onDelete() {
 }
 
 .ref-open {
-  color: rgba(255, 255, 255, 0.4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.ref-open:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .mm-delete {

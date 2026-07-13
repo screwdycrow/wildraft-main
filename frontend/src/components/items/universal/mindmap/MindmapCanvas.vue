@@ -14,6 +14,8 @@
       :elements-selectable="true"
       :zoom-on-double-click="false"
       class="mindmap-flow"
+      @node-click="onNodeClick"
+      @pane-click="onPaneClick"
       @nodes-change="onNodesChange"
       @edges-change="onEdgesChange"
     >
@@ -21,17 +23,35 @@
       <Controls />
       <MiniMap pannable zoomable />
 
-      <Panel position="top-left" class="mindmap-toolbar">
+      <Panel position="top-left" class="mindmap-toolbar" :class="{ shifted: !!selectedNode }">
         <div class="toolbar-group">
           <template v-if="!readonly">
-            <v-btn size="small" variant="flat" color="deep-purple" prepend-icon="mdi-card-plus-outline" @click="addNoteNode">
-              Note
-            </v-btn>
-            <v-btn size="small" variant="tonal" prepend-icon="mdi-link-variant-plus" @click="showSelector = true">
+            <v-menu location="bottom start">
+              <template #activator="{ props: menuProps }">
+                <v-btn size="small" variant="flat" color="deep-purple" prepend-icon="mdi-plus" append-icon="mdi-menu-down" v-bind="menuProps">
+                  Note
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="cat in categories"
+                  :key="cat.id"
+                  :title="cat.label"
+                  @click="addNoteNode(cat.id)"
+                >
+                  <template #prepend>
+                    <v-icon :icon="cat.icon" :color="cat.color" size="18" class="mr-1" />
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+
+            <v-btn size="small" variant="tonal" prepend-icon="mdi-link-variant-plus" @click="openAddReference">
               Reference
             </v-btn>
             <v-divider vertical class="mx-1" />
           </template>
+
           <v-btn size="small" variant="text" icon="mdi-fit-to-page-outline" title="Fit view" @click="fitAll" />
           <span v-if="saveState" class="save-state">
             <v-icon size="12" class="mr-1" :class="{ 'mdi-spin': saveState === 'saving' }">
@@ -42,7 +62,7 @@
         </div>
 
         <div class="toolbar-group">
-          <v-btn v-if="!readonly" size="small" variant="text" prepend-icon="mdi-pencil" @click="$emit('edit', item)">
+          <v-btn v-if="!readonly" size="small" variant="text" prepend-icon="mdi-cog-outline" @click="$emit('edit', item)">
             Details
           </v-btn>
           <v-btn v-if="!readonly" size="small" variant="text" color="error" icon="mdi-delete-outline" title="Delete mindmap" @click="$emit('delete', item)" />
@@ -55,40 +75,174 @@
       </Panel>
     </VueFlow>
 
+    <!-- Node settings sidebar -->
+    <transition name="mm-sidebar">
+      <aside v-if="selectedNode" class="mindmap-sidebar" @mousedown.stop @wheel.stop>
+        <div class="sidebar-header">
+          <v-icon :icon="sidebarIcon" :color="sidebarColor" size="18" class="mr-2" />
+          <span class="sidebar-title">{{ sidebarTitle }}</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" size="x-small" variant="text" @click="clearSelection" />
+        </div>
+
+        <!-- NOTE settings -->
+        <div v-if="selectedNode.type === 'note'" class="sidebar-body">
+          <template v-if="!readonly">
+            <div class="field-label">Type</div>
+            <div class="category-grid">
+              <button
+                v-for="cat in categories"
+                :key="cat.id"
+                class="category-btn"
+                :class="{ active: currentCategory === cat.id }"
+                :style="currentCategory === cat.id ? { borderColor: cat.color, background: cat.color + '26' } : {}"
+                @click="setCategory(cat.id)"
+              >
+                <v-icon :icon="cat.icon" :color="cat.color" size="16" />
+                <span>{{ cat.label }}</span>
+              </button>
+            </div>
+
+            <div class="field-label">Title</div>
+            <v-text-field
+              v-model="noteTitle"
+              density="compact"
+              variant="outlined"
+              hide-details
+              placeholder="Node title…"
+            />
+
+            <div class="field-label">Content</div>
+            <tip-tap-editor
+              :key="selectedNode.id"
+              v-model="noteHtml"
+              :library-id="libraryId ?? undefined"
+              :library-item-id="item.id"
+              min-height="200px"
+              placeholder="Write your idea…"
+              class="sidebar-editor"
+            />
+
+            <div class="field-label">Color</div>
+            <div class="swatch-row">
+              <button
+                v-for="c in swatches"
+                :key="c"
+                class="swatch"
+                :class="{ active: effectiveColor.toLowerCase() === c.toLowerCase() }"
+                :style="{ background: c }"
+                @click="setColor(c)"
+              />
+              <button class="swatch reset" title="Use type color" @click="resetColor">
+                <v-icon size="14" color="white">mdi-restore</v-icon>
+              </button>
+            </div>
+
+            <v-btn block variant="tonal" color="error" prepend-icon="mdi-delete-outline" class="mt-4" @click="deleteSelected">
+              Delete node
+            </v-btn>
+          </template>
+
+          <!-- Read-only preview -->
+          <template v-else>
+            <div v-if="noteTitle" class="ro-title">{{ noteTitle }}</div>
+            <div v-if="noteHtml" class="rich-content" v-html="noteHtml" />
+            <div v-else class="ro-empty">Empty note</div>
+          </template>
+        </div>
+
+        <!-- REFERENCE settings -->
+        <div v-else-if="selectedNode.type === 'reference'" class="sidebar-body">
+          <div class="ref-card">
+            <v-avatar size="52" :color="refTypeInfo.color">
+              <v-img v-if="refImageUrl" :src="refImageUrl" cover />
+              <v-icon v-else :icon="refTypeInfo.icon" color="white" size="26" />
+            </v-avatar>
+            <div class="ref-card-text">
+              <div class="ref-card-name">{{ refTarget?.name || 'Missing item' }}</div>
+              <div class="ref-card-type" :style="{ color: refTypeInfo.color }">{{ refTypeInfo.label }}</div>
+            </div>
+          </div>
+
+          <v-btn
+            v-if="refTarget"
+            block
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-open-in-new"
+            class="mt-3"
+            @click="openSelectedRef"
+          >
+            Open item
+          </v-btn>
+          <v-btn
+            v-if="!readonly"
+            block
+            variant="tonal"
+            prepend-icon="mdi-swap-horizontal"
+            class="mt-2"
+            @click="startReplaceReference"
+          >
+            Replace item
+          </v-btn>
+          <v-btn
+            v-if="!readonly"
+            block
+            variant="tonal"
+            color="error"
+            prepend-icon="mdi-delete-outline"
+            class="mt-2"
+            @click="deleteSelected"
+          >
+            Delete node
+          </v-btn>
+        </div>
+      </aside>
+    </transition>
+
     <library-item-selector
       v-if="libraryId != null"
       v-model="showSelector"
       :library-id="libraryId"
       confirm-label="Add to Mindmap"
-      @select="addReferenceNode"
+      @select="onSelectItem"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, markRaw, provide, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { VueFlow, useVueFlow, Panel, type Connection } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { useItemsStore } from '@/stores/items'
 import { useLibraryStore } from '@/stores/library'
+import { useItemComponents } from '@/composables/useItemComponents'
+import { getFileDownloadUrl } from '@/config/api'
+import TipTapEditor from '@/components/common/TipTapEditor.vue'
 import LibraryItemSelector from '@/components/dmScreen/LibraryItemSelector.vue'
 import MindmapNoteNode from './MindmapNoteNode.vue'
 import MindmapReferenceNode from './MindmapReferenceNode.vue'
-import type { LibraryItem, MindmapData, MindmapNode } from '@/types/item.types'
+import { MINDMAP_NOTE_CATEGORIES, DEFAULT_MINDMAP_CATEGORY, getMindmapCategory } from './mindmapCategories'
+import type { LibraryItem, MindmapData, MindmapNode, ItemType } from '@/types/item.types'
 
 const props = defineProps<{ item: LibraryItem }>()
 defineEmits<{ edit: [item: LibraryItem]; delete: [item: LibraryItem] }>()
 
+const router = useRouter()
 const itemsStore = useItemsStore()
 const libraryStore = useLibraryStore()
+const { getItemTypeInfo } = useItemComponents()
 
 const libraryId = computed(() => props.item.libraryId)
 const readonly = computed(() => !['OWNER', 'EDITOR'].includes(libraryStore.currentLibrary?.role || ''))
 
 const flowId = `mindmap-${props.item.id}`
 const wrapperRef = ref<HTMLElement | null>(null)
+const categories = MINDMAP_NOTE_CATEGORIES
+const swatches = ['#8E44AD', '#3498DB', '#27AE60', '#F39C12', '#E67E22', '#E74C3C', '#16A085', '#95A5A6']
 
 const nodeTypes: any = {
   note: markRaw(MindmapNoteNode),
@@ -124,6 +278,9 @@ const {
   onConnect: registerConnect,
   addEdges,
   addNodes,
+  removeNodes,
+  updateNodeData,
+  findNode,
   screenToFlowCoordinate,
   fitView,
   getNodes,
@@ -133,6 +290,10 @@ const {
 const isEmpty = ref((seed.nodes || []).length === 0)
 const showSelector = ref(false)
 const saveState = ref<'' | 'saving' | 'saved'>('')
+const selectedNodeId = ref<string | null>(null)
+const replaceMode = ref(false)
+
+const selectedNode = computed(() => (selectedNodeId.value ? findNode(selectedNodeId.value) || null : null))
 
 function genId(prefix: string) {
   const rand =
@@ -209,7 +370,6 @@ registerConnect((connection: Connection) => {
 })
 
 function onNodesChange(changes: any[]) {
-  // Persist on drag-stop, removal, resize, add (ignore select/hover churn and mid-drag events)
   const meaningful = changes.some((c) => {
     if (c.type === 'position') return c.dragging === false
     return ['remove', 'dimensions', 'add'].includes(c.type)
@@ -222,30 +382,140 @@ function onEdgesChange(changes: any[]) {
   if (meaningful) requestSave()
 }
 
-function addNoteNode() {
+function onNodeClick({ node }: any) {
+  selectedNodeId.value = node.id
+}
+
+function onPaneClick() {
+  selectedNodeId.value = null
+}
+
+function clearSelection() {
+  selectedNodeId.value = null
+}
+
+// ---- Note node editing (via sidebar) ----
+function patchSelected(patch: Record<string, any>) {
+  if (!selectedNodeId.value) return
+  updateNodeData(selectedNodeId.value, patch)
+  requestSave()
+}
+
+const currentCategory = computed(() => selectedNode.value?.data?.category || DEFAULT_MINDMAP_CATEGORY)
+const effectiveColor = computed(
+  () => selectedNode.value?.data?.color || getMindmapCategory(selectedNode.value?.data?.category).color
+)
+
+const noteTitle = computed({
+  get: () => selectedNode.value?.data?.title || '',
+  set: (v: string) => patchSelected({ title: v }),
+})
+const noteHtml = computed({
+  get: () => selectedNode.value?.data?.html || '',
+  set: (v: string) => patchSelected({ html: v }),
+})
+
+function setCategory(id: string) {
+  patchSelected({ category: id })
+}
+function setColor(c: string) {
+  patchSelected({ color: c })
+}
+function resetColor() {
+  patchSelected({ color: undefined })
+}
+
+// ---- Reference node ----
+const refTarget = computed(() =>
+  selectedNode.value?.type === 'reference'
+    ? itemsStore.items.find((i) => i.id === selectedNode.value?.data?.libraryItemId) || null
+    : null
+)
+const refTypeInfo = computed(() =>
+  refTarget.value
+    ? getItemTypeInfo(refTarget.value.type as ItemType)
+    : { icon: 'mdi-help-circle-outline', color: '#7F8C8D', label: 'Unknown' }
+)
+const refImageUrl = computed(() =>
+  refTarget.value?.featuredImage?.downloadUrl ? getFileDownloadUrl(refTarget.value.featuredImage) : null
+)
+
+function openSelectedRef() {
+  if (!refTarget.value) return
+  router.push({ name: 'ItemDetail', params: { libraryId: props.item.libraryId, itemId: refTarget.value.id } })
+}
+function startReplaceReference() {
+  replaceMode.value = true
+  showSelector.value = true
+}
+
+// ---- Sidebar meta ----
+const sidebarIcon = computed(() => {
+  if (selectedNode.value?.type === 'reference') return refTypeInfo.value.icon
+  return getMindmapCategory(selectedNode.value?.data?.category).icon
+})
+const sidebarColor = computed(() => {
+  if (selectedNode.value?.type === 'reference') return refTypeInfo.value.color
+  return effectiveColor.value
+})
+const sidebarTitle = computed(() => {
+  if (selectedNode.value?.type === 'reference') return 'Reference'
+  return `${getMindmapCategory(selectedNode.value?.data?.category).label} note`
+})
+
+// ---- Toolbar actions ----
+function addNoteNode(categoryId: string = DEFAULT_MINDMAP_CATEGORY) {
   if (readonly.value) return
+  const cat = getMindmapCategory(categoryId)
+  const id = genId('note')
   addNodes([
     {
-      id: genId('note'),
+      id,
       type: 'note',
       position: centerFlowPos(),
-      data: { title: 'New note', html: '', color: '#8E44AD' },
-      style: { width: '220px', height: '140px' },
+      data: { title: `New ${cat.label.toLowerCase()}`, html: '', category: cat.id },
+      style: { width: '220px', height: '150px' },
     },
   ])
+  selectedNodeId.value = id
   requestSave()
+}
+
+function openAddReference() {
+  replaceMode.value = false
+  showSelector.value = true
+}
+
+function onSelectItem(target: LibraryItem) {
+  if (!target) return
+  if (replaceMode.value && selectedNodeId.value) {
+    updateNodeData(selectedNodeId.value, { libraryItemId: target.id })
+    replaceMode.value = false
+    requestSave()
+    return
+  }
+  addReferenceNode(target)
 }
 
 function addReferenceNode(target: LibraryItem) {
   if (readonly.value || !target) return
+  const id = genId('ref')
   addNodes([
     {
-      id: genId('ref'),
+      id,
       type: 'reference',
       position: centerFlowPos(),
       data: { libraryItemId: target.id },
     },
   ])
+  selectedNodeId.value = id
+  requestSave()
+}
+
+function deleteSelected() {
+  if (!selectedNodeId.value) return
+  removeNodes([selectedNodeId.value])
+  selectedNodeId.value = null
   requestSave()
 }
 
@@ -292,6 +562,11 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 6px 10px;
+  transition: transform 0.22s ease;
+}
+
+.mindmap-toolbar.shifted {
+  transform: translateX(320px);
 }
 
 .toolbar-group {
@@ -318,6 +593,164 @@ onMounted(async () => {
   border-radius: 999px;
   padding: 6px 16px;
   pointer-events: none;
+}
+
+/* ---- Sidebar ---- */
+.mindmap-sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 100%;
+  background: rgba(18, 18, 26, 0.97);
+  backdrop-filter: blur(14px);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 8px 0 26px rgba(0, 0, 0, 0.35);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+
+.field-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 14px 0 6px;
+}
+.field-label:first-child {
+  margin-top: 0;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.category-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.62rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.category-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.category-btn.active {
+  color: #fff;
+}
+
+.swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.swatch:hover {
+  transform: scale(1.12);
+}
+.swatch.active {
+  border-color: #fff;
+}
+.swatch.reset {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-editor :deep(.editor-toolbar) {
+  flex-wrap: wrap;
+}
+
+.ref-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.ref-card-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #fff;
+}
+.ref-card-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+
+.ro-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.ro-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+.rich-content {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+}
+.rich-content :deep(img) { max-width: 100%; border-radius: 6px; }
+
+.mm-sidebar-enter-active,
+.mm-sidebar-leave-active {
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+.mm-sidebar-enter-from,
+.mm-sidebar-leave-to {
+  transform: translateX(-100%);
+  opacity: 0.4;
 }
 
 :deep(.mdi-spin) {

@@ -6,9 +6,9 @@
   >
     <NodeResizer
       v-if="!readonly"
-      :min-width="160"
-      :min-height="90"
-      color="rgba(142, 68, 173, 0.9)"
+      :min-width="150"
+      :min-height="80"
+      :color="accent"
       :is-visible="selected"
     />
 
@@ -30,90 +30,42 @@
       />
     </template>
 
-    <!-- Header -->
-    <div class="note-header nodrag" :style="headerStyle">
-      <input
-        v-if="isEditing"
-        v-model="localTitle"
-        class="note-title-input"
-        placeholder="Title…"
+    <!-- Category bar -->
+    <div class="note-category-bar" :style="{ background: accent }">
+      <v-icon :icon="category.icon" size="12" color="white" class="mr-1" />
+      <span class="category-label">{{ category.label }}</span>
+      <span class="spacer" />
+      <button
+        v-if="!readonly"
+        class="mm-del nodrag"
+        title="Delete"
         @mousedown.stop
-      />
-      <span v-else class="note-title" @dblclick="startEditing">
-        {{ data.title || 'Untitled' }}
-      </span>
-
-      <div class="note-header-actions">
-        <v-menu v-if="!readonly" location="bottom end">
-          <template #activator="{ props: menuProps }">
-            <button class="mm-icon-btn" v-bind="menuProps" @mousedown.stop title="Color">
-              <span class="color-dot" :style="{ background: data.color || defaultColor }" />
-            </button>
-          </template>
-          <div class="color-swatches">
-            <button
-              v-for="c in swatches"
-              :key="c"
-              class="swatch"
-              :style="{ background: c }"
-              @click="setColor(c)"
-            />
-          </div>
-        </v-menu>
-        <button
-          v-if="!readonly && !isEditing"
-          class="mm-icon-btn nodrag"
-          title="Edit"
-          @mousedown.stop
-          @click="startEditing"
-        >
-          <v-icon size="14">mdi-pencil</v-icon>
-        </button>
-        <button
-          v-if="!readonly"
-          class="mm-icon-btn nodrag"
-          title="Delete"
-          @mousedown.stop
-          @click="onDelete"
-        >
-          <v-icon size="14">mdi-delete-outline</v-icon>
-        </button>
-      </div>
+        @click.stop="onDelete"
+      >
+        <v-icon size="13">mdi-close</v-icon>
+      </button>
     </div>
 
     <!-- Body -->
-    <div class="note-body nodrag nowheel" @wheel.stop @mousedown.stop>
-      <div v-if="!isEditing" class="note-content" @dblclick="startEditing">
-        <div v-if="data.html" class="rich-content" v-html="data.html" />
-        <span v-else class="placeholder">Double-click to write…</span>
-      </div>
-
-      <div v-else class="note-editor-wrap">
-        <tip-tap-editor
-          v-model="localHtml"
-          placeholder="Write your idea…"
-          min-height="120px"
-          :library-id="libraryId"
-        />
-        <div class="editor-actions">
-          <v-btn size="x-small" variant="text" @mousedown.stop @click="cancelEditing">Cancel</v-btn>
-          <v-btn size="x-small" color="primary" variant="flat" @mousedown.stop @click="finishEditing">Done</v-btn>
-        </div>
-      </div>
+    <div class="note-body">
+      <div v-if="data.title" class="note-title">{{ data.title }}</div>
+      <div v-if="data.html" class="rich-content" v-html="data.html" />
+      <div v-else class="placeholder">{{ readonly ? 'Empty note' : 'Click to edit…' }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { computed, inject } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { NodeResizer } from '@vue-flow/node-resizer'
-import TipTapEditor from '@/components/common/TipTapEditor.vue'
+import { getMindmapCategory } from './mindmapCategories'
 
 interface NoteNodeData {
   title?: string
   html?: string
   color?: string
+  category?: string
   [key: string]: any
 }
 
@@ -124,13 +76,12 @@ const props = defineProps<{
 }>()
 
 const readonly = inject<boolean>('mindmapReadonly', false)
-const libraryId = inject<number | null>('mindmapLibraryId', null)
 const requestSave = inject<() => void>('mindmapRequestSave', () => {})
 
-const { updateNodeData, removeNodes } = useVueFlow()
+const { removeNodes } = useVueFlow()
 
-const defaultColor = '#8E44AD'
-const swatches = ['#8E44AD', '#3498DB', '#27AE60', '#E67E22', '#E74C3C', '#F1C40F', '#1ABC9C', '#95A5A6']
+const category = computed(() => getMindmapCategory(props.data.category))
+const accent = computed(() => props.data.color || category.value.color)
 
 const handlePositions = [
   { key: 'top', position: Position.Top },
@@ -139,42 +90,10 @@ const handlePositions = [
   { key: 'left', position: Position.Left },
 ]
 
-const isEditing = ref(false)
-const localTitle = ref('')
-const localHtml = ref('')
-
-const accent = computed(() => props.data.color || defaultColor)
-
 const nodeStyle = computed(() => ({
   '--mm-accent': accent.value,
   borderColor: props.selected ? accent.value : 'rgba(255,255,255,0.12)',
 }))
-
-const headerStyle = computed(() => ({
-  background: `linear-gradient(135deg, ${accent.value}, ${accent.value}22)`,
-}))
-
-function startEditing() {
-  if (readonly) return
-  localTitle.value = props.data.title || ''
-  localHtml.value = props.data.html || ''
-  isEditing.value = true
-}
-
-function finishEditing() {
-  updateNodeData(props.id, { title: localTitle.value, html: localHtml.value })
-  isEditing.value = false
-  requestSave()
-}
-
-function cancelEditing() {
-  isEditing.value = false
-}
-
-function setColor(color: string) {
-  updateNodeData(props.id, { color })
-  requestSave()
-}
 
 function onDelete() {
   removeNodes([props.id])
@@ -186,110 +105,75 @@ function onDelete() {
 .mindmap-note-node {
   width: 100%;
   height: 100%;
-  min-width: 160px;
-  min-height: 90px;
+  min-width: 150px;
+  min-height: 80px;
   display: flex;
   flex-direction: column;
-  background: rgba(24, 24, 32, 0.92);
+  background: rgba(24, 24, 32, 0.94);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mindmap-note-node:active {
+  cursor: grabbing;
 }
 
 .mindmap-note-node.selected {
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--mm-accent), 0 8px 26px rgba(0, 0, 0, 0.5);
 }
 
-.note-header {
+.note-category-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  min-height: 28px;
+  padding: 3px 8px;
+  min-height: 22px;
   flex-shrink: 0;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.note-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #fff;
-  cursor: text;
-  flex: 1;
+.category-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.note-title-input {
+.spacer {
   flex: 1;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  outline: none;
 }
 
-.note-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.mindmap-note-node:hover .note-header-actions,
-.mindmap-note-node.selected .note-header-actions {
-  opacity: 1;
-}
-
-.mm-icon-btn {
+.mm-del {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.85);
+  color: #fff;
   background: transparent;
   cursor: pointer;
   border: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
 }
 
-.mm-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+.mindmap-note-node:hover .mm-del,
+.mindmap-note-node.selected .mm-del {
+  opacity: 0.85;
 }
 
-.color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.color-swatches {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 8px;
-  background: rgb(30, 30, 40);
-  border-radius: 8px;
-}
-
-.swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-}
-
-.swatch:hover {
-  transform: scale(1.12);
+.mm-del:hover {
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 1;
 }
 
 .note-body {
@@ -300,37 +184,34 @@ function onDelete() {
   scrollbar-width: thin;
 }
 
-.note-content {
-  font-size: 0.78rem;
+.note-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.rich-content {
+  font-size: 0.76rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
-  cursor: text;
+  color: rgba(255, 255, 255, 0.88);
   word-break: break-word;
 }
 
 .placeholder {
   color: rgba(255, 255, 255, 0.3);
   font-style: italic;
+  font-size: 0.76rem;
 }
 
 .rich-content :deep(p) { margin: 0 0 0.4em; }
-.rich-content :deep(h1) { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.3em; }
-.rich-content :deep(h2) { font-size: 1rem; font-weight: 700; margin: 0 0 0.3em; }
-.rich-content :deep(h3) { font-size: 0.9rem; font-weight: 600; margin: 0 0 0.2em; }
+.rich-content :deep(h1) { font-size: 1.05rem; font-weight: 700; margin: 0 0 0.3em; }
+.rich-content :deep(h2) { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.3em; }
+.rich-content :deep(h3) { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.2em; }
 .rich-content :deep(ul), .rich-content :deep(ol) { padding-left: 1.1em; margin: 0.2em 0; }
 .rich-content :deep(a) { color: #7abaff; }
-
-.note-editor-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
+.rich-content :deep(img) { max-width: 100%; border-radius: 4px; }
 
 .mm-handle {
   width: 9px;
