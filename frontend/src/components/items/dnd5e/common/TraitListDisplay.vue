@@ -186,7 +186,7 @@ function closeDialog() {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   opacity: 0.8;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .empty-state {
@@ -203,7 +203,7 @@ function closeDialog() {
 }
 
 .trait-item {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -211,11 +211,11 @@ function closeDialog() {
 }
 
 .trait-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .trait-item.expanded {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .trait-header {
@@ -261,7 +261,7 @@ function closeDialog() {
 .trait-details {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .trait-description {
@@ -283,6 +283,6 @@ function closeDialog() {
   gap: 8px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.06);
 }
 </style>

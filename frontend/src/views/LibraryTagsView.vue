@@ -221,7 +221,7 @@
                     class="glass-card add-tag-card"
                     elevation="0"
                     hover
-                    style="cursor: pointer; min-height: 120px; border: 2px dashed rgba(255, 255, 255, 0.2);"
+                    style="cursor: pointer; min-height: 120px; border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);"
                     @click="openCreateTagDialogWithFolder(folder.id)"
                   >
                     <v-card-text class="d-flex flex-column align-center justify-center pa-4" style="height: 100%;">

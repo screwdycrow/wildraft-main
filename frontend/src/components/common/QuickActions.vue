@@ -86,15 +86,15 @@ function handleCreate(itemType: ItemType) {
 }
 
 .glass-menu {
-  background: rgba(26, 26, 46, 0.95) !important;
+  background: rgba(var(--glass-surface-rgb), 0.95) !important;
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 8px;
   min-width: 180px;
 }
 
 .quick-actions-menu :deep(.v-list-subheader) {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 0.7rem;
   padding: 8px 16px 4px;
   opacity: 0.8;

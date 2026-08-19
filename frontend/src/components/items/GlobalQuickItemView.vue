@@ -67,8 +67,8 @@ function openFullView() {
 
 <style scoped>
 .glass-card {
-  background: rgba(17, 25, 40, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(var(--glass-surface-rgb), 0.75);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   backdrop-filter: blur(18px);
 }
 

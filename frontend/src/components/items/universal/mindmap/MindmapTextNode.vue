@@ -48,9 +48,17 @@ const handlePositions = [
   { key: 'left', position: Position.Left },
 ]
 
+// '#ffffff' was the old hard-coded default for new text nodes; treat it as
+// "unset" so the node inherits the theme's panel text colour instead of
+// disappearing on light themes.
+const customColor = computed(() => {
+  const c = props.data.color
+  return c && c.toLowerCase() !== '#ffffff' ? c : null
+})
+
 const nodeStyle = computed(() => ({
-  '--mm-accent': props.data.color || '#ffffff',
-  color: props.data.color || 'rgba(255,255,255,0.92)',
+  '--mm-accent': customColor.value || 'rgb(var(--panel-text))',
+  ...(customColor.value ? { color: customColor.value } : {}),
 }))
 
 function onDelete() {
@@ -62,6 +70,7 @@ function onDelete() {
 <style scoped>
 .mm-text-node {
   position: relative;
+  color: rgb(var(--panel-text));
   width: 100%;
   height: 100%;
   min-width: 80px;
@@ -77,12 +86,12 @@ function onDelete() {
   cursor: grabbing;
 }
 .mm-text-node:hover {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(var(--panel-border), 0.32);
+  background: rgba(var(--panel-text), 0.05);
 }
 .mm-text-node.selected {
   border-color: var(--mm-accent);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--panel-text), 0.06);
 }
 
 .mm-text-body {
@@ -92,7 +101,7 @@ function onDelete() {
   word-break: break-word;
 }
 .placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(var(--panel-text), 0.5);
   font-style: italic;
 }
 .rich-content :deep(p) { margin: 0 0 0.3em; }
@@ -107,9 +116,9 @@ function onDelete() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgb(40, 40, 50);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgb(var(--panel-bg-elevated));
+  border: 1px solid rgba(var(--panel-border), 0.32);
+  color: rgb(var(--panel-text));
   cursor: pointer;
   display: none;
   align-items: center;

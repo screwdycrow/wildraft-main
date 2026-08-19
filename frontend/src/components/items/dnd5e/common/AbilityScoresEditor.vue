@@ -93,7 +93,7 @@ function calculateSavingThrowBonus(ability: string): number {
 .ability-row {
   padding: 8px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .ability-modifier {

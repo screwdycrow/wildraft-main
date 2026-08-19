@@ -284,7 +284,7 @@ function rollSpell(spell: Spell) {
   font-weight: bold;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .cards-grid {
@@ -294,16 +294,16 @@ function rollSpell(spell: Spell) {
 }
 
 .ability-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   transition: all 0.3s ease;
 }
 
 .ability-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
 }
 
 .spell-card {
@@ -320,7 +320,7 @@ function rollSpell(spell: Spell) {
   font-size: 16px;
   font-weight: bold;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .stats-row {
@@ -332,13 +332,13 @@ function rollSpell(spell: Spell) {
 
 .components {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.75);
 }
 
 .description {
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 
 .empty-state {

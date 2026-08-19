@@ -665,13 +665,13 @@ async function handleSubmit() {
 }
 
 .chapter-active {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-color: rgba(var(--v-theme-on-surface), 0.16);
 }
 
 .chapter-drag-over {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .drag-handle {
@@ -695,20 +695,20 @@ async function handleSubmit() {
 .chapter-drop-zone {
   margin-top: 6px;
   padding: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 8px;
   text-align: center;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--v-theme-on-surface), 0.45);
   transition: all 0.2s ease;
   background: transparent;
 }
 
 .chapter-drop-zone--active,
 .chapter-drop-zone:hover {
-  border-color: rgba(255, 255, 255, 0.35);
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.35);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .add-chapter-wrapper {
@@ -763,15 +763,15 @@ async function handleSubmit() {
 
 .note-editor :deep(.editor-content) {
   padding: 32px 40px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 12px;
   transition: all 0.3s ease;
   border: 1px solid transparent;
 }
 
 .note-editor :deep(.editor-content:hover) {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-color: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .note-editor :deep(.tiptap-content:focus-within) {
@@ -779,16 +779,16 @@ async function handleSubmit() {
 }
 
 .note-editor :deep(.editor-content:has(.tiptap-content:focus-within)) {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(148, 197, 255, 0.2);
-  box-shadow: 0 0 0 3px rgba(148, 197, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.1);
 }
 
 .note-editor :deep(.tiptap-content) {
   font-size: 1.125rem;
   line-height: 1.85;
   letter-spacing: 0.01em;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--v-theme-on-surface), 0.9);
   font-weight: 400;
   max-width: 800px;
   margin: 0 auto;
@@ -805,7 +805,7 @@ async function handleSubmit() {
   line-height: 1.2;
   margin: 1.5em 0 0.75em 0;
   letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(var(--v-theme-on-surface), 0.95);
 }
 
 .note-editor :deep(.tiptap-content h2) {
@@ -814,7 +814,7 @@ async function handleSubmit() {
   line-height: 1.3;
   margin: 1.25em 0 0.6em 0;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(var(--v-theme-on-surface), 0.95);
 }
 
 .note-editor :deep(.tiptap-content h3) {
@@ -822,7 +822,7 @@ async function handleSubmit() {
   font-weight: 600;
   line-height: 1.4;
   margin: 1em 0 0.5em 0;
-  color: rgba(255, 255, 255, 0.93);
+  color: rgba(var(--v-theme-on-surface), 0.93);
 }
 
 .note-editor :deep(.tiptap-content ul),
@@ -838,26 +838,26 @@ async function handleSubmit() {
 }
 
 .note-editor :deep(.tiptap-content blockquote) {
-  border-left: 4px solid rgba(148, 197, 255, 0.5);
+  border-left: 4px solid rgba(var(--v-theme-primary), 0.5);
   padding-left: 1.5em;
   margin: 1.25em 0;
   font-style: italic;
   opacity: 0.9;
   font-size: 1.1em;
   line-height: 1.8;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   padding: 1em 1.5em;
   border-radius: 0 8px 8px 0;
 }
 
 .note-editor :deep(.tiptap-content hr) {
   border: none;
-  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  border-top: 2px solid rgba(var(--v-theme-on-surface), 0.15);
   margin: 2em 0;
 }
 
 .note-editor :deep(.tiptap-content .is-empty::before) {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(var(--v-theme-on-surface), 0.4);
   font-size: 1.125rem;
   font-style: italic;
 }

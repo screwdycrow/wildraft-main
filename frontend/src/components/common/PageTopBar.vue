@@ -86,9 +86,9 @@ defineProps<{
 .page-topbar {
   margin-bottom: 24px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .topbar-content {

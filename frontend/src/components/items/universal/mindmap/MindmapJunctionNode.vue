@@ -55,7 +55,7 @@ function onDelete() {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgba(240, 240, 245, 0.95);
+  background: rgba(var(--panel-bg), 0.98);
   border: 2px solid rgba(142, 68, 173, 0.9);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
@@ -70,9 +70,9 @@ function onDelete() {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: rgb(40, 40, 50);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgb(var(--panel-bg-elevated));
+  border: 1px solid rgba(var(--panel-border), 0.32);
+  color: rgb(var(--panel-text));
   cursor: pointer;
   display: none;
   align-items: center;
@@ -86,7 +86,7 @@ function onDelete() {
   width: 8px;
   height: 8px;
   background: rgba(142, 68, 173, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(var(--panel-bg), 0.9);
   opacity: 0;
   transition: opacity 0.15s ease;
 }

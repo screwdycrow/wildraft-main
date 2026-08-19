@@ -126,8 +126,9 @@ function onDelete() {
   position: relative;
   min-width: 180px;
   max-width: 260px;
-  background: rgba(24, 24, 32, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(var(--panel-bg), 0.95);
+  color: rgb(var(--panel-text));
+  border: 1px solid rgba(var(--panel-border), 0.2);
   border-left: 3px solid var(--mm-accent, #7F8C8D);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
@@ -160,7 +161,7 @@ function onDelete() {
 .ref-name {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #fff;
+  color: rgb(var(--panel-text));
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -180,7 +181,7 @@ function onDelete() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--panel-text), 0.6);
   flex-shrink: 0;
   background: transparent;
   border: none;
@@ -190,8 +191,8 @@ function onDelete() {
 }
 
 .ref-open:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+  color: rgb(var(--panel-text));
+  background: rgba(var(--panel-text), 0.12);
 }
 
 .mm-delete {
@@ -201,9 +202,9 @@ function onDelete() {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgb(40, 40, 50);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: rgb(var(--panel-bg-elevated));
+  border: 1px solid rgba(var(--panel-border), 0.32);
+  color: rgb(var(--panel-text));
   cursor: pointer;
   display: none;
   align-items: center;
@@ -220,7 +221,7 @@ function onDelete() {
   width: 9px;
   height: 9px;
   background: var(--mm-accent, #7F8C8D);
-  border: 2px solid rgba(255, 255, 255, 0.85);
+  border: 2px solid rgba(var(--panel-bg), 0.9);
   opacity: 0;
   transition: opacity 0.15s ease;
 }

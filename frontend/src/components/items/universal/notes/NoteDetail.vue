@@ -405,7 +405,7 @@ function printNote() {
             height: 100%; 
             display: flex;
             flex-direction: column;
-            background: #fff;
+            background: rgb(var(--v-theme-on-surface));
           }
           
           .pdf-image-wrapper { display: flex; justify-content: center; margin-bottom: 12px; z-index: 2; }
@@ -474,7 +474,7 @@ function formatDate(dateString: string) {
 
 .note-sidebar {
   background: transparent;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -506,18 +506,18 @@ function formatDate(dateString: string) {
 }
 
 .note-sidebar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--v-theme-on-surface), 0.15);
   border-radius: 3px;
 }
 
 .note-sidebar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 /* Firefox scrollbar */
 .note-sidebar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.15) transparent;
 }
 
 /* Sidebar nav section */
@@ -631,16 +631,16 @@ function formatDate(dateString: string) {
 }
 
 :deep(.v-list-item:hover) {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 .active-item {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-left: 3px solid rgba(148, 197, 255, 0.7);
+  background: rgba(var(--v-theme-on-surface), 0.08) !important;
+  border-left: 3px solid rgba(var(--v-theme-primary), 0.7);
 }
 
 .active-item:hover {
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(var(--v-theme-on-surface), 0.12) !important;
 }
 
 .content-card {
@@ -675,7 +675,7 @@ function formatDate(dateString: string) {
   padding-top: 32px;
   padding-bottom: 48px;
   padding-right: 48px;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--v-theme-on-surface), 0.88);
   letter-spacing: 0.01em;
   font-weight: 400;
   max-width: 100%;
@@ -698,7 +698,7 @@ function formatDate(dateString: string) {
   line-height: 1.2;
   margin: 1.75em 0 0.75em 0;
   letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(var(--v-theme-on-surface), 0.95);
   font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
   scroll-margin-top: 20px;
 }
@@ -709,7 +709,7 @@ function formatDate(dateString: string) {
   line-height: 1.3;
   margin: 1.5em 0 0.6em 0;
   letter-spacing: -0.01em;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(var(--v-theme-on-surface), 0.95);
   font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
   scroll-margin-top: 20px;
 }
@@ -719,7 +719,7 @@ function formatDate(dateString: string) {
   font-weight: 600;
   line-height: 1.4;
   margin: 1.25em 0 0.5em 0;
-  color: rgba(255, 255, 255, 0.93);
+  color: rgba(var(--v-theme-on-surface), 0.93);
   font-family: 'Crimson Text', 'Georgia', 'Times New Roman', serif;
   scroll-margin-top: 20px;
 }
@@ -743,33 +743,33 @@ function formatDate(dateString: string) {
 }
 
 .prose :deep(blockquote) {
-  border-left: 4px solid rgba(148, 197, 255, 0.5);
+  border-left: 4px solid rgba(var(--v-theme-primary), 0.5);
   padding-left: 1.5em;
   margin: 1.5em 0;
   font-style: italic;
   opacity: 0.9;
   font-size: 1.1em;
   line-height: 1.85;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   padding: 1.25em 1.75em;
   border-radius: 0 8px 8px 0;
 }
 
 .prose :deep(hr) {
   border: none;
-  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  border-top: 2px solid rgba(var(--v-theme-on-surface), 0.15);
   margin: 2.5em 0;
 }
 
 .prose :deep(a) {
-  color: rgba(148, 197, 255, 0.9);
+  color: rgba(var(--v-theme-primary), 0.9);
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.2s ease;
 }
 
 .prose :deep(a:hover) {
-  color: rgba(148, 197, 255, 1);
+  color: rgba(var(--v-theme-primary), 1);
 }
 
 /* Table Styles - Make sure tables are visible! */
@@ -780,9 +780,9 @@ function formatDate(dateString: string) {
   table-layout: fixed;
   width: 100%;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.3) !important;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   display: table !important;
   visibility: visible !important;
@@ -793,7 +793,7 @@ function formatDate(dateString: string) {
 .prose :deep(.editor-table td),
 .prose :deep(.editor-table th) {
   min-width: 1em;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2) !important;
   padding: 12px 16px !important;
   vertical-align: top;
   box-sizing: border-box;
@@ -897,7 +897,7 @@ function formatDate(dateString: string) {
 }
 
 .sidebar-column .glass-card {
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 /* Content Outline */
@@ -932,17 +932,17 @@ function formatDate(dateString: string) {
 }
 
 .outline-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--v-theme-on-surface), 0.15);
   border-radius: 2px;
 }
 
 .outline-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 .outline-wrapper {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.15) transparent;
 }
 
 .outline-header {
@@ -988,7 +988,7 @@ function formatDate(dateString: string) {
 .outline-link {
   display: block;
   padding: 4px 8px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.6);
   text-decoration: none;
   border-radius: 4px;
   transition: all 0.2s ease;
@@ -1000,8 +1000,8 @@ function formatDate(dateString: string) {
 }
 
 .outline-link:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  background: rgba(var(--v-theme-on-surface), 0.06);
   padding-left: 10px;
 }
 

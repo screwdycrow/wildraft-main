@@ -131,11 +131,11 @@ const subtitle = computed(() => {
 <style scoped>
 .dialog-header {
   padding: 24px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .dialog-tabs {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .dialog-content {

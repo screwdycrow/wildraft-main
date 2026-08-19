@@ -127,8 +127,9 @@ function onDelete() {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgba(24, 24, 32, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(var(--panel-bg), 0.96);
+  color: rgb(var(--panel-text));
+  border: 1px solid rgba(var(--panel-border), 0.2);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
@@ -209,7 +210,7 @@ function onDelete() {
 .note-title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #fff;
+  color: rgb(var(--panel-text));
   margin-bottom: 4px;
   word-break: break-word;
 }
@@ -217,12 +218,12 @@ function onDelete() {
 .rich-content {
   font-size: 0.76rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(var(--panel-text), 0.92);
   word-break: break-word;
 }
 
 .placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--panel-text), 0.45);
   font-style: italic;
   font-size: 0.76rem;
 }
@@ -232,14 +233,14 @@ function onDelete() {
 .rich-content :deep(h2) { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.3em; }
 .rich-content :deep(h3) { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.2em; }
 .rich-content :deep(ul), .rich-content :deep(ol) { padding-left: 1.1em; margin: 0.2em 0; }
-.rich-content :deep(a) { color: #7abaff; }
+.rich-content :deep(a) { color: rgb(var(--v-theme-primary)); }
 .rich-content :deep(img) { max-width: 100%; border-radius: 4px; }
 
 .mm-handle {
   width: 9px;
   height: 9px;
   background: var(--mm-accent, #8E44AD);
-  border: 2px solid rgba(255, 255, 255, 0.85);
+  border: 2px solid rgba(var(--panel-bg), 0.9);
   opacity: 0;
   transition: opacity 0.15s ease;
 }

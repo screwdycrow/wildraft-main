@@ -115,8 +115,8 @@ watch(() => props.numChapters, (value: number) => { localNumChapters.value = val
 <style scoped>
 .glass-card {
   backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 </style>
 

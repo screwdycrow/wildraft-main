@@ -278,7 +278,7 @@
                     v-for="(item, idx) in characterData.items || []"
                     :key="'item-' + idx"
                     class="item-entry mb-3 pa-3 rounded"
-                    style="background: rgba(255, 255, 255, 0.05);"
+                    style="background: rgba(var(--v-theme-on-surface), 0.05);"
                   >
                     <div class="d-flex justify-space-between align-center mb-1">
                       <span class="font-weight-bold">{{ item.title }}</span>
@@ -517,7 +517,7 @@ watch(() => props.character, () => {
 .ability-score {
   padding: 12px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .ability-label {
@@ -548,7 +548,7 @@ watch(() => props.character, () => {
 .save-item {
   padding: 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .interactive-section {
@@ -558,7 +558,7 @@ watch(() => props.character, () => {
 .spell-slot-box {
   padding: 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   text-align: center;
 }
 

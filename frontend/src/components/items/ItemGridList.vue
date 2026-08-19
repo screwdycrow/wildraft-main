@@ -1088,7 +1088,7 @@ async function handleDrop(event: DragEvent) {
   width: 100%;
   border-radius: 16px;
   padding: 0;
-  --v-theme-surface: rgba(255, 255, 255, 0.08);
+  --v-theme-surface: rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .skeleton-card :deep(.v-skeleton-loader__image) {

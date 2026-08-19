@@ -136,7 +136,7 @@ const savingThrowBonuses = computed(() => {
 }
 
 .ability-box {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -144,7 +144,7 @@ const savingThrowBonuses = computed(() => {
 }
 
 .ability-box:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .ability-box.has-bonus {

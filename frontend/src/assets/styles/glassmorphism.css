@@ -24,6 +24,18 @@
   
   /* Card dark background - always dark regardless of theme */
   --card-dark-background: #262430;
+
+  /* ---------------------------------------------------------------
+     Panel tokens: opaque chrome that sits on top of a canvas
+     (mindmap sidebar/nodes, VTT panels, toolbars, popovers).
+     These are not glass - they need their own readable text colour
+     per theme, otherwise light themes render dark-on-dark.
+     --------------------------------------------------------------- */
+  --panel-bg: 20, 20, 28;
+  --panel-bg-elevated: 40, 40, 50;
+  --canvas-bg: 16, 16, 22;
+  --panel-text: 255, 255, 255;
+  --panel-border: 255, 255, 255;
 }
 
 /* Default Dark Theme */
@@ -43,6 +55,12 @@
   --glass-text-primary: 255, 255, 255, 1;
   --glass-text-secondary: 255, 255, 255, 0.85;
   --glass-text-muted: 255, 255, 255, 0.7;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 26, 26, 46;
+  --panel-bg-elevated: 44, 44, 68;
+  --canvas-bg: 15, 15, 30;
+  --panel-text: 255, 255, 255;
+  --panel-border: 255, 255, 255;
 }
 
 .v-theme--lightTheme {
@@ -61,6 +79,12 @@
   --glass-text-primary: 0, 0, 0, 1;
   --glass-text-secondary: 0, 0, 0, 0.85;
   --glass-text-muted: 0, 0, 0, 0.6;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 255, 255, 255;
+  --panel-bg-elevated: 245, 245, 248;
+  --canvas-bg: 235, 235, 240;
+  --panel-text: 23, 23, 28;
+  --panel-border: 0, 0, 0;
 }
 
 .v-theme--darkForestTheme {
@@ -79,6 +103,12 @@
   --glass-text-primary: 232, 245, 233, 1;
   --glass-text-secondary: 232, 245, 233, 0.85;
   --glass-text-muted: 232, 245, 233, 0.7;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 15, 26, 31;
+  --panel-bg-elevated: 32, 48, 54;
+  --canvas-bg: 5, 10, 15;
+  --panel-text: 232, 245, 233;
+  --panel-border: 255, 255, 255;
 }
 
 .v-theme--deepBlueTheme {
@@ -97,6 +127,12 @@
   --glass-text-primary: 227, 242, 253, 1;
   --glass-text-secondary: 227, 242, 253, 0.85;
   --glass-text-muted: 227, 242, 253, 0.7;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 26, 47, 66;
+  --panel-bg-elevated: 42, 66, 88;
+  --canvas-bg: 10, 25, 41;
+  --panel-text: 227, 242, 253;
+  --panel-border: 255, 255, 255;
 }
 
 .v-theme--crimsonTheme {
@@ -115,6 +151,12 @@
   --glass-text-primary: 255, 255, 255, 1;
   --glass-text-secondary: 255, 255, 255, 0.85;
   --glass-text-muted: 255, 255, 255, 0.7;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 42, 26, 26;
+  --panel-bg-elevated: 62, 40, 40;
+  --canvas-bg: 26, 10, 10;
+  --panel-text: 255, 255, 255;
+  --panel-border: 255, 255, 255;
 }
 
 .v-theme--papyrusTheme {
@@ -133,6 +175,12 @@
   --glass-text-primary: 62, 39, 35, 1;
   --glass-text-secondary: 62, 39, 35, 0.85;
   --glass-text-muted: 62, 39, 35, 0.6;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 255, 249, 230;
+  --panel-bg-elevated: 240, 231, 210;
+  --canvas-bg: 237, 231, 213;
+  --panel-text: 62, 39, 35;
+  --panel-border: 109, 76, 65;
 }
 
 .v-theme--mintTheme {
@@ -151,6 +199,12 @@
   --glass-text-primary: 0, 77, 64, 1;
   --glass-text-secondary: 0, 77, 64, 0.85;
   --glass-text-muted: 0, 77, 64, 0.6;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 241, 248, 246;
+  --panel-bg-elevated: 222, 238, 234;
+  --canvas-bg: 224, 242, 241;
+  --panel-text: 0, 66, 55;
+  --panel-border: 0, 105, 92;
 }
 
 .v-theme--sunsetTheme {
@@ -169,6 +223,12 @@
   --glass-text-primary: 230, 81, 0, 1;
   --glass-text-secondary: 230, 81, 0, 0.85;
   --glass-text-muted: 230, 81, 0, 0.6;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 255, 248, 240;
+  --panel-bg-elevated: 250, 234, 216;
+  --canvas-bg: 255, 243, 224;
+  --panel-text: 92, 45, 8;
+  --panel-border: 191, 84, 0;
 }
 
 .v-theme--midnightTheme {
@@ -187,6 +247,12 @@
   --glass-text-primary: 232, 228, 243, 1;
   --glass-text-secondary: 232, 228, 243, 0.85;
   --glass-text-muted: 232, 228, 243, 0.7;
+  /* Panel tokens (opaque chrome: mindmap + VTT panels/nodes) */
+  --panel-bg: 26, 22, 47;
+  --panel-bg-elevated: 44, 39, 74;
+  --canvas-bg: 13, 10, 31;
+  --panel-text: 232, 228, 243;
+  --panel-border: 255, 255, 255;
 }
 
 /* ===================================
@@ -922,4 +988,83 @@
   color: rgb(var(--v-theme-on-primary, 255, 255, 255)) !important;
 }
 
+/* ===================================
+   DM screen / VTT chrome on light themes
+   ===================================
 
+   The VTT toolbars, drawers, node settings popovers and context menus are
+   deliberately dark in every theme - they float above a battle map, so a
+   light chrome would wash the map out. On a light theme the surrounding
+   Vuetify text colour is dark, which would otherwise be inherited straight
+   into that dark chrome and render dark-on-dark. Force a light text colour
+   inside those containers instead. */
+.v-theme--lightTheme .dm-screen-view,
+.v-theme--papyrusTheme .dm-screen-view,
+.v-theme--mintTheme .dm-screen-view,
+.v-theme--sunsetTheme .dm-screen-view,
+.v-theme--lightTheme .node-settings-card,
+.v-theme--papyrusTheme .node-settings-card,
+.v-theme--mintTheme .node-settings-card,
+.v-theme--sunsetTheme .node-settings-card,
+.v-theme--lightTheme .text-node-settings-card,
+.v-theme--papyrusTheme .text-node-settings-card,
+.v-theme--mintTheme .text-node-settings-card,
+.v-theme--sunsetTheme .text-node-settings-card,
+.v-theme--lightTheme .terrain-settings-dialog,
+.v-theme--papyrusTheme .terrain-settings-dialog,
+.v-theme--mintTheme .terrain-settings-dialog,
+.v-theme--sunsetTheme .terrain-settings-dialog,
+.v-theme--lightTheme .shape-settings-dialog,
+.v-theme--papyrusTheme .shape-settings-dialog,
+.v-theme--mintTheme .shape-settings-dialog,
+.v-theme--sunsetTheme .shape-settings-dialog,
+.v-theme--lightTheme .context-menu-card,
+.v-theme--papyrusTheme .context-menu-card,
+.v-theme--mintTheme .context-menu-card,
+.v-theme--sunsetTheme .context-menu-card,
+.v-theme--lightTheme .layer-menu,
+.v-theme--papyrusTheme .layer-menu,
+.v-theme--mintTheme .layer-menu,
+.v-theme--sunsetTheme .layer-menu,
+.v-theme--lightTheme .widget-menu,
+.v-theme--papyrusTheme .widget-menu,
+.v-theme--mintTheme .widget-menu,
+.v-theme--sunsetTheme .widget-menu {
+  --vtt-on-dark: 255, 255, 255;
+  color: rgba(var(--vtt-on-dark), 0.92);
+}
+
+/* Vuetify sets its own colour on these, so inheritance alone is not enough. */
+.v-theme--lightTheme .dm-screen-view :is(.v-label, .v-field__input, .v-field__prepend-inner, .v-field__append-inner, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--papyrusTheme .dm-screen-view :is(.v-label, .v-field__input, .v-field__prepend-inner, .v-field__append-inner, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--mintTheme .dm-screen-view :is(.v-label, .v-field__input, .v-field__prepend-inner, .v-field__append-inner, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--sunsetTheme .dm-screen-view :is(.v-label, .v-field__input, .v-field__prepend-inner, .v-field__append-inner, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--lightTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) :is(.v-label, .v-field__input, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--papyrusTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) :is(.v-label, .v-field__input, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--mintTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) :is(.v-label, .v-field__input, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title),
+.v-theme--sunsetTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) :is(.v-label, .v-field__input, .v-select__selection-text, .v-list-item-title, .v-list-item-subtitle, .v-card-title, .v-card-subtitle, .v-card-text, .v-messages__message, .v-expansion-panel-title) {
+  color: rgba(255, 255, 255, 0.92) !important;
+  opacity: 1;
+}
+
+/* Field outlines and dividers are drawn from the theme's on-surface colour,
+   which is invisible against the dark chrome on a light theme. */
+.v-theme--lightTheme .dm-screen-view .v-field__outline,
+.v-theme--papyrusTheme .dm-screen-view .v-field__outline,
+.v-theme--mintTheme .dm-screen-view .v-field__outline,
+.v-theme--sunsetTheme .dm-screen-view .v-field__outline,
+.v-theme--lightTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) .v-field__outline,
+.v-theme--papyrusTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) .v-field__outline,
+.v-theme--mintTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) .v-field__outline,
+.v-theme--sunsetTheme :is(.node-settings-card, .text-node-settings-card, .terrain-settings-dialog, .shape-settings-dialog, .context-menu-card, .layer-menu, .widget-menu) .v-field__outline {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* The DM screen's own cards keep the dark card treatment, so their text must
+   stay light too. */
+.v-theme--lightTheme .dm-screen-view .v-divider,
+.v-theme--papyrusTheme .dm-screen-view .v-divider,
+.v-theme--mintTheme .dm-screen-view .v-divider,
+.v-theme--sunsetTheme .dm-screen-view .v-divider {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}

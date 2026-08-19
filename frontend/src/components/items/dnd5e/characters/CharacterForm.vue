@@ -881,7 +881,7 @@ async function handleSubmit() {
   gap: 8px;
   padding: 6px 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .skill-proficiency-icons {
@@ -946,12 +946,12 @@ async function handleSubmit() {
 }
 
 .form-window-item::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .form-window-item::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 </style>
 

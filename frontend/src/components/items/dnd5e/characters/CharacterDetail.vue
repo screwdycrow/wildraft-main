@@ -1298,12 +1298,12 @@ function printCharacter() {
 }
 
 .main-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .main-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .main-content-tabs {
@@ -1339,9 +1339,9 @@ function printCharacter() {
 }
 
 .sidebar-content {
-  background: rgba(30, 30, 35, 0.95);
+  background: rgba(var(--glass-surface-rgb), 0.95);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 12px;
   padding: 16px;
   max-height: 85vh;
@@ -1358,12 +1358,12 @@ function printCharacter() {
 }
 
 .sidebar-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .sidebar-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 
@@ -1390,9 +1390,9 @@ function printCharacter() {
 /* Character Header */
 .character-header {
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .character-header .topbar-content {
@@ -1419,7 +1419,7 @@ function printCharacter() {
 }
 
 .character-avatar :deep(.v-avatar) {
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid rgba(var(--v-theme-on-surface), 0.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -1555,7 +1555,7 @@ function printCharacter() {
 }
 
 .clickable:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 .edit-hint {
@@ -1587,14 +1587,14 @@ function printCharacter() {
 .skill-item {
   padding: 4px 6px;
   border-radius: 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   transition: background 0.2s;
   font-size: 0.8rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .skill-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .skill-name-container {
@@ -1795,7 +1795,7 @@ function printCharacter() {
     padding: 3px 5px;
     border-radius: 0;
     font-size: 0.7rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.03);
   }
 
   .skill-name-container {

@@ -443,15 +443,15 @@ async function handleDuplicate() {
   position: relative;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   transition: all 0.2s ease;
   margin-bottom: 4px;
 }
 
 .combatant-item:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -526,7 +526,7 @@ async function handleDuplicate() {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.2);
   transition: all 0.2s ease;
   cursor: pointer;
   flex-shrink: 0;
@@ -534,7 +534,7 @@ async function handleDuplicate() {
 
 .initiative-badge:hover {
   transform: scale(1.1);
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
 .initiative-number {
@@ -588,7 +588,7 @@ async function handleDuplicate() {
 
 .combatant-subtitle {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
@@ -608,7 +608,7 @@ async function handleDuplicate() {
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 8px;
   font-size: 11px;
   font-weight: 600;
@@ -621,7 +621,7 @@ async function handleDuplicate() {
 }
 
 .stat-chip.clickable:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   transform: scale(1.05);
 }
 
@@ -676,13 +676,13 @@ async function handleDuplicate() {
   gap: 2px;
   font-size: 10px;
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 6px;
   white-space: nowrap;
 }
 
 .counter-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.75);
 }
 
 .counter-value {
@@ -699,7 +699,7 @@ async function handleDuplicate() {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.05);
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.3) rgba(var(--v-theme-on-surface), 0.05);
   -webkit-overflow-scrolling: touch;
   white-space: nowrap;
 }
@@ -709,17 +709,17 @@ async function handleDuplicate() {
 }
 
 .actions-row::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 2px;
 }
 
 .actions-row::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
   border-radius: 2px;
 }
 
 .actions-row::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 .action-chip-item {
@@ -745,7 +745,7 @@ async function handleDuplicate() {
 }
 
 .counter-editor {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   padding-bottom: 12px;
 }
 

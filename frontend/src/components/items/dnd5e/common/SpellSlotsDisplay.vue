@@ -224,7 +224,7 @@ function longRest() {
 
 <style scoped>
 .spell-slot-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 8px;
   padding: 12px;
   text-align: center;
@@ -234,7 +234,7 @@ function longRest() {
 }
 
 .spell-slot-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .clickable {

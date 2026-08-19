@@ -627,12 +627,12 @@ function printStatBlock() {
 }
 
 .main-column::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .main-column::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .sidebar-column {
@@ -650,12 +650,12 @@ function printStatBlock() {
 }
 
 .sidebar-column::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .sidebar-column::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 @media (max-width: 959px) {

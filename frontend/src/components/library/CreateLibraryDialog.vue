@@ -162,7 +162,7 @@ function resetForm() {
 /* Use global glass-dialog class */
 
 :deep(.v-text-field .v-field__outline) {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(var(--v-theme-on-surface), 0.2);
 }
 
 :deep(.v-text-field--focused .v-field__outline) {

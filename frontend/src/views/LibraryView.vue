@@ -576,7 +576,7 @@ function openEncounter() {
 
 .folders-accordion :deep(.v-expansion-panel) {
   background: rgba(var(--v-theme-surface), 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 8px !important;
   margin-bottom: 8px;
   backdrop-filter: blur(8px);
@@ -645,7 +645,7 @@ function openEncounter() {
 
 .tag-mini-card {
   background: rgba(var(--v-theme-surface), 0.15) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 8px;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -685,7 +685,7 @@ function openEncounter() {
 .quick-action-compact-card {
   background: rgba(var(--v-theme-surface), 0.2) !important;
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   transition: all 0.3s ease;
   cursor: pointer;
   height: 100%;
@@ -714,7 +714,7 @@ function openEncounter() {
   align-items: center;
   padding: 8px 0;
   opacity: 0.9;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
   margin-bottom: 12px;
   padding-bottom: 8px;
 }

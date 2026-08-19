@@ -492,7 +492,7 @@ async function handleAddSimpleCombatant(combatantData: any) {
 .combat-header {
   background: rgba(0, 0, 0, 0.3);
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .round-section {
@@ -507,7 +507,7 @@ async function handleAddSimpleCombatant(combatantData: any) {
   flex-direction: column;
   align-items: center;
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 8px;
   min-width: 80px;
 }
@@ -515,7 +515,7 @@ async function handleAddSimpleCombatant(combatantData: any) {
 .round-label {
   font-size: 10px;
   font-weight: bold;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.75);
   letter-spacing: 1px;
 }
 
@@ -544,16 +544,16 @@ async function handleAddSimpleCombatant(combatantData: any) {
 }
 
 .combatants-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .combatants-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 3px;
 }
 
 .combatants-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .active-combatant {
@@ -575,7 +575,7 @@ async function handleAddSimpleCombatant(combatantData: any) {
 
 .add-combatant-section {
   padding: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   background: rgba(0, 0, 0, 0.2);
 }
 

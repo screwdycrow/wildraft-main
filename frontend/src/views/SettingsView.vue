@@ -13,9 +13,9 @@
 
 <style scoped>
 .glass-card {
-  background: rgba(26, 26, 46, 0.7) !important;
+  background: rgba(var(--glass-surface-rgb), 0.8) !important;
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 </style>
 

@@ -37,8 +37,8 @@ defineProps<{
 
 <style scoped>
 .action-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .action-header {

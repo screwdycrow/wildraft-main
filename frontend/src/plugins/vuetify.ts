@@ -116,7 +116,7 @@ const papyrusTheme = {
     'glass-surface': '#FFF9E6', // Main glass color
     'glass-border': '#8D6E63', // Brown border
     'card-background': '#4E2723', // Item card background (slightly darker)
-    'sidebar-background': 'FFF9E6', // Sidebar background (slightly darker)
+    'sidebar-background': '#FFF9E6', // Sidebar background
     'header-background': '#E8DDD0', // Header background (slightly darker)
   },
 }

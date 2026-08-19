@@ -319,7 +319,7 @@ function close() {
 .progress-bar-container {
   flex: 1;
   height: 24px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 12px;
   overflow: hidden;
   position: relative;

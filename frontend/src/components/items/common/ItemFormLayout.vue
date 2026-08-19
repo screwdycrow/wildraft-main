@@ -192,21 +192,21 @@ defineExpose({
 .form-actions-sticky {
   position: sticky;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   z-index: 10;
   padding-bottom: 24px !important;
 }
 
 .border-s {
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.02);
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .border-e {
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.02);
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 </style>
 

@@ -350,11 +350,11 @@ defineExpose({
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .counter-item {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 8px;
   padding: 12px;
   transition: background 0.15s ease, transform 0.15s ease;
@@ -365,7 +365,7 @@ defineExpose({
 }
 
 .counter-item.clickable:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.06);
   transform: translateY(-2px);
 }
 
@@ -409,7 +409,7 @@ defineExpose({
 
 .manager-item {
   padding: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;
 }
 </style>

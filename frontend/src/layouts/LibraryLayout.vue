@@ -726,7 +726,7 @@ onMounted(async () => {
 :deep(.glass-header) {
   background: rgba(var(--v-theme-surface), 0.4) !important;
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 :deep(.glass-header .v-toolbar-title) {
@@ -745,7 +745,7 @@ onMounted(async () => {
 :deep(.glass-sidebar) {
   background: transparent !important;
   backdrop-filter: none;
-  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 :deep(.v-list-item--active) {
@@ -777,7 +777,7 @@ onMounted(async () => {
 }
 
 :deep(.v-list-subheader) {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--v-theme-on-surface), 0.55);
   font-size: 0.65rem;
   opacity: 0.7;
 }
@@ -956,7 +956,7 @@ onMounted(async () => {
 }
 
 :deep(.glass-sidebar.right-sidebar-with-tabs) {
-  border-left: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.05) !important;
   border-right: none !important;
 }
 </style>

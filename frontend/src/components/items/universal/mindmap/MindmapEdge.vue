@@ -98,7 +98,7 @@ function onInsert() {
 .mm-edge-label {
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(18, 18, 26, 0.92);
+  background: rgba(var(--panel-bg), 0.94);
   border: 1px solid;
   font-size: 0.68rem;
   font-weight: 600;
@@ -116,9 +116,9 @@ function onInsert() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgb(40, 40, 50);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: rgb(var(--panel-bg-elevated));
+  border: 1px solid rgba(var(--panel-border), 0.35);
+  color: rgb(var(--panel-text));
   cursor: pointer;
 }
 .mm-edge-label-wrap:hover .mm-edge-add,

@@ -989,7 +989,7 @@ function closeDialog() {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   opacity: 0.8;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .header-actions {
@@ -1011,7 +1011,7 @@ function closeDialog() {
 }
 
 .inventory-item {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -1019,11 +1019,11 @@ function closeDialog() {
 }
 
 .inventory-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .inventory-item.expanded {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .inventory-item.equipped {
@@ -1054,7 +1054,7 @@ function closeDialog() {
 }
 
 .equipped-indicator:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .item-name {
@@ -1095,7 +1095,7 @@ function closeDialog() {
 .inventory-details {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -1109,12 +1109,12 @@ function closeDialog() {
 }
 
 .inventory-details::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 2px;
 }
 
 .inventory-details::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .item-description {
@@ -1146,7 +1146,7 @@ function closeDialog() {
   font-size: 0.7rem;
   padding: 3px 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgb(var(--v-theme-primary));
   font-weight: 500;
 }
@@ -1165,7 +1165,7 @@ function closeDialog() {
 }
 
 .action-entry {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 6px;
   padding: 8px;
   margin-bottom: 6px;
@@ -1187,7 +1187,7 @@ function closeDialog() {
   font-size: 0.65rem;
   padding: 2px 6px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1235,7 +1235,7 @@ function closeDialog() {
 }
 
 .library-item-card {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
@@ -1243,7 +1243,7 @@ function closeDialog() {
 }
 
 .library-item-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .library-item-header {

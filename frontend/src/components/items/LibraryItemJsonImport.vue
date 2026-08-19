@@ -1247,8 +1247,8 @@ watch(() => props.modelValue, (newValue) => {
 <style scoped>
 .glass-card {
   backdrop-filter: blur(20px);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .guidelines-section {
@@ -1270,7 +1270,7 @@ watch(() => props.modelValue, (newValue) => {
   margin-bottom: 8px;
   padding: 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
 .field-name {
@@ -1284,7 +1284,7 @@ watch(() => props.modelValue, (newValue) => {
 
 .field-desc {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.75);
   line-height: 1.3;
 }
 
