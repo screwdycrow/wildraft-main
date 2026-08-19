@@ -18,9 +18,10 @@
       :class="compact ? 'mb-1' : 'mb-2'"
     />
     <p :class="compact ? 'text-caption mb-0' : 'text-h6 mb-1'">
-      {{ isDragging ? 'Drop files here' : (compact ? 'Drop files or click' : 'Drag & drop files or click to upload') }}
+      {{ isDragging ? 'Drop files here' : (compact ? 'Drop, paste or click' : 'Drag & drop, paste, or click to upload') }}
     </p>
     <p v-if="!compact" class="text-caption text-medium-emphasis">
+      Paste an image straight from the clipboard, or pick a file.
       Files under 1MB use direct upload, larger files use presigned URLs
     </p>
     
@@ -46,10 +47,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useFilesStore } from '@/stores/files'
 import { useToast } from 'vue-toastification'
 import type { UserFile } from '@/api/files'
+
+// Several upload zones can be alive at once (the global file manager, a form's
+// inline uploader, ...). A paste is a single global event, so only the most
+// recently mounted *visible* zone may claim it - otherwise one paste uploads
+// the same image several times.
+const pasteTargets: HTMLElement[] = []
 
 interface Props {
   compact?: boolean
@@ -95,6 +102,51 @@ const handleDrop = async (event: DragEvent) => {
   const files = Array.from(event.dataTransfer?.files || [])
   await uploadFiles(files)
 }
+
+const isVisible = (el: HTMLElement | undefined) =>
+  !!el && !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+
+// Clipboard images arrive without a usable name ("image.png" for every paste),
+// so give them a timestamped one to keep the file list readable.
+const namePastedFile = (file: File) => {
+  const ext = file.name?.includes('.') ? file.name.split('.').pop() : (file.type.split('/')[1] || 'png')
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, '')
+  return new File([file], `pasted-${stamp}.${ext}`, { type: file.type })
+}
+
+const handlePaste = async (event: ClipboardEvent) => {
+  if (!isVisible(dropZone.value)) return
+
+  // Only the top-most visible zone handles the paste.
+  const visible = pasteTargets.filter(isVisible)
+  if (visible[visible.length - 1] !== dropZone.value) return
+
+  // Don't hijack a normal text paste into an input or rich-text editor.
+  const target = event.target as HTMLElement | null
+  if (target?.closest('input, textarea, [contenteditable="true"]')) return
+
+  const files = Array.from(event.clipboardData?.items || [])
+    .filter(item => item.kind === 'file')
+    .map(item => item.getAsFile())
+    .filter((file): file is File => !!file)
+    .map(file => (file.name && file.name !== 'image.png' ? file : namePastedFile(file)))
+
+  if (files.length === 0) return
+
+  event.preventDefault()
+  await uploadFiles(files)
+}
+
+onMounted(() => {
+  if (dropZone.value) pasteTargets.push(dropZone.value)
+  window.addEventListener('paste', handlePaste)
+})
+
+onBeforeUnmount(() => {
+  const index = pasteTargets.indexOf(dropZone.value as HTMLElement)
+  if (index !== -1) pasteTargets.splice(index, 1)
+  window.removeEventListener('paste', handlePaste)
+})
 
 const uploadFiles = async (files: File[]) => {
   if (files.length === 0) return
